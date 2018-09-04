@@ -1,0 +1,11 @@
+before_script:
+  - git submodule update --init --recursive
+
+configure_and_build:
+  script:
+    - git submodule update
+    - mkdir -p build
+    - cd build
+    - /usr/local/mylibs/bin/qmake CONFIG+=debug ../server.pro
+    - make
+

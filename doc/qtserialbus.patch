@@ -1,0 +1,121 @@
+diff --git a/src/serialbus/qmodbusrtuserialslave.cpp b/src/serialbus/qmodbusrtuserialslave.cpp
+index 644ad07..98194c0 100644
+--- a/src/serialbus/qmodbusrtuserialslave.cpp
++++ b/src/serialbus/qmodbusrtuserialslave.cpp
+@@ -62,10 +62,12 @@ QT_BEGIN_NAMESPACE
+     Constructs a QModbusRtuSerialSlave with the specified \a parent. The
+     \l serverAddress preset is \c 1.
+ */
+-QModbusRtuSerialSlave::QModbusRtuSerialSlave(QObject *parent)
++QModbusRtuSerialSlave::QModbusRtuSerialSlave(QObject *parent, QSerialPort *serialPort)
+     : QModbusServer(*new QModbusRtuSerialSlavePrivate, parent)
+ {
+     Q_D(QModbusRtuSerialSlave);
++    d->m_serialPort = serialPort;
++    d->isOwnSerialPort = serialPort == nullptr;
+     d->setupSerialPort();
+ }
+ 
+@@ -95,6 +97,12 @@ bool QModbusRtuSerialSlave::processesBroadcast() const
+     return d_func()->m_processesBroadcast;
+ }
+ 
++void QModbusRtuSerialSlave::addData(const QByteArray& new_data)
++{
++    Q_D(QModbusRtuSerialSlave);
++    d->addData(new_data);
++}
++
+ /*!
+     \reimp
+ 
+@@ -108,7 +116,7 @@ bool QModbusRtuSerialSlave::open()
+ 
+     Q_D(QModbusRtuSerialSlave);
+     d->setupEnvironment(); // to be done before open
+-    if (d->m_serialPort->open(QIODevice::ReadWrite)) {
++    if ((!d->isOwnSerialPort && d->m_serialPort->isOpen()) || (d->isOwnSerialPort && d->m_serialPort->open(QIODevice::ReadWrite))) {
+         setState(QModbusDevice::ConnectedState);
+         d->m_serialPort->clear(); // only possible after open
+     } else {
+@@ -126,7 +134,7 @@ void QModbusRtuSerialSlave::close()
+         return;
+ 
+     Q_D(QModbusRtuSerialSlave);
+-    if (d->m_serialPort->isOpen())
++    if (d->isOwnSerialPort && d->m_serialPort->isOpen())
+         d->m_serialPort->close();
+ 
+     setState(QModbusDevice::UnconnectedState);
+diff --git a/src/serialbus/qmodbusrtuserialslave.h b/src/serialbus/qmodbusrtuserialslave.h
+index d9c8a84..776d25a 100644
+--- a/src/serialbus/qmodbusrtuserialslave.h
++++ b/src/serialbus/qmodbusrtuserialslave.h
+@@ -42,6 +42,7 @@
+ QT_BEGIN_NAMESPACE
+ 
+ class QModbusRtuSerialSlavePrivate;
++class QSerialPort;
+ 
+ class Q_SERIALBUS_EXPORT QModbusRtuSerialSlave : public QModbusServer
+ {
+@@ -49,7 +50,8 @@ class Q_SERIALBUS_EXPORT QModbusRtuSerialSlave : public QModbusServer
+     Q_DECLARE_PRIVATE(QModbusRtuSerialSlave)
+ 
+ public:
+-    explicit QModbusRtuSerialSlave(QObject *parent = nullptr);
++    void addData(const QByteArray& new_data);
++    explicit QModbusRtuSerialSlave(QObject *parent = nullptr, QSerialPort *serialPort = nullptr);
+     ~QModbusRtuSerialSlave();
+ 
+     bool processesBroadcast() const override;
+diff --git a/src/serialbus/qmodbusrtuserialslave_p.h b/src/serialbus/qmodbusrtuserialslave_p.h
+index 4c5f885..2e20ac5 100644
+--- a/src/serialbus/qmodbusrtuserialslave_p.h
++++ b/src/serialbus/qmodbusrtuserialslave_p.h
+@@ -67,14 +67,9 @@ class QModbusRtuSerialSlavePrivate : public QModbusServerPrivate
+     Q_DECLARE_PUBLIC(QModbusRtuSerialSlave)
+ 
+ public:
+-    void setupSerialPort()
+-    {
+-        Q_Q(QModbusRtuSerialSlave);
+-
+-        m_serialPort = new QSerialPort(q);
+-        QObject::connect(m_serialPort, &QSerialPort::readyRead, [this]() {
+-            const int size = m_serialPort->size();
+-            m_requestBuffer += m_serialPort->read(size);
++    bool isOwnSerialPort = true;
++    void addData(const QByteArray& new_data) {
++            m_requestBuffer += new_data;
+ 
+             const QModbusSerialAdu adu(QModbusSerialAdu::Rtu, m_requestBuffer);
+             qCDebug(QT_MODBUS_LOW) << "(RTU server) Received ADU:" << adu.rawData().toHex();
+@@ -261,7 +256,17 @@ public:
+                 }
+             }
+             storeModbusCommEvent(event); // store the final event after processing
+-        });
++    }
++
++    void setupSerialPort()
++    {
++        if (isOwnSerialPort) {
++            Q_Q(QModbusRtuSerialSlave);
++            m_serialPort = new QSerialPort(q);
++            QObject::connect(m_serialPort, &QSerialPort::readyRead, [this]() {
++                addData(m_serialPort->readAll());
++            });
++        }
+ 
+         using TypeId = void (QSerialPort::*)(QSerialPort::SerialPortError);
+         QObject::connect(m_serialPort, static_cast<TypeId>(&QSerialPort::error),
+@@ -322,7 +327,7 @@ public:
+     }
+ 
+     void setupEnvironment() {
+-        if (m_serialPort) {
++        if (isOwnSerialPort && m_serialPort) {
+             m_serialPort->setPortName(m_comPort);
+             m_serialPort->setParity(m_parity);
+             m_serialPort->setBaudRate(m_baudRate);

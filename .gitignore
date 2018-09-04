@@ -1,0 +1,13 @@
+*.user*
+*~
+*.~lock*
+build/
+win/
+.obj/
+.rcc/
+*.pb.cc
+*.pb.h
+.metadata/
+*.blend1
+__pycache__/
+*.pyc

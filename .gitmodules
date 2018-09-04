@@ -1,0 +1,15 @@
+[submodule "lib"]
+	path = lib
+	url = git@github.com:WorkerBeesTeam/DaiLib.git
+[submodule "client"]
+	path = client
+	url = git@github.com:WorkerBeesTeam/DaiClient.git
+[submodule "gui"]
+	path = gui
+	url = git@github.com:WorkerBeesTeam/DaiGui.git
+[submodule "helpz"]
+	path = helpz
+	url = git@github.com:WorkerBeesTeam/Helpz.git
+[submodule "server"]
+	path = server
+	url = git@github.com:WorkerBeesTeam/DaiServer.git

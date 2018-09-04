@@ -1,0 +1,21 @@
+QT       += core testlib dbus sql network
+QT       -= gui
+
+TARGET = tst_libtest
+CONFIG += console
+CONFIG += qt warn_on depend_includepath testcase
+CONFIG -= app_bundle
+
+TEMPLATE = app
+
+SOURCES += tst_libtest.cpp
+DEFINES += SRCDIR=\\\"$$PWD/\\\"
+
+INCLUDEPATH += ../../lib/
+
+include(../../common.pri)
+
+DESTDIR = $${DESTDIR}../
+LIBS += -L$${DESTDIR} -L$${DESTDIR}/helpz
+
+LIBS += -lDai -lHelpzService -lHelpzDB -lHelpzNetwork -lprotobuf
