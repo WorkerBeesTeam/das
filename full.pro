@@ -2,11 +2,11 @@ TEMPLATE = subdirs
 
 DESTDIR = $${OUT_PWD}/../
 
-SUBDIRS = lib helpz client ModbusPlugin
+SUBDIRS = lib helpz client plugins
 
 lib.depends = helpz
-ModbusPlugin.subdir = client/plugins/ModbusPlugin
-ModbusPlugin.depends = lib
+plugins.subdir = client/plugins
+plugins.depends = lib
 
 client.depends = lib
 
@@ -20,11 +20,11 @@ CONFIG(debug, debug|release) {
 CONFIG(release, debug|release) {
 }
 
-CONFIG(DaiServer, DaiServer|Raspberry) {
-    SUBDIRS += server
-    server.subdir = server_old
-    server.depends = lib
-}
+#CONFIG(DaiServer, DaiServer|Raspberry) {
+#    SUBDIRS += server
+#    server.subdir = server_old
+#    server.depends = lib
+#}
 
 !ServerOnly {
     SUBDIRS += gui
@@ -34,7 +34,7 @@ CONFIG(DaiServer, DaiServer|Raspberry) {
 #            SUBDIRS += tests/cserial
     } else { # IF Default - Desktop
         SUBDIRS += emulator
-        ModbusPlugin.subdir = client/emulator
+        emulator.subdir = client/emulator
         emulator.depends = lib
     }
 }
