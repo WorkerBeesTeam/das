@@ -3,7 +3,7 @@
 #include <QCoreApplication>
 #include <QSignalSpy>
 
-#include "Dai/protosectionmanager.h"
+#include "Dai/protoproject.h"
 
 namespace Dai
 {
@@ -11,7 +11,7 @@ class LibTest : public QObject
 {
     Q_OBJECT
 
-    std::shared_ptr<ProtoSectionManager> mng;
+    std::shared_ptr<ProtoProject> mng;
 public:
     LibTest()
     {
@@ -19,7 +19,7 @@ public:
 
 private Q_SLOTS:
     void initTestCase() {
-        mng = std::make_shared<ProtoSectionManager>(nullptr);
+        mng = std::make_shared<ProtoProject>(nullptr);
         QVERIFY(!!mng);
     }
     void cleanupTestCase() {
@@ -27,8 +27,8 @@ private Q_SLOTS:
         QVERIFY(!mng);
     }
 
-    // ---------- ProtoSectionManager ----------
-    void ProtoSectionManagerInit() {
+    // ---------- ProtoProject ----------
+    void ProtoProjectInit() {
 /*
 #pragma GCC warning "Get TypesCount"
         const uint TypesCount = 18;
@@ -66,7 +66,7 @@ private Q_SLOTS:
 
         mng->init(info);*/
     }
-    // ---------- ProtoSectionManager ----------
+    // ---------- ProtoProject ----------
 
     // ---------- DayTime ----------
     void qTimeFromSecondsTest() {

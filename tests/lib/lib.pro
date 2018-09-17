@@ -18,4 +18,4 @@ include(../../common.pri)
 DESTDIR = $${DESTDIR}../
 LIBS += -L$${DESTDIR} -L$${DESTDIR}/helpz
 
-LIBS += -lDai -lHelpzService -lHelpzDB -lHelpzNetwork -lprotobuf
+LIBS += -lDai -lHelpzService -lHelpzDB -lHelpzNetwork
