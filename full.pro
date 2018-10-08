@@ -2,13 +2,17 @@ TEMPLATE = subdirs
 
 DESTDIR = $${OUT_PWD}/../
 
-SUBDIRS = lib helpz client plugins
+SUBDIRS = lib helpz
 
 lib.depends = helpz
-plugins.subdir = client/plugins
-plugins.depends = lib
 
-client.depends = lib
+!GuiOnly {
+    SUBDIRS += client plugins
+    plugins.subdir = client/plugins
+    plugins.depends = lib
+
+    client.depends = lib
+}
 
 CONFIG(debug, debug|release) {
     SUBDIRS += tests
@@ -28,14 +32,16 @@ CONFIG(release, debug|release) {
 
 !ServerOnly {
     SUBDIRS += gui
-    gui.depends = lib client
+    gui.depends = lib
 
     CONFIG(Raspberry, DaiServer|Raspberry) {
 #            SUBDIRS += tests/cserial
     } else { # IF Default - Desktop
-        SUBDIRS += emulator
-        emulator.subdir = client/emulator
-        emulator.depends = lib
+        !GuiOnly {
+            SUBDIRS += emulator
+            emulator.subdir = client/emulator
+            emulator.depends = lib
+        }
     }
 }
 
