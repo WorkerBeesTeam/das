@@ -18,7 +18,7 @@ plus.depends = lib
 
 CONFIG(debug, debug|release) {
     SUBDIRS += tests
-    tests.depends = lib
+    tests.depends = lib plus
 
     CONFIG ~= s/-O[0123s]//g
     CONFIG += -O0
