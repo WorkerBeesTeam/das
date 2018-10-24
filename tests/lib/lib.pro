@@ -1,4 +1,4 @@
-QT       += core testlib dbus sql network websockets
+QT       += core testlib sql network websockets
 QT       -= gui
 
 TARGET = tst_libtest
