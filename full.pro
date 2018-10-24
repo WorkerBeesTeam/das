@@ -26,11 +26,10 @@ CONFIG(debug, debug|release) {
 CONFIG(release, debug|release) {
 }
 
-#CONFIG(DaiServer, DaiServer|Raspberry) {
-#    SUBDIRS += server
-#    server.subdir = server_old
-#    server.depends = lib
-#}
+CONFIG(DaiServer, DaiServer|Raspberry) {
+    SUBDIRS += server
+    server.depends = lib plus
+}
 
 !ServerOnly {
     SUBDIRS += gui

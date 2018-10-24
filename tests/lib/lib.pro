@@ -1,4 +1,4 @@
-QT       += core testlib dbus sql network
+QT       += core testlib dbus sql network websockets
 QT       -= gui
 
 TARGET = tst_libtest
@@ -18,4 +18,4 @@ include(../../common.pri)
 DESTDIR = $${DESTDIR}../
 LIBS += -L$${DESTDIR} -L$${DESTDIR}/helpz
 
-LIBS += -lDai -lDaiPlus -lHelpzService -lHelpzDB -lHelpzNetwork -lboost_system
+LIBS += -lDai -lDaiPlus -lHelpzService -lHelpzDB -lHelpzNetwork -lboost_system -lbotan-2
