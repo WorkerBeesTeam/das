@@ -2,11 +2,15 @@ TEMPLATE = subdirs
 
 DESTDIR = $${OUT_PWD}/../
 
-SUBDIRS = lib gui Service Database Network
+SUBDIRS = lib gui
 
-Service.subdir = helpz/Service
-Database.subdir = helpz/Database
-Network.subdir = helpz/Network
+gui.depends = lib
 
-lib.depends = Database Service Network
-gui.depends = lib Service
+DaiLogging {
+    SUBDIRS += Service
+    Service.subdir = helpz/Service
+    gui.depends += Service
+
+    DEFINES += DAI_WITH_LOGGING=1
+    LIBS += -lHelpzService
+}
