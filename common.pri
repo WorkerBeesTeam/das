@@ -1,4 +1,9 @@
-CONFIG += c++1z
+android {
+    CONFIG += c++14
+} else {
+    CONFIG += c++1z
+}
+
 #QMAKE_CXXFLAGS += -std:c++latest
 
 # The following define makes your compiler emit warnings if you use
