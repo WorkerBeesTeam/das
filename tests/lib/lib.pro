@@ -11,11 +11,7 @@ TEMPLATE = app
 SOURCES += tst_libtest.cpp
 DEFINES += SRCDIR=\\\"$$PWD/\\\"
 
-INCLUDEPATH += ../../lib/
-
+DESTDIR = $${OUT_PWD}/../..
 include(../../common.pri)
 
-DESTDIR = $${DESTDIR}../
-LIBS += -L$${DESTDIR} -L$${DESTDIR}/helpz
-
-LIBS += -lDai -lDaiPlus -lHelpzService -lHelpzDB -lHelpzNetwork -lboost_system -lbotan-2
+LIBS += -lDai -lDaiPlus -lHelpzBase -lHelpzService -lHelpzDB -lHelpzNetwork -lboost_system -lbotan-2

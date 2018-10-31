@@ -18,8 +18,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 linux-g++* {
-    #INCLUDEPATH += /usr/local/mylibs/include
-    #LIBS += -L/usr/local/mylibs/lib
     INCLUDEPATH += /usr/local/include
     LIBS += -L/usr/local/lib
 }
@@ -37,9 +35,9 @@ CONFIG (release, debug|release) {
     QMAKE_CXXFLAGS_WARN_ON -= -Wunused
 }
 
-DESTDIR = $${OUT_PWD}/../
+isEmpty(DESTDIR): DESTDIR = $${OUT_PWD}/..
 
-INCLUDEPATH += $${PWD}/helpz/include
-LIBS += -L$${OUT_PWD}/../helpz
+INCLUDEPATH += $$PWD/lib $${DESTDIR}/helpz/include
+LIBS += -L$${DESTDIR} -L$${DESTDIR}/helpz
 
 include(helpz/helpz_version.pri)
