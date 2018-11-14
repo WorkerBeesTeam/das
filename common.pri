@@ -1,3 +1,7 @@
+MOC_DIR = $${OUT_PWD}/build/moc
+OBJECTS_DIR = $${OUT_PWD}/build/obj
+CONFIG += object_parallel_to_source
+
 android {
     CONFIG += c++14
 } else {
