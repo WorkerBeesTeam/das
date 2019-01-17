@@ -2,6 +2,10 @@ MOC_DIR = $${OUT_PWD}/build/moc
 OBJECTS_DIR = $${OUT_PWD}/build/obj
 CONFIG += object_parallel_to_source
 
+linux-rasp-pi2-g++ {
+#    CONFIG += c++11
+}
+
 android {
     CONFIG += c++14
 } else {
