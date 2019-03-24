@@ -88,7 +88,7 @@ private Q_SLOTS:
                 dt1(0, 7200),
                 dt2(3600, 0);
         QVERIFY( dt != dt1 && dt != dt2 &&
-                !(*mng->tambour()->dayTime() != dt) );
+                !(*mng->tambour()->day_time() != dt) );
     }
 
     void DayTimeNotIsDay_data() {
