@@ -16,7 +16,7 @@
 
 ### Django dump data: ###
 > python3 manage.py dumpdata auth.User auth.Group dai.Dai --indent=2 > dai/fixtures/initial_data.json  
-> python3 manage.py dumpdata gh_item.ItemType gh_item.LayoutType gh_item.SignType --indent=2 > gh_item/fixtures/initial_data.json  
+> python3 manage.py dumpdata gh_item.Item_Type gh_item.LayoutType gh_item.SignType --indent=2 > gh_item/fixtures/initial_data.json  
 
 ### Import data: ###
 > python3 manage.py loaddata dai/fixtures/initial_data.json

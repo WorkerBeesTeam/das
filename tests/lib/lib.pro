@@ -14,4 +14,4 @@ DEFINES += SRCDIR=\\\"$$PWD/\\\"
 DESTDIR = $${OUT_PWD}/../..
 include(../../common.pri)
 
-LIBS += -lDai -lDaiPlus -lHelpzBase -lHelpzService -lHelpzDB -lHelpzNetwork -lboost_system -lbotan-2
+LIBS += -lDai -lDaiPlus -lHelpzBase -lHelpzService -lHelpzDBMeta -lHelpzDB -lHelpzNetwork -lboost_system -lbotan-2
