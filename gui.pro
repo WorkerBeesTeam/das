@@ -2,10 +2,11 @@ TEMPLATE = subdirs
 
 DESTDIR = $${OUT_PWD}/../
 
-SUBDIRS = lib gui Base
+SUBDIRS = lib gui Base DBMeta
 
+DBMeta.subdir = helpz/DBMeta
 Base.subdir = helpz/Base
-gui.depends = lib Base
+gui.depends = lib Base DBMeta
 
 DaiLogging {
     SUBDIRS += Service
