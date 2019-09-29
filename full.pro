@@ -2,11 +2,12 @@ TEMPLATE = subdirs
 
 DESTDIR = $${OUT_PWD}/../
 
-SUBDIRS = helpz lib plus
+SUBDIRS = helpz lib plus dbus
 
 lib.depends = helpz
 plus.subdir = lib/plus
 plus.depends = lib
+dbus.subdir = lib/dbus
 
 !GuiOnly {
     SUBDIRS += client plugins
@@ -28,9 +29,9 @@ CONFIG(release, debug|release) {
 
 CONFIG(DaiServer, DaiServer|Raspberry) {
     SUBDIRS += server SMTPEmail api
-    server.depends = lib plus
+    server.depends = lib plus dbus
     SMTPEmail.subdir = api/SMTPEmail
-    api.depends = lib plus SMTPEmail
+    api.depends = lib plus dbus SMTPEmail
 }
 
 !ServerOnly {
