@@ -28,10 +28,9 @@ CONFIG(release, debug|release) {
 }
 
 CONFIG(DaiServer, DaiServer|Raspberry) {
-    SUBDIRS += server SMTPEmail api
+    SUBDIRS += server api
     server.depends = lib plus dbus
-    SMTPEmail.subdir = api/SMTPEmail
-    api.depends = lib plus dbus SMTPEmail
+    api.depends = lib plus dbus
 }
 
 !ServerOnly {
