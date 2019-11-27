@@ -1,18 +1,18 @@
 [submodule "lib"]
 	path = lib
-	url = git@github.com:WorkerBeesTeam/DaiLib.git
+url = https://repo.npmgroup.ru/scm/git/DaiLib
 [submodule "client"]
 	path = client
-	url = git@github.com:WorkerBeesTeam/DaiClient.git
+url = https://repo.npmgroup.ru/scm/git/DaiClient
 [submodule "gui"]
 	path = gui
-	url = git@github.com:WorkerBeesTeam/DaiGui.git
+url = https://repo.npmgroup.ru/scm/git/DaiGui
 [submodule "helpz"]
 	path = helpz
-	url = git@github.com:WorkerBeesTeam/Helpz.git
+url = https://repo.npmgroup.ru/scm/git/Helpz
 [submodule "server"]
 	path = server
-	url = git@github.com:WorkerBeesTeam/DaiServer.git
+url = https://repo.npmgroup.ru/scm/git/DaiServer
 [submodule "api"]
 	path = api
-	url = git@github.com:WorkerBeesTeam/DaiServerWebApi.git
+url = https://repo.npmgroup.ru/scm/git/DaiServerWebApi
