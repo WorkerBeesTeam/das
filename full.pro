@@ -9,6 +9,11 @@ plus.subdir = lib/plus
 plus.depends = lib
 dbus.subdir = lib/dbus
 
+!WithoutWebApi {
+    SUBDIRS += api
+    api.depends = lib plus dbus
+}
+
 !GuiOnly {
     SUBDIRS += client plugins
     plugins.subdir = client/plugins
@@ -28,9 +33,8 @@ CONFIG(release, debug|release) {
 }
 
 CONFIG(DaiServer, DaiServer|Raspberry) {
-    SUBDIRS += server api
+    SUBDIRS += server
     server.depends = lib plus dbus
-    api.depends = lib plus dbus
 }
 
 !ServerOnly {
