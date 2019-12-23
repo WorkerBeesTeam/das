@@ -1,18 +1,18 @@
 [submodule "lib"]
 	path = lib
-url = https://repo.npmgroup.ru/scm/repo/git/DaiLib
+  url = https://repo.npmgroup.ru/scm/repo/git/DaiLib
 [submodule "client"]
 	path = client
-url = https://repo.npmgroup.ru/scm/repo/git/DaiClient
+  url = https://repo.npmgroup.ru/scm/repo/git/DaiClient
 [submodule "gui"]
 	path = gui
-url = https://repo.npmgroup.ru/scm/repo/git/DaiGui
+  url = https://repo.npmgroup.ru/scm/repo/git/DaiGui
 [submodule "helpz"]
 	path = helpz
-url = https://repo.npmgroup.ru/scm/repo/git/Helpz
+  url = https://repo.npmgroup.ru/scm/repo/git/Helpz
 [submodule "server"]
 	path = server
-url = https://repo.npmgroup.ru/scm/repo/git/DaiServer
+  url = https://repo.npmgroup.ru/scm/repo/git/DaiServer
 [submodule "api"]
 	path = api
-url = https://repo.npmgroup.ru/scm/repo/git/DaiServer
+  url = https://repo.npmgroup.ru/scm/repo/git/DaiServerWebApi
