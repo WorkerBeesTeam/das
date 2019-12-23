@@ -8,6 +8,7 @@ lib.depends = helpz
 plus.subdir = lib/plus
 plus.depends = lib
 dbus.subdir = lib/dbus
+dbus.depends = plus
 
 !WithoutWebApi {
     SUBDIRS += api
