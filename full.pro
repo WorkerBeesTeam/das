@@ -2,30 +2,31 @@ TEMPLATE = subdirs
 
 DESTDIR = $${OUT_PWD}/../
 
-SUBDIRS = helpz lib plus dbus
+SUBDIRS = helpz Das plus dbus
 
-lib.depends = helpz
+Das.subdir = lib/Das
+Das.depends = helpz
 plus.subdir = lib/plus
-plus.depends = lib
+plus.depends = Das
 dbus.subdir = lib/dbus
 dbus.depends = plus
 
 !WithoutWebApi {
-    SUBDIRS += api
-    api.depends = lib plus dbus
+    SUBDIRS += webapi
+    webapi.depends = Das plus dbus
 }
 
 !GuiOnly {
     SUBDIRS += client plugins
     plugins.subdir = client/plugins
-    plugins.depends = lib plus
+    plugins.depends = Das plus
 
-    client.depends = lib plus
+    client.depends = Das plus
 }
 
 CONFIG(debug, debug|release) {
     SUBDIRS += tests
-    tests.depends = lib plus
+    tests.depends = Das plus
 
     CONFIG ~= s/-O[0123s]//g
     CONFIG += -O0
@@ -33,22 +34,22 @@ CONFIG(debug, debug|release) {
 CONFIG(release, debug|release) {
 }
 
-CONFIG(DaiServer, DaiServer|Raspberry) {
+CONFIG(DasServer, DasServer|Raspberry) {
     SUBDIRS += server
-    server.depends = lib plus dbus
+    server.depends = Das plus dbus
 }
 
 !ServerOnly {
     SUBDIRS += gui
-    gui.depends = lib plus
+    gui.depends = Das plus
 
-    CONFIG(Raspberry, DaiServer|Raspberry) {
+    CONFIG(Raspberry, DasServer|Raspberry) {
 #            SUBDIRS += tests/cserial
     } else { # IF Default - Desktop
         !GuiOnly {
             SUBDIRS += emulator
             emulator.subdir = client/emulator
-            emulator.depends = lib plus
+            emulator.depends = Das plus
         }
     }
 }

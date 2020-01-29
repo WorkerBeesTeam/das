@@ -3,15 +3,18 @@
 #include <QCoreApplication>
 #include <QSignalSpy>
 
-#include "Dai/protoproject.h"
+#include "Das/proto_scheme.h"
+#include <plus/das/database_delete_info.h>
+#include <plus/das/structure_synchronizer_base.h>
 
-namespace Dai
+namespace Das
 {
+
 class LibTest : public QObject
 {
     Q_OBJECT
 
-    std::shared_ptr<ProtoProject> mng;
+    std::shared_ptr<Proto_Scheme> mng;
 public:
     LibTest()
     {
@@ -20,7 +23,7 @@ public:
 private Q_SLOTS:
 
     void initTestCase() {
-        mng = std::make_shared<ProtoProject>(nullptr);
+        mng = std::make_shared<Proto_Scheme>(nullptr);
         QVERIFY(!!mng);
     }
     void cleanupTestCase() {
@@ -28,8 +31,17 @@ private Q_SLOTS:
         QVERIFY(!mng);
     }
 
-    // ---------- ProtoProject ----------
-    void ProtoProjectInit() {
+    void has_scheme_id_test()
+    {
+        QCOMPARE(Database::has_scheme_id<Device>(), true);
+        QCOMPARE(Database::has_scheme_id<User>(), false);
+        QCOMPARE(Database::has_scheme_id<User_Groups>(), false);
+        QCOMPARE(Database::has_scheme_id<Auth_Group>(), false);
+        QCOMPARE(Database::has_scheme_id<Auth_Group_Permission>(), false);
+    }
+
+    // ---------- Proto_Scheme ----------
+    void Proto_SchemeInit() {
 /*
 #pragma GCC warning "Get TypesCount"
         const uint TypesCount = 18;
@@ -67,7 +79,7 @@ private Q_SLOTS:
 
         mng->init(info);*/
     }
-    // ---------- ProtoProject ----------
+    // ---------- Proto_Scheme ----------
 
     // ---------- DayTime ----------
     void qTimeFromSecondsTest() {
@@ -106,11 +118,11 @@ private Q_SLOTS:
     }
     // ---------- DayTime ----------
 
-    // ---------- DeviceItem ----------
-    void DeviceItemEmitIfNewValue() {/*
-        DeviceItem item(nullptr, nullptr);
+    // ---------- Device_Item ----------
+    void Device_ItemEmitIfNewValue() {/*
+        Device_Item item(nullptr, nullptr);
         QSignalSpy spy(&item, SIGNAL(valueChanged()));
-        DeviceItem::ValueType val;
+        Device_Item::ValueType val;
         val.set_v_int32(7);
 
         item.setData( 5 );
@@ -119,15 +131,15 @@ private Q_SLOTS:
         item.setData( val );
         QCOMPARE(spy.count(), 2);*/
     }
-    void DeviceItemIsConnected() {
+    void Device_ItemIsConnected() {
         /*
-        DeviceItem item(nullptr, nullptr), item1(nullptr, nullptr), item2(nullptr, nullptr);
+        Device_Item item(nullptr, nullptr), item1(nullptr, nullptr), item2(nullptr, nullptr);
         item.setData(7);
         item2.setData(7);
         item2.clear_value();
         QVERIFY(item.isConnected() && !item1.isConnected() && !item2.isConnected());*/
     }
-    // ---------- DeviceItem ----------
+    // ---------- Device_Item ----------
 
     // ---------- Group ----------
     // ---------- Group ----------
@@ -143,8 +155,8 @@ private Q_SLOTS:
         QVERIFY2(true, "Failure");
     }
 };
-} // namespace Dai
+} // namespace Das
 
-QTEST_MAIN(Dai::LibTest)
+QTEST_MAIN(Das::LibTest)
 
 #include "tst_libtest.moc"

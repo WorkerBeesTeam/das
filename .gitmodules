@@ -13,6 +13,6 @@
 [submodule "server"]
 	path = server
   url = https://github.com/WorkerBeesTeam/DaiServer.git
-[submodule "api"]
-	path = api
+[submodule "webapi"]
+	path = webapi
   url = https://github.com/WorkerBeesTeam/DaiServerWebApi.git

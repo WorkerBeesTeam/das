@@ -1,11 +1,11 @@
 # README #
 
 ### Для получения репозитория и всех подмодулей можно использовать: ###
-> git clone --recursive -j8 git@github.com:lirik90/dai.git  
+> git clone --recursive -j8 git@github.com:lirik90/das.git  
 
 или  
-> git clone git@github.com:lirik90/dai.git  
-> cd dai  
+> git clone git@github.com:lirik90/das.git  
+> cd das  
 > git submodule update --init --recursive
 
 ---
@@ -15,18 +15,18 @@
 ---
 
 ### Django dump data: ###
-> python3 manage.py dumpdata auth.User auth.Group dai.Dai --indent=2 > dai/fixtures/initial_data.json  
-> python3 manage.py dumpdata gh_item.Item_Type gh_item.LayoutType gh_item.SignType --indent=2 > gh_item/fixtures/initial_data.json  
+> python3 manage.py dumpdata auth.User auth.Group das.Das --indent=2 > das/fixtures/initial_data.json  
+> python3 manage.py dumpdata gh_item.Device_Item_Type gh_item.LayoutType gh_item.SignType --indent=2 > gh_item/fixtures/initial_data.json  
 
 ### Import data: ###
-> python3 manage.py loaddata dai/fixtures/initial_data.json
+> python3 manage.py loaddata das/fixtures/initial_data.json
 
 ---
 ### Пользователь MySQL на сервер должен быть создан примерно так: ###
-> CREATE USER 'DaiUser'@'localhost' IDENTIFIED BY '???????';  
-> GRANT ALL PRIVILEGES ON dai\_django.* TO 'DaiUser'@'localhost';  
-> GRANT ALL PRIVILEGES ON dai\_django\_%.* TO 'DaiUser'@'localhost';  
-> GRANT CREATE ON *.* TO 'DaiUser'@'localhost';  
+> CREATE USER 'DasUser'@'localhost' IDENTIFIED BY '???????';  
+> GRANT ALL PRIVILEGES ON das\_django.* TO 'DasUser'@'localhost';  
+> GRANT ALL PRIVILEGES ON das\_django\_%.* TO 'DasUser'@'localhost';  
+> GRANT CREATE ON *.* TO 'DasUser'@'localhost';  
 > FLUSH PRIVILEGES;
 ---
 
@@ -57,7 +57,7 @@
 > wget https://ftp.gnu.org/gnu/gdb/gdb-7.12.tar.gz
 > tar -pxzf gdb-7.12.tar.gz
 > cd gdb-7.12
-> export PATH=/mnt/second_drive/projects/dai/raspberry/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin:$PATH
+> export PATH=/mnt/second_drive/projects/das/raspberry/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin:$PATH
 > ./configure --with-python=yes --target=arm-linux-gnueabihf
 > make
 > sudo make install
@@ -90,12 +90,12 @@
 
 ### Отладка ###
 На сервере:
-> gdbserver :1234 /opt/Dai/DaiGlobal -e
+> gdbserver :1234 /opt/Das/DasGlobal -e
 
 На клиенте:
-> ./arm-linux-gnueabihf-gdb --args /mnt/second_drive/build/dai/Raspberry_Root/DaiModern -e
-> set sysroot /mnt/second_drive/projects/dai/raspberry/work/sysroot/
-> set solib-search-path /mnt/second_drive/projects/dai/raspberry/work/qt5pi/
+> ./arm-linux-gnueabihf-gdb --args /mnt/second_drive/build/das/Raspberry_Root/DasModern -e
+> set sysroot /mnt/second_drive/projects/das/raspberry/work/sysroot/
+> set solib-search-path /mnt/second_drive/projects/das/raspberry/work/qt5pi/
 > target remote gh3:1234
 > continue
 
