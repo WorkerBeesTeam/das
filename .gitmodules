@@ -1,18 +1,3 @@
-[submodule "lib"]
-	path = lib
-  url = https://github.com/WorkerBeesTeam/DaiLib.git
-[submodule "client"]
-	path = client
-  url = https://github.com/WorkerBeesTeam/DaiClient.git
-[submodule "gui"]
-	path = gui
-  url = https://github.com/WorkerBeesTeam/DaiGui.git
 [submodule "helpz"]
 	path = helpz
   url = https://github.com/WorkerBeesTeam/Helpz.git
-[submodule "server"]
-	path = server
-  url = https://github.com/WorkerBeesTeam/DaiServer.git
-[submodule "webapi"]
-	path = webapi
-  url = https://github.com/WorkerBeesTeam/DaiServerWebApi.git
