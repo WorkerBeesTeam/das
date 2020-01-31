@@ -33,7 +33,7 @@ class Scheme_Info
 {
 public:
     Scheme_Info(Scheme_Info* obj);
-    Scheme_Info(uint32_t id = 0, const std::set<uint32_t>& scheme_groups = {});
+    Scheme_Info(uint32_t id = 0, uint32_t parent_id = 0, const std::set<uint32_t>& scheme_groups = {});
     Scheme_Info(Scheme_Info&&) = default;
     Scheme_Info(const Scheme_Info&) = default;
     Scheme_Info& operator=(Scheme_Info&&) = default;
@@ -47,6 +47,8 @@ public:
 
     uint32_t parent_id() const;
     void set_parent_id(uint32_t id);
+
+    uint32_t parent_id_or_id() const;
 
     const std::set<uint32_t>& scheme_groups() const;
     void set_scheme_groups(const std::set<uint32_t>& scheme_groups);

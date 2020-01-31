@@ -1,2 +1,2 @@
-CONFIG += DaiServer
+CONFIG += DasServer
 include(full.pro)

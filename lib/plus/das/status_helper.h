@@ -24,7 +24,7 @@ public:
         std::vector<Group> group_vect_;
     };
 
-    static std::vector<Section> get_group_names(const QSet<uint32_t>& group_id_set, Helpz::Database::Base& db, const QString& db_name);
+    static std::vector<Section> get_group_names(const QSet<uint32_t>& group_id_set, Helpz::Database::Base& db, uint32_t scheme_id);
     static void fill_group_status_text(std::vector<Section>& group_names, const DIG_Status_Type& info, const DIG_Status& item, bool is_up = false);
     static void fill_dig_status_text(std::vector<Section>& group_names, const QVector<DIG_Status_Type>& info_vect, const DIG_Status& item, bool is_up = false);
 };

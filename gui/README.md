@@ -1,3 +1,3 @@
-# DaiGui
+# DasGui
 
-Device Access Interface modern Graphic user interface
+Device Access modern Graphic user interface

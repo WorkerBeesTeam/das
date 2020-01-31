@@ -1,3 +1,3 @@
-# DaiLib
+# DasLib
 
-Device Access Interface common Library
+Device Access Library

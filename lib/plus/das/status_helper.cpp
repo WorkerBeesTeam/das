@@ -2,7 +2,7 @@
 
 namespace Das {
 
-/*static*/ std::vector<Status_Helper::Section> Status_Helper::get_group_names(const QSet<uint32_t>& group_id_set, Helpz::Database::Base& db, const QString& db_name)
+/*static*/ std::vector<Status_Helper::Section> Status_Helper::get_group_names(const QSet<uint32_t>& group_id_set, Helpz::Database::Base& db, uint32_t scheme_id)
 {
     if (group_id_set.empty())
         return {};
@@ -12,9 +12,9 @@ namespace Das {
     std::vector<Status_Helper::Section::Group>::iterator group_it;
 
     QString sql = "SELECT s.id, s.name, g.id, g.title, gt.title FROM %1.das_device_item_group g "
-                  "LEFT JOIN %1.das_section s ON s.id = g.section_id "
-                  "LEFT JOIN %1.das_dig_type gt ON gt.id = g.type_id "
-                  "WHERE g.id IN (";
+                  "LEFT JOIN das_section s ON s.id = g.section_id AND s.scheme_id = %1 "
+                  "LEFT JOIN das_dig_type gt ON gt.id = g.type_id AND gt.scheme_id = %1 "
+                  "WHERE g.scheme_id = %1 AND g.id IN (";
 
     for (uint32_t id: group_id_set)
     {
@@ -22,8 +22,7 @@ namespace Das {
     }
     sql[sql.size() - 1] = ')';
 
-
-    QSqlQuery q = db.exec(sql.arg(db_name));
+    QSqlQuery q = db.exec(sql.arg(scheme_id));
     while (q.next())
     {
         it = std::find(sct_vect.begin(), sct_vect.end(), q.value(0).toUInt());
@@ -51,9 +50,7 @@ namespace Das {
 /*static*/ void Status_Helper::fill_group_status_text(std::vector<Section>& group_names, const DIG_Status_Type& info, const DIG_Status& item, bool is_up)
 {
     if (!info.inform)
-    {
         return;
-    }
 
     QString icon, message;
     if (is_up)

@@ -12,7 +12,7 @@
 
 #include "djangohelper.h"
 
-namespace Dai {
+namespace Das {
 
 bool DjangoHelper::compare_passhash(const std::string& password, const std::string& password_hash) const
 {
@@ -54,7 +54,7 @@ QUuid DjangoHelper::addHouse(const QVariant& group_id, const QString& name, cons
     n_latin = '"' + n_latin.replace('"', '\'') + '"';
     n_desc = '"' + n_desc.replace('"', '\'') + '"';
     // FIXIT: Security fail, not realy escaped text
-    QByteArray out = start("adddai", { n_name, n_latin,
+    QByteArray out = start("adddas", { n_name, n_latin,
                      "--description", n_desc,
                      "--group-id", group_id.toString() });
 
@@ -90,4 +90,4 @@ QByteArray DjangoHelper::start(const QString& command,  const QStringList &argum
     return proc.readAllStandardOutput();
 }
 
-} // namespace Dai
+} // namespace Das

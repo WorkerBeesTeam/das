@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
-project(DaiServer)
+project(DasServer)
 
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
@@ -100,8 +100,8 @@ target_link_libraries(
 #    "pq"
     "botan-2"
     "HelpzDB"
-    "Dai"
-    "DaiPlus"
+    "Das"
+    "DasPlus"
  )
 
 #add_subdirectory(django)

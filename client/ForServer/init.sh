@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DB=dai_main
+DB=das
 MUN=root
 MUP=$1
 

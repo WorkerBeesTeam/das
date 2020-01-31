@@ -1,3 +1,3 @@
-# DaiPlugins
+# DasPlugins
 
-Device Access Interface Plugins
+Device Access Plugins

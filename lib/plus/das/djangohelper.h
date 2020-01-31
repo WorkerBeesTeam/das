@@ -5,7 +5,7 @@
 #include <QVariant>
 #include <QUuid>
 
-namespace Dai {
+namespace Das {
 
 class DjangoHelper : public QObject
 {
@@ -23,6 +23,6 @@ private:
     const QString manage;
 };
 
-} // namespace Dai
+} // namespace Das
 
 #endif // DJANGOHELPER_H

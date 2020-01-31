@@ -1,5 +1,5 @@
-#ifndef DAI_TYPEMANAGER_H
-#define DAI_TYPEMANAGER_H
+#ifndef DAS_TYPEMANAGER_H
+#define DAS_TYPEMANAGER_H
 
 #include <QVariant>
 #include <map>
@@ -7,7 +7,7 @@
 #include "plugintypemanager.h"
 #include "paramtypemanager.h"
 
-namespace Dai {
+namespace Das {
 
 enum LogType : uint8_t {
     ValueLog = 1,
@@ -25,7 +25,7 @@ static QString logTableName(uint8_t log_type) {
 
 // ---
 
-struct DAI_LIBRARY_SHARED_EXPORT ItemType : public TitledType {
+struct DAS_LIBRARY_SHARED_EXPORT ItemType : public TitledType {
 
     enum RegisterType {
         rtInvalid,
@@ -65,7 +65,7 @@ struct DAI_LIBRARY_SHARED_EXPORT ItemType : public TitledType {
 QDataStream& operator<<(QDataStream& ds, const ItemType& itemType);
 QDataStream& operator>>(QDataStream& ds, ItemType& itemType);
 
-struct DAI_LIBRARY_SHARED_EXPORT ItemTypeManager : public TitledTypeManager<ItemType>
+struct DAS_LIBRARY_SHARED_EXPORT ItemTypeManager : public TitledTypeManager<ItemType>
 {
     bool needNormalize(uint type_id) const;
     bool groupDisplay(uint type_id) const;
@@ -77,7 +77,7 @@ struct DAI_LIBRARY_SHARED_EXPORT ItemTypeManager : public TitledTypeManager<Item
 
 // ---
 
-struct DAI_LIBRARY_SHARED_EXPORT ItemGroupType : public TitledType {
+struct DAS_LIBRARY_SHARED_EXPORT ItemGroupType : public TitledType {
     ItemGroupType(uint id = 0, const QString& name = QString(), const QString& title = QString(),
                   uint code = 0, const QString& description = QString());
     uint code;
@@ -87,14 +87,14 @@ struct DAI_LIBRARY_SHARED_EXPORT ItemGroupType : public TitledType {
 QDataStream& operator<<(QDataStream& ds, const ItemGroupType& groupType);
 QDataStream& operator>>(QDataStream& ds, ItemGroupType& groupType);
 
-struct DAI_LIBRARY_SHARED_EXPORT ItemGroupTypeManager : public TitledTypeManager<ItemGroupType>
+struct DAS_LIBRARY_SHARED_EXPORT ItemGroupTypeManager : public TitledTypeManager<ItemGroupType>
 {
     uint code(uint type_id) const;
 };
 
 // ---
 
-struct DAI_LIBRARY_SHARED_EXPORT GroupStatus : public TitledType {
+struct DAS_LIBRARY_SHARED_EXPORT GroupStatus : public TitledType {
     GroupStatus(uint id = 0, const QString& name = QString(), const QString& text = QString(), uint type_id = 0,
                 bool isMultiValue = true, uint value = 0, uint groupType_id = 0, bool inform = true);
     uint type_id;
@@ -107,13 +107,13 @@ struct DAI_LIBRARY_SHARED_EXPORT GroupStatus : public TitledType {
 QDataStream& operator<<(QDataStream& ds, const GroupStatus& status);
 QDataStream& operator>>(QDataStream& ds, GroupStatus& status);
 
-struct DAI_LIBRARY_SHARED_EXPORT StatusManager : public TitledTypeManager<GroupStatus>
+struct DAS_LIBRARY_SHARED_EXPORT StatusManager : public TitledTypeManager<GroupStatus>
 {
 };
 
 // ---
 
-struct DAI_LIBRARY_SHARED_EXPORT StatusType : public TitledType {
+struct DAS_LIBRARY_SHARED_EXPORT StatusType : public TitledType {
     StatusType(uint id = 0, const QString& name = QString(), const QString& title = QString(), const QString& color = QString());
     QString color;
 };
@@ -121,11 +121,11 @@ struct DAI_LIBRARY_SHARED_EXPORT StatusType : public TitledType {
 QDataStream& operator<<(QDataStream& ds, const StatusType& statusType);
 QDataStream& operator>>(QDataStream& ds, StatusType& statusType);
 
-struct DAI_LIBRARY_SHARED_EXPORT StatusTypeManager : public TitledTypeManager<StatusType> {};
+struct DAS_LIBRARY_SHARED_EXPORT StatusTypeManager : public TitledTypeManager<StatusType> {};
 
 // ---
 
-struct DAI_LIBRARY_SHARED_EXPORT CodeCommon : public BaseType {
+struct DAS_LIBRARY_SHARED_EXPORT CodeCommon : public BaseType {
     CodeCommon(uint id = 0, const QString& name = QString(), uint global_id = 0);
     CodeCommon(const CodeCommon& other);
     CodeCommon(CodeCommon&& other);
@@ -136,7 +136,7 @@ struct DAI_LIBRARY_SHARED_EXPORT CodeCommon : public BaseType {
 QDataStream& operator<<(QDataStream& ds, const CodeCommon& code);
 QDataStream& operator>>(QDataStream& ds, CodeCommon& code);
 
-struct DAI_LIBRARY_SHARED_EXPORT CodeItem : public CodeCommon {
+struct DAS_LIBRARY_SHARED_EXPORT CodeItem : public CodeCommon {
     CodeItem(uint id = 0, const QString& name = QString(), uint global_id = 0, const QString& text = QString());
     CodeItem(const CodeItem& other);
     CodeItem(CodeItem&& other);
@@ -149,7 +149,7 @@ struct DAI_LIBRARY_SHARED_EXPORT CodeItem : public CodeCommon {
 QDataStream& operator<<(QDataStream& ds, const CodeItem& code);
 QDataStream& operator>>(QDataStream& ds, CodeItem& code);
 
-struct DAI_LIBRARY_SHARED_EXPORT CodeSumm : public CodeCommon {
+struct DAS_LIBRARY_SHARED_EXPORT CodeSumm : public CodeCommon {
     CodeSumm() = default;
     CodeSumm(const CodeItem& other);
     quint16 checksum;
@@ -160,11 +160,11 @@ struct DAI_LIBRARY_SHARED_EXPORT CodeSumm : public CodeCommon {
 QDataStream& operator<<(QDataStream& ds, const CodeSumm& code);
 QDataStream& operator>>(QDataStream& ds, CodeSumm& code);
 
-struct DAI_LIBRARY_SHARED_EXPORT CodeManager : public BaseTypeManager<CodeItem>{};
+struct DAS_LIBRARY_SHARED_EXPORT CodeManager : public BaseTypeManager<CodeItem>{};
 
 // ---
 
-struct DAI_LIBRARY_SHARED_EXPORT ModeType : public TitledType {
+struct DAS_LIBRARY_SHARED_EXPORT ModeType : public TitledType {
     ModeType(uint id = 0, const QString& name = QString(), const QString& title = QString(), uint group_type_id = 0);
     uint group_type_id;
 };
@@ -172,7 +172,7 @@ struct DAI_LIBRARY_SHARED_EXPORT ModeType : public TitledType {
 QDataStream& operator<<(QDataStream& ds, const ModeType& modeType);
 QDataStream& operator>>(QDataStream& ds, ModeType& modeType);
 
-struct DAI_LIBRARY_SHARED_EXPORT ModeTypeManager : public TitledTypeManager<ModeType> {};
+struct DAS_LIBRARY_SHARED_EXPORT ModeTypeManager : public TitledTypeManager<ModeType> {};
 
 // ---
 
@@ -191,7 +191,7 @@ public:
     const QString& sign(uint id) const;
 };*/
 
-struct DAI_LIBRARY_SHARED_EXPORT TypeManagers {
+struct DAS_LIBRARY_SHARED_EXPORT TypeManagers {
     ItemTypeManager ItemTypeMng;
     SignManager SignMng;
     ItemGroupTypeManager GroupTypeMng;
@@ -203,9 +203,9 @@ struct DAI_LIBRARY_SHARED_EXPORT TypeManagers {
     std::shared_ptr<PluginTypeManager> PluginTypeMng;
 };
 
-QString DAI_LIBRARY_SHARED_EXPORT signByDevItem(const TypeManagers* mng, uint dev_item_type);
+QString DAS_LIBRARY_SHARED_EXPORT signByDevItem(const TypeManagers* mng, uint dev_item_type);
 const QString& codeByGroupType(const TypeManagers* mng, uint group_type);
 
-} // namespace Dai
+} // namespace Das
 
-#endif // DAI_TYPEMANAGER_H
+#endif // DAS_TYPEMANAGER_H

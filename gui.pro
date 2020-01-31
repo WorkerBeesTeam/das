@@ -8,7 +8,7 @@ DBMeta.subdir = helpz/DBMeta
 Base.subdir = helpz/Base
 gui.depends = lib Base DBMeta
 
-DaiLogging {
+DasLogging {
     SUBDIRS += Service
     Service.subdir = helpz/Service
     gui.depends += Service

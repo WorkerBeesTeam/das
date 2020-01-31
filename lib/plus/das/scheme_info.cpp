@@ -2,10 +2,11 @@
 
 namespace Das {
 
-Scheme_Info::Scheme_Info(Scheme_Info *obj) : id_(obj->id_), scheme_groups_(obj->scheme_groups_) {}
+Scheme_Info::Scheme_Info(Scheme_Info *obj) :
+    id_(obj->id_), parent_id_(obj->parent_id_), scheme_groups_(obj->scheme_groups_) {}
 
-Scheme_Info::Scheme_Info(uint32_t id, const std::set<uint32_t>& scheme_groups) :
-    id_(id), scheme_groups_(scheme_groups)
+Scheme_Info::Scheme_Info(uint32_t id, uint32_t parent_id, const std::set<uint32_t>& scheme_groups) :
+    id_(id), parent_id_(parent_id), scheme_groups_(scheme_groups)
 {
 }
 
@@ -17,6 +18,11 @@ void Scheme_Info::set_id(uint32_t id) { id_ = id; }
 
 uint32_t Scheme_Info::parent_id() const { return parent_id_; }
 void Scheme_Info::set_parent_id(uint32_t id) { parent_id_ = id; }
+
+uint32_t Scheme_Info::parent_id_or_id() const
+{
+    return parent_id_ ? parent_id_ : id_;
+}
 
 const std::set<uint32_t> &Scheme_Info::scheme_groups() const
 {

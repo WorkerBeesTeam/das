@@ -1,9 +1,9 @@
-# DaiClient
+# DasClient
 
-Device Access Interface bridge client
+Device Access bridge client
 
  
 Нужно дать доступ сайту к dbus положив файл по пути:
-/etc/dbus-1/system.d/ru.deviceaccess.Dai.conf
+/etc/dbus-1/system.d/ru.deviceaccess.Das.conf
 
-update-rc.d daiclient defaults
+update-rc.d dasclient defaults

@@ -1,5 +1,5 @@
-#ifndef DAI_THREAD_IFACE_H
-#define DAI_THREAD_IFACE_H
+#ifndef DAS_THREAD_IFACE_H
+#define DAS_THREAD_IFACE_H
 
 #include <queue>
 #include <thread>
@@ -8,7 +8,7 @@
 
 #include <QPair>
 
-namespace Dai {
+namespace Das {
 
 template<typename DataPackT, typename T>
 struct thread_iface {
@@ -52,6 +52,6 @@ private:
     }
 };
 
-} // namespace Dai
+} // namespace Das
 
-#endif // DAI_THREAD_IFACE_H
+#endif // DAS_THREAD_IFACE_H

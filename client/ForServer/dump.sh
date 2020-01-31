@@ -15,8 +15,8 @@ if [ -z "${PP}" ]; then
   PP=${line}
 fi
 
-#UU=DaiUser
-#DB=dai_main
+#UU=das
+#DB=das
 
 mysqldump -u ${UU} -p${PP} --complete-insert --skip-dump-date --compact --hex-blob --no-create-info --no-create-db --ignore-table=${DB}.gh_logs --ignore-table=${DB}.gh_eventlog -B ${DB} > data.sql
 mysqldump -u ${UU} -p${PP} --skip-dump-date --add-drop-database --add-drop-table --no-data -a -B ${DB} > structure.sql
