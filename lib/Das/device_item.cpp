@@ -1,0 +1,333 @@
+#include <QDebug>
+#include <QMetaMethod>
+
+#include "db/device_item_type.h"
+#include "scheme.h"
+#include "device_item_group.h"
+#include "device.h"
+#include "device_item.h"
+
+namespace Das {
+
+Device_Item::Device_Item(uint32_t id, const QString& name, uint32_t type_id, const QVariantList& extra_values,
+                       uint32_t parent_id, uint32_t device_id, uint32_t group_id) :
+    QObject(), Database::Device_Item(id, name, type_id, extra_values, parent_id, device_id, group_id),
+    connection_state_(true), device_(nullptr), group_(nullptr), parent_(nullptr)
+{
+}
+
+Device_Item::Device_Item(Device_Item &&o) :
+    QObject(), Database::Device_Item(std::move(o)),
+    connection_state_(std::move(o.connection_state_)),
+    device_(std::move(o.device_)), group_(std::move(o.group_)), parent_(std::move(o.parent_)),
+    raw_value_(std::move(o.raw_value_)), display_value_(std::move(o.display_value_)),
+    childs_(std::move(o.childs_))
+{
+}
+
+Device_Item::Device_Item(const Device_Item &o) :
+    QObject(), Database::Device_Item(o),
+    connection_state_(o.connection_state_),
+    device_(o.device_), group_(o.group_), parent_(o.parent_),
+    raw_value_(o.raw_value_), display_value_(o.display_value_),
+    childs_(o.childs_)
+{
+}
+
+Device_Item &Device_Item::operator =(Device_Item &&o)
+{
+    Database::Device_Item::operator =(std::move(o));
+    connection_state_ = std::move(o.connection_state_);
+    device_ = std::move(o.device_);
+    group_ = std::move(o.group_);
+    parent_ = std::move(o.parent_);
+    raw_value_ = std::move(o.raw_value_);
+    display_value_ = std::move(o.display_value_);
+    childs_ = std::move(o.childs_);
+    return *this;
+}
+
+Device_Item &Device_Item::operator =(const Device_Item &o)
+{
+    Database::Device_Item::operator =(o);
+    connection_state_ = o.connection_state_;
+    device_ = o.device_;
+    group_ = o.group_;
+    parent_ = o.parent_;
+    raw_value_ = o.raw_value_;
+    display_value_ = o.display_value_;
+    childs_ = o.childs_;
+    return *this;
+}
+
+QString Device_Item::display_name() const
+{
+    return name().isEmpty() ? default_name() : name();
+}
+
+QString Device_Item::default_name() const { return device_ ? device_->type_mng()->title(type_id()) : QString{}; }
+
+Device_Item* Device_Item::parent() const { return parent_; }
+
+void Device_Item::set_parent(Device_Item *item)
+{
+    if (parent_id() != item->id())
+    {
+        if (parent_id() && parent_id() != item->id())
+            qWarning() << "Device_Item::set_parent diffrent id";
+        set_parent_id(item->id());
+    }
+    parent_ = item;
+
+    if (item && std::find(item->childs_.cbegin(), item->childs_.cend(), this) == item->childs_.cend())
+        item->childs_.push_back(this);
+}
+
+Device_item_Group *Device_Item::group() const { return group_; }
+void Device_Item::set_group(Device_item_Group *group)
+{
+    if (group_id() != group->id())
+    {
+        if (group_id())
+            qWarning() << "Device_Item::set_group diffrent id";
+        set_group_id(group->id());
+    }
+    if (group_ == group)
+        return;
+    if (group_)
+        group_->remove_item(this);
+    group_ = group;
+    group_->add_item(this);
+}
+
+Device *Device_Item::device() const { return device_; }
+
+void Device_Item::set_device(Device *device)
+{
+    if (device_id() != device->id())
+    {
+        if (device_id())
+            qWarning() << "Device_Item::set_device diffrent id";
+        set_device_id(device->id());
+    }
+    device_ = device;
+    setParent(device);
+}
+
+uint8_t Device_Item::register_type() const
+{
+    return device_ ? device_->type_mng()->register_type(type_id()) : 0;
+}
+
+QVariant Device_Item::value() const
+{
+    std::lock_guard lock(mutex_);
+    return display_value_;
+}
+
+void Device_Item::set_display_value(const QVariant &val)
+{
+    std::lock_guard lock(mutex_);
+    if (is_connected() != val.isValid() || display_value_.type() != val.type() || display_value_ != val)
+    {
+        display_value_ = val;
+        emit value_changed(0, val);
+    }
+}
+
+bool Device_Item::set_data(const QVariant &raw, const QVariant &val, uint32_t user_id)
+{
+    std::lock_guard lock(mutex_);
+    if (raw_value_.type() != raw.type() || raw_value_ != raw ||
+        display_value_.type() != val.type() || display_value_ != val)
+    {
+        QVariant old_value = raw_value_;
+        raw_value_ = raw;
+        display_value_ = val;
+
+        emit value_changed(user_id, old_value);
+        return true;
+    }
+    return false;
+}
+
+QVariant Device_Item::raw_value() const
+{
+    std::lock_guard lock(mutex_);
+    return raw_value_;
+}
+
+bool Device_Item::write(const QVariant& display_value, uint32_t mode_id, uint32_t user_id)
+{
+    if (!group_)
+    {
+        qWarning() << "Device_Item::write havnt group";
+        return false;
+    }
+
+    static const QMetaMethod is_can_change_signal = QMetaMethod::fromSignal(&Device_Item::is_can_change);
+    static const QMetaMethod display_to_raw_signal = QMetaMethod::fromSignal(&Device_Item::display_to_raw);
+
+    const QVariant* raw_data = &display_value;
+
+    do
+    {
+        if (!is_control() || !is_connected())
+            break;
+
+        if (mode_id && group_->mode_id() != mode_id) // Режим автоматизации
+            break;
+
+        if (isSignalConnected(is_can_change_signal) && !is_can_change(display_value, user_id)) // Проверка в скрипте
+            break;
+
+        QVariant tmp_raw_data;
+
+        if (isSignalConnected(display_to_raw_signal))
+        {
+            tmp_raw_data = display_to_raw(display_value);
+            raw_data = &tmp_raw_data;
+        }
+
+        if (register_type() == Device_Item_Type::RT_FILE && raw_data->type() != QVariant::String)
+        {
+            QString file_name;
+            QByteArray data = raw_data->toByteArray(), file_hash;
+            QDataStream ds(data);
+            ds >> file_name >> file_hash;
+
+            qCInfo(SchemeDetailLog) << "Write file to control: " << toString() << file_name << file_hash.toHex();
+            set_data(file_hash, file_name);
+            return true;
+        }
+        else if (raw_value_.type() != raw_data->type() || raw_value_ != *raw_data
+                 || register_type() == Device_Item_Type::RT_SIMPLE_BUTTON)
+        {
+            emit group_->control_state_changed(this, *raw_data, user_id);
+            return true;
+        }
+        else if (set_raw_value(*raw_data, false, user_id))
+            return true; // do not emit control_state_changed becose raw not changed and item_changed already emited
+    }
+    while(false);
+
+    if (SchemeDetailLog().isDebugEnabled())
+    {
+        auto dbg = QMessageLogger(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, QT_MESSAGELOG_FUNC, SchemeDetailLog().categoryName()).debug();
+        dbg << "Device_Item::write";
+        if (!is_control()) dbg << "NOT CONTROL";
+        if (!is_connected()) dbg << "NOT CONNECTED";
+        if (mode_id != 0 && mode_id != group_->mode_id()) dbg << "MODE" << mode_id << "CURRENT" << group_->mode_id();
+        if (raw_value_.type() == raw_data->type() && raw_value_ == *raw_data) dbg << "SAME VALUE:" << raw_value();
+        if (isSignalConnected(is_can_change_signal) && !is_can_change(display_value, user_id)) dbg << "is_can_change return false";
+        dbg << toString() << "new value:" << *raw_data << "data:" << display_value;
+    }
+    return false;
+}
+
+bool Device_Item::set_raw_value(const QVariant& data, bool force, uint32_t user_id, bool silent)
+{
+    std::lock_guard lock(mutex_);
+    static const QMetaMethod raw_to_display_signal = QMetaMethod::fromSignal(&Device_Item::raw_to_display);
+
+//    if (!Prt::Equals(value(), data))
+    if (register_type() == Device_Item_Type::RT_SIMPLE_BUTTON)
+    {
+        force = true;
+    }
+
+    if (force || data.isValid() != raw_value_.isValid() || raw_value_.type() != data.type() || raw_value_ != data
+            || (isSignalConnected(raw_to_display_signal) && display_value_ != raw_to_display(data)))
+    {
+        QVariant old_value = raw_value_;
+        raw_value_ = data;
+
+        if (isSignalConnected(raw_to_display_signal))
+            display_value_ = raw_to_display(data);
+        else
+            display_value_ = data;
+
+        if (!silent)
+        {
+            if (connection_state_ && (!old_value.isValid() || !raw_value_.isValid()))
+            {
+                emit connection_state_changed(is_connected());
+            }
+
+            emit value_changed(user_id, old_value);
+        }
+        return true;
+    }
+    return false;
+}
+
+Device_Item *Device_Item::child(int index) const
+{
+    if (index < childs_.size())
+        return childs_.at(index);
+    return nullptr;
+}
+
+QVector<Device_Item *> Device_Item::childs() const { return childs_; }
+
+bool Device_Item::is_connected() const { return connection_state_ && raw_value_.isValid(); }
+
+bool Device_Item::set_connection_state(bool value, bool silent)
+{
+    if (connection_state_ != value)
+    {
+        connection_state_ = value;
+        if (raw_value_.isValid())
+        {
+            if (!silent)
+            {
+                emit connection_state_changed(connection_state_);
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Device_Item::is_control() const
+{
+    return is_control(register_type());
+}
+
+/*static*/ bool Device_Item::is_control(uint register_type)
+{
+    switch (register_type)
+    {
+    case Device_Item_Type::RT_COILS:
+    case Device_Item_Type::RT_HOLDING_REGISTERS:
+    case Device_Item_Type::RT_SIMPLE_BUTTON:
+    case Device_Item_Type::RT_FILE:
+        return true;
+    default:
+        return false;
+    }
+}
+
+QString Device_Item::toString()
+{
+    std::lock_guard lock(mutex_);
+
+    QString string;
+    if (group_ && group_->section())
+        string = group_->section()->toString() + ' ';
+    string += display_name();
+    if (is_connected())
+        string += " value " + display_value_.toString() + '(' + raw_value_.toString() + ')';
+    else
+        string += " Не подключен";
+    return string;
+}
+
+// ---------------------------------------------------------------
+
+QDataStream &operator<<(QDataStream &ds, Device_Item *item)
+{
+    return ds << *item;
+}
+
+} // namespace Das

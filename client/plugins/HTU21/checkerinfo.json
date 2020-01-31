@@ -1,0 +1,7 @@
+{
+    "type": "HTU21",
+    "param": {
+        "device": [],
+        "device_item": ["type"]
+    }
+}

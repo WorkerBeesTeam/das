@@ -1,0 +1,7 @@
+{
+    "type": "FileIO",
+    "param": {
+        "device": ["init_arg", "prefix"],
+        "device_item": ["file"]
+    }
+}

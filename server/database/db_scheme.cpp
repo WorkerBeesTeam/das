@@ -1,0 +1,325 @@
+#include <iostream>
+#include <sstream>
+
+#include <botan-2/botan/pbkdf2.h>
+
+#include <QJsonDocument>
+#include <QDateTime>
+
+#include <Helpz/settingshelper.h>
+#include <Helpz/db_table.h>
+
+#include <Das/db/device_item_value.h>
+#include <plus/das/database_delete_info.h>
+
+#include "server.h"
+#include "db_scheme.h"
+
+namespace Das {
+namespace Database {
+
+using namespace Helpz::Database;
+
+scheme::scheme(const QString &name, Helpz::Database::Thread* db_thread) :
+    Base(Helpz::Database::Connection_Info::common(), name),
+    db_thread_(db_thread)
+{}
+
+/*
+qint64 scheme::getLastLogTime(const QString& name)
+{
+    auto q = select({db_table_name<Log_Value_Item>(db_name(name)), {}, {"date"}}, "ORDER BY date DESC LIMIT 1");
+    if (q.next())
+        return q.value(0).toDateTime().toMSecsSinceEpoch();
+    return 0;
+}
+
+qint64 scheme::getLastEventTime(const QString &name)
+{
+    auto q = select({db_table_name<Log_Event_Item>(db_name(name)), {}, {"date"}}, "ORDER BY date DESC LIMIT 1");
+    if (q.next())
+        return q.value(0).toDateTime().toMSecsSinceEpoch();
+    return 0;
+}
+
+QDateTime scheme::dateFromMsec(qint64 date_ms, const QTimeZone &tz) {
+    return tz.isValid() ?
+                QDateTime::fromMSecsSinceEpoch(date_ms, tz) :
+                QDateTime::fromMSecsSinceEpoch(date_ms);
+}
+*/
+
+
+
+void scheme::deffered_set_mode(uint32_t scheme_id, uint32_t mode_id, uint32_t group_id)
+{
+    db_thread_->add([scheme_id, mode_id, group_id](Base* db)
+    {
+        Table table = db_table<DIG_Mode_Item>();
+        table.field_names().erase(table.field_names().begin(), table.field_names().begin() + 2);
+        table.field_names().removeLast(); // remove scheme_id
+
+        QVariantList values{mode_id};
+
+        const QString where = "scheme_id = " + QString::number(scheme_id) + " AND group_id = " + QString::number(group_id);
+        const QSqlQuery q = db->update(table, values, where);
+        if (!q.isActive() || q.numRowsAffected() <= 0)
+        {
+            table = db_table<DIG_Mode_Item>();
+            table.field_names().removeFirst(); // remove id
+
+            QVariantList ins_values{ group_id, mode_id, scheme_id };
+            if (!db->insert(table, ins_values))
+            {
+                // TODO: do something
+            }
+        }
+    });
+}
+
+/*
+void scheme::deffered_save_status(uint32_t scheme_id, uint32_t group_id, uint32_t info_id, const QStringList &args)
+{
+    Helpz::Database::Table table = {db_table_name<DIG_Status>(db_name(scheme_id)), {}, {"group_id", "status_id", "args"}};
+    QString sql = insert_query(table, 3);
+
+    std::vector<QVariantList> values_pack{{group_id, info_id, args.join(';')}};
+    db_thread_->add_pending_query(std::move(sql), std::move(values_pack));
+}
+
+void scheme::deffered_remove_status(uint32_t scheme_id, uint32_t group_id, uint32_t info_id)
+{
+    QString sql = del_query(db_table_name<DIG_Status>(db_name(scheme_id)), QString("group_id = %1 AND status_id = %2").arg(group_id).arg(info_id));
+    std::vector<QVariantList> values_pack;
+    db_thread_->add_pending_query(std::move(sql), std::move(values_pack));
+}
+*/
+
+void scheme::deffered_save_dig_param_value(uint32_t scheme_id, const QVector<DIG_Param_Value> &pack)
+{    
+    if (pack.empty()) return;
+
+    db_thread_->add([scheme_id, pack](Base* db)
+    {
+        Table table = db_table<DIG_Param_Value>();
+        table.field_names().erase(table.field_names().begin(), table.field_names().begin() + 2);
+        table.field_names().removeLast(); // remove scheme_id
+
+        const QString where = "scheme_id = " + QString::number(scheme_id) + " AND group_param_id = ";
+        QVariantList values{QVariant()};
+
+        for(const DIG_Param_Value& item: pack)
+        {
+            values.front() = item.value();
+
+            const QSqlQuery q = db->update(table, values, where + QString::number(item.group_param_id()));
+            if (!q.isActive() || q.numRowsAffected() <= 0)
+            {
+                Table ins_table = db_table<DIG_Param_Value>();
+                ins_table.field_names().removeFirst(); // remove id
+
+                QVariantList ins_values{ item.group_param_id(), item.value(), scheme_id };
+                if (!db->insert(ins_table, ins_values))
+                {
+                    // TODO: do something
+                }
+            }
+        }
+    });
+}
+
+/*
+Code_Item scheme::get_code_info(uint32_t scheme_id, uint32_t code_id)
+{
+    auto q = select({db_table_name<Code_Item>(db_name(scheme_id)), {}, {"id", "name", "global_id"}}, "WHERE id=" + QString::number(code_id));
+    if (q.next())
+        return Code_Item{ q.value(0).toUInt(), q.value(1).toString(), q.value(2).toUInt() };
+    return {};
+}
+
+QVector<Code_Item> scheme::get_code(uint32_t scheme_id)
+{
+    QVector<Code_Item> code_list;
+    QVariantList values;
+    QStringList q_list;
+
+    auto q = select({db_table<Code_Item>(db_name(scheme_id))});
+    while( q.next() )
+    {
+        code_list.push_back(Code_Item{ q.value(0).toUInt(), q.value(1).toString(), q.value(2).toUInt(), q.value(3).toString() });
+        Code_Item& code = code_list.back();
+        if (code.global_id)
+        {
+            values.push_back(code.global_id);
+            q_list.push_back(QChar('?'));
+        }
+    }
+
+    if (!values.size())
+        return code_list;
+
+    q.finish();
+    q.clear();
+
+    q = select({"das_code", {}, {"id", "text"}}, "WHERE id IN (" + q_list.join(',') + ')', values);
+    if (q.isActive())
+    {
+        if (q.size() != values.size())
+            std::cerr << "Have not global code. Lost in global code is list" << std::endl;
+
+        while (q.next())
+            for (Code_Item& code: code_list)
+                if (code.global_id == q.value(0).toUInt())
+                {
+                    code.text = q.value(1).toString();
+                    break;
+                }
+    }
+
+    return code_list;
+}
+
+void scheme::deferred_clear_status(uint32_t scheme_id)
+{
+    QString sql = truncate_query(db_table_name<DIG_Status>(db_name(scheme_id)));
+    db_thread_->add_pending_query(std::move(sql), std::vector<QVariantList>{});
+}
+*/
+
+// -----------------------------------------------------------------------------------
+
+/*static*/ std::shared_ptr<global> global::open(const QString &name, Helpz::Database::Thread* db_thread)
+{
+    std::stringstream s; s << std::this_thread::get_id();
+
+    return std::make_shared<global>(name + '_' + QString::fromStdString(s.str()), db_thread);
+}
+
+global::global(const QString &name, Helpz::Database::Thread* db_thread) :
+    scheme(name, db_thread)
+{}
+
+QVector<QPair<QUuid, QString>> global::getUserDevices(const QString &login, const QString &password)
+{
+    auto query = select({db_table_name<User>(), {}, {"id", "password"}}, "WHERE username = ?", {login});
+    if (query.next() && compare_django_passhash(password, query.value(1).toByteArray()))
+    {
+        query.finish();
+        query.clear();
+
+        const QString sql =
+                "SELECT s.using_key, s.title FROM das_scheme s "
+                "LEFT JOIN das_scheme_groups sg ON sg.scheme_id = s.id "
+                "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.scheme_group_id "
+                "WHERE sgu.user_id = " + query.value(0).toString();
+
+        query = exec(sql);
+        if (query.isActive())
+        {
+            QVector<QPair<QUuid, QString>> devices;
+            QUuid device;
+            while (query.next())
+            {
+                device = QUuid::fromRfc4122(query.value(0).toByteArray());
+                if (!device.isNull())
+                    devices.push_back(qMakePair(device, query.value(1).toString()));
+            }
+            return devices;
+        }
+    }
+
+    return {};
+}
+
+void global::check_auth(const Authentication_Info &auth_info, Server::Protocol_Base *info_out, QUuid& device_connection_id)
+{
+    QString sql =
+        "SELECT s.id, s.name, s.title, u.password, s.parent_id, s.using_key FROM das_user u "
+        "LEFT JOIN das_scheme_group_user sgu ON sgu.user_id = u.id "
+        "LEFT JOIN das_scheme_groups sg ON sg.scheme_group_id = sgu.group_id "
+        "LEFT JOIN das_scheme s ON s.id = sg.scheme_id "
+        "WHERE u.username = ? AND s.name = ?"; // AND (s.using_key IS NULL OR s.using_key = ?)
+
+    QSqlQuery query = exec(sql, {auth_info.login(), auth_info.scheme_name()});
+    if (query.next())
+    {
+        if (compare_django_passhash(auth_info.password(), query.value(3).toByteArray()))
+        {
+            QUuid using_key = QUuid::fromRfc4122(query.value(5).toByteArray());
+            if (using_key.isNull())
+            {
+                QSqlQuery using_key_query;
+                sql = "SELECT 1 FROM das_scheme WHERE using_key = ?";
+                do
+                {
+                    using_key = QUuid::createUuid();
+                    using_key_query = exec(sql, { QString::fromLocal8Bit(using_key.toRfc4122().toHex()) });
+                }
+                while (using_key_query.next());
+
+                QVariantList values{ QString::fromLocal8Bit(using_key.toRfc4122().toHex()), query.value(0) };
+                if (!update({"das_scheme", {}, {"using_key"}}, values, "id=?").isActive())
+                {
+                    qWarning() << "Failed create using_key for:" << auth_info.scheme_name();
+//                    return;
+                }
+            }
+            else if (using_key != auth_info.using_key())
+            {
+                qWarning() << "Attempt to twice connect for:" << auth_info.scheme_name();
+//                return;
+            }
+            device_connection_id = using_key;
+
+            info_out->set_id(query.value(0).toUInt());
+            info_out->set_parent_id(query.value(4).toUInt());
+            info_out->set_name(query.value(1).toString());
+//            info_out->set_scheme_title(query.value(2).toString());
+
+            std::shared_ptr<Helpz::Network::Protocol_Writer> writer = info_out->writer();
+            if (writer)
+                writer->set_title(info_out->title() + " (" + info_out->name() + ')');
+
+            std::set<uint32_t> scheme_groups;
+            query.finish();
+            query.clear();
+            query = select({"das_scheme_groups", {}, {"scheme_group_id"}}, "WHERE scheme_id = ?", {info_out->id()});
+            while (query.next())
+                scheme_groups.insert(query.value(0).toUInt());
+            info_out->set_scheme_groups(std::move(scheme_groups));
+        }
+    }
+}
+
+/*static*/ bool global::compare_django_passhash(const QString& password, const QByteArray& passHashData)
+{
+    auto data_list = passHashData.split('$');
+    if (data_list.size() != 4 || data_list.at(0) != "pbkdf2_sha256")
+    {
+//        qCCritical(ManagerLog) << "Unknown algoritm";
+        std::cerr << "Unknown algoritm" << std::endl;
+        return false;
+    }
+    std::size_t kdf_iterations = data_list.at(1).toUInt();
+    const QByteArray& salt = data_list.at(2);
+    auto hash = QByteArray::fromBase64(data_list.at(3));
+    const size_t PASSHASH9_PBKDF_OUTPUT_LEN = 32; // 256 bits output
+
+    namespace B = Botan;
+    auto pbkdf_prf = B::MessageAuthenticationCode::create("HMAC(SHA-256)");
+    B::PKCS5_PBKDF2 kdf(pbkdf_prf.release()); // takes ownership of pointer
+
+    B::secure_vector<uint8_t> cmp = kdf.derive_key(
+        PASSHASH9_PBKDF_OUTPUT_LEN,
+        password.toStdString(),
+        reinterpret_cast<const uint8_t*>(salt.constData()),
+        static_cast<uint>(salt.size()),
+        kdf_iterations).bits_of();
+
+    return B::constant_time_compare(cmp.data(),
+                                    reinterpret_cast<const uint8_t*>(hash.constData()),
+                                    static_cast<uint>(hash.size()));
+}
+
+} // namespace Database
+} // namespace Das
