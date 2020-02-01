@@ -78,6 +78,7 @@ void Worker::init_database(QSettings* s)
                 Helpz::Param{"Password", QString()},
                 Helpz::Param{"Host", "localhost"},
                 Helpz::Param{"Port", 3306},
+                Helpz::Param{"Prefix", "das_"},
                 Helpz::Param{"Driver", "QMYSQL"}, // QPSQL
                 Helpz::Param{"ConnectOptions", QString()}
                 ).ptr<Helpz::Database::Connection_Info>();
