@@ -11,17 +11,18 @@ namespace Das {
 
 using namespace Helpz::Database;
 
-Informer::Data::Data(const Scheme_Info &scheme, const QVector<DIG_Status> &add_vect,
-                     const QVector<DIG_Status> &del_vect) :
-    expired_time_(std::chrono::system_clock::now() + std::chrono::minutes(15)),
+Informer::Data::Data(const Scheme_Info &scheme, std::chrono::time_point<std::chrono::system_clock> expired_time,
+                     const QVector<DIG_Status> &add_vect, const QVector<DIG_Status> &del_vect) :
+    expired_time_(expired_time),
     scheme_(scheme), add_vect_(add_vect), del_vect_(del_vect)
 {
 }
 
 // ---------------------------------------------------------------------------
 
-Informer::Informer() :
-    break_flag_(false)
+Informer::Informer(int event_timeout_secs) :
+    break_flag_(false),
+    event_timeout_(event_timeout_secs)
 {
     thread_ = new std::thread(&Informer::run, this);
 }
@@ -39,22 +40,26 @@ Informer::~Informer()
 
 void Informer::connected(const Scheme_Info& scheme)
 {
-    add_data(std::shared_ptr<Data>{new Data{scheme, {DIG_Status{}}}}, true);
+    auto expired_time = std::chrono::system_clock::now() + event_timeout_;
+    add_data(std::shared_ptr<Data>{new Data{scheme, expired_time, {DIG_Status{}}}}, true);
 }
 
 void Informer::disconnected(const Scheme_Info& scheme)
 {
-    add_data(std::shared_ptr<Data>{new Data{scheme, {}, {DIG_Status{}}}});
+    auto expired_time = std::chrono::system_clock::now() + event_timeout_;
+    add_data(std::shared_ptr<Data>{new Data{scheme, expired_time, {}, {DIG_Status{}}}});
 }
 
 void Informer::add_status(const Scheme_Info &scheme, const DIG_Status &item)
 {
-    add_data(std::shared_ptr<Data>{new Data{scheme, {item}}});
+    auto expired_time = std::chrono::system_clock::now() + event_timeout_;
+    add_data(std::shared_ptr<Data>{new Data{scheme, expired_time, {item}}});
 }
 
 void Informer::remove_status(const Scheme_Info &scheme, const DIG_Status &item)
 {
-    add_data(std::shared_ptr<Data>{new Data{scheme, {}, {item}}});
+    auto expired_time = std::chrono::system_clock::now() + event_timeout_;
+    add_data(std::shared_ptr<Data>{new Data{scheme, expired_time, {}, {item}}});
 }
 enum EventLogType { // Тип события в журнале событий
   DebugEvent,

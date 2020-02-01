@@ -23,7 +23,7 @@ namespace Das {
 class Informer : public Status_Helper
 {
 public:
-    Informer();
+    Informer(int event_timeout_secs);
     ~Informer();
 
     boost::signals2::signal<void (int64_t, const std::string&)> send_message_signal_;
@@ -38,6 +38,7 @@ private:
     struct Data
     {
         Data(const Scheme_Info& scheme,
+             std::chrono::time_point<std::chrono::system_clock> expired_time,
              const QVector<DIG_Status>& add_vect,
              const QVector<DIG_Status>& del_vect = {});
         std::chrono::time_point<std::chrono::system_clock> expired_time_;
@@ -69,6 +70,7 @@ private:
     std::map<uint32_t, std::vector<std::shared_ptr<Data>>> schemedata_map_;
     std::map<uint32_t, Prepared_Data> prepared_data_map_;
 
+    std::chrono::seconds event_timeout_;
     /*
      * В очереди лежат данные в порядке добавления и поток ожидает до время истечения отправки данных
      * в schemedata_map_ лежат данные каждого проекта

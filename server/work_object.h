@@ -46,6 +46,7 @@ protected:
     void init_server(QSettings *s);
     void init_dbus(QSettings* s);
 
+    std::chrono::seconds disconnect_event_timeout_;
 public:
     Helpz::Database::Connection_Info* db_conn_info_;
 

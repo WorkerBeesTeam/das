@@ -113,9 +113,12 @@ void Worker::init_bot(QSettings* s)
     bot_->start();
 }
 
-void Worker::init_informer(QSettings* /*s*/)
+void Worker::init_informer(QSettings* s)
 {
-    informer_ = new Informer;
+    informer_ = Helpz::SettingsHelper(
+        s, "Informer",
+        Helpz::Param<int>{"EventTimeoutSecons", 10 * 60}
+        ).ptr<Informer>();
 
     using namespace boost::placeholders;
     informer_->send_message_signal_.connect(boost::bind(&Bot::send_message, bot_, _1, _2));
