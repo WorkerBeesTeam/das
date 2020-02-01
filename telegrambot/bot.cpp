@@ -19,6 +19,7 @@
 #include <Helpz/db_builder.h>
 
 #include <dbus/dbus_interface.h>
+#include <Das/db/dig_status_type.h>
 #include <Das/commands.h>
 
 #include "db/tg_auth.h"
@@ -484,7 +485,7 @@ void Bot::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
               "WHERE dig.scheme_id = %1 dig.id IN (";
         sql = sql.arg(scheme.parent_id_or_id());
 
-        status_sql = "SELECT id, text, category_id FROM das_status_type WHERE scheme_id = ";
+        status_sql = "WHERE scheme_id = ";
         status_sql += QString::number(scheme.parent_id_or_id());
         status_sql += " AND id IN (";
 
@@ -496,6 +497,12 @@ void Bot::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
 
         sql.replace(sql.size() - 1, 1, QChar(')'));
         status_sql.replace(status_sql.size() - 1, 1, QChar(')'));
+
+        status_sql = db.select_query(db_table<DIG_Status_Type>(), status_sql, {
+                                         DIG_Status_Type::COL_id,
+                                         DIG_Status_Type::COL_text,
+                                         DIG_Status_Type::COL_category_id
+                                     });
 
         std::map<uint32_t, QString> group_title_map;
         QSqlQuery q = db.exec(sql);
