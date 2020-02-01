@@ -29,7 +29,7 @@ public:
     boost::signals2::signal<void (int64_t, const std::string&)> send_message_signal_;
 
     void connected(const Scheme_Info& scheme);
-    void disconnected(const Scheme_Info& scheme);
+    void disconnected(const Scheme_Info& scheme, bool just_now);
     void add_status(const Scheme_Info& scheme, const DIG_Status &item);
     void remove_status(const Scheme_Info& scheme, const DIG_Status& item);
 
