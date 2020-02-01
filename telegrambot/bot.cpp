@@ -482,7 +482,7 @@ void Bot::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
               "FROM das_device_item_group dig "
               "LEFT JOIN das_section s ON s.id = dig.section_id AND s.scheme_id = %1 "
               "LEFT JOIN das_grouptype gt ON gt.id = dig.type_id AND gt.scheme_id = %1 "
-              "WHERE dig.scheme_id = %1 dig.id IN (";
+              "WHERE dig.scheme_id = %1 AND dig.id IN (";
         sql = sql.arg(scheme.parent_id_or_id());
 
         status_sql = "WHERE scheme_id = ";
