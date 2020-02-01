@@ -353,7 +353,7 @@ void Bot::process_directory(uint32_t user_id, const vector<string>& cmd, TgBot::
 
         const char* group_id_str = cmd.at(1).c_str();
         uint32_t group_id = atoi(group_id_str);
-        qDebug() << "subscriber team:" << group_id_str;
+        qDebug() << "subscriber scheme group:" << group_id_str;
 
         const QString sql =
                 "SELECT sg.id, tgs.id FROM das_scheme_group sg "
@@ -637,7 +637,7 @@ map<uint32_t, string> Bot::list_schemes_names(uint32_t user_id, uint32_t page_nu
     QString search_cond;
     const QString sql = "SELECT s.id, s.title FROM das_scheme s "
             "LEFT JOIN das_scheme_groups sg ON sg.scheme_id = s.id "
-            "LEFT JOIN das_scheme_group_user sgu ON sgu.team_id = sg.scheme_group_id "
+            "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.scheme_group_id "
             "WHERE sgu.user_id = %1%4 GROUP BY s.id LIMIT %2, %3";
 
     if (!search_text.empty())
