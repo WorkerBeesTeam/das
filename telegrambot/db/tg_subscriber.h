@@ -10,7 +10,7 @@ namespace Database {
 
 class DAS_LIBRARY_SHARED_EXPORT Tg_Subscriber
 {
-    HELPZ_DB_META(Tg_Subscriber, "das_tg_subscriber", "ts", 3, DB_A(id), DB_A(chat_id), DB_A(group_id))
+    HELPZ_DB_META(Tg_Subscriber, "tg_subscriber", "ts", 3, DB_A(id), DB_A(chat_id), DB_A(group_id))
 public:
     Tg_Subscriber(uint32_t id = 0, int64_t chat_id = 0, uint32_t group_id = 0);
 

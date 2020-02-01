@@ -757,13 +757,14 @@ void Bot::send_authorization_message(const TgBot::Message& msg) const
 
     const auto user = msg.from;
     Tg_User tg_user(user->id, 0,
-                     QString::fromStdString(user->firstName),
-                     QString::fromStdString(user->lastName),
-                     QString::fromStdString(user->username),
-                     QString::fromStdString(user->languageCode));
+                    QString::fromStdString(user->firstName),
+                    QString::fromStdString(user->lastName),
+                    QString::fromStdString(user->username),
+                    QString::fromStdString(user->languageCode),
+                    chat_id);
 
     const QString suffix = "ON DUPLICATE KEY UPDATE first_name=VALUES(first_name), last_name=VALUES(last_name),"
-                           "user_name=VALUES(user_name), lang=VALUES(lang)";
+                           "user_name=VALUES(user_name), lang=VALUES(lang), private_chat_id=VALUES(private_chat_id)";
     if (!db.insert(db_table<Tg_User>(), Tg_User::to_variantlist(tg_user), nullptr, suffix))
     {
         send_message(chat_id, "Ошибка во время добавления пользователя");
