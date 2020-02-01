@@ -23,7 +23,7 @@ namespace Das {
 class Informer : public Status_Helper
 {
 public:
-    Informer(int event_timeout_secs);
+    Informer(bool skip_connected_event, int event_timeout_secs);
     ~Informer();
 
     boost::signals2::signal<void (int64_t, const std::string&)> send_message_signal_;
@@ -61,7 +61,7 @@ private:
     QString get_status_text(Data* data) const;
     void send_message(const std::map<uint32_t, Prepared_Data>& prepared_data_map);
 
-    bool break_flag_;
+    bool break_flag_, skip_connected_event_;
     std::thread* thread_;
     std::mutex mutex_;
     std::condition_variable cond_;

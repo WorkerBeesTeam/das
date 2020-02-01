@@ -20,8 +20,9 @@ Informer::Data::Data(const Scheme_Info &scheme, std::chrono::time_point<std::chr
 
 // ---------------------------------------------------------------------------
 
-Informer::Informer(int event_timeout_secs) :
+Informer::Informer(bool skip_connected_event, int event_timeout_secs) :
     break_flag_(false),
+    skip_connected_event_(skip_connected_event),
     event_timeout_(event_timeout_secs)
 {
     thread_ = new std::thread(&Informer::run, this);
@@ -41,7 +42,7 @@ Informer::~Informer()
 void Informer::connected(const Scheme_Info& scheme)
 {
     auto expired_time = std::chrono::system_clock::now() + event_timeout_;
-    add_data(std::shared_ptr<Data>{new Data{scheme, expired_time, {DIG_Status{}}}}, true);
+    add_data(std::shared_ptr<Data>{new Data{scheme, expired_time, {DIG_Status{}}}}, skip_connected_event_);
 }
 
 void Informer::disconnected(const Scheme_Info& scheme)
@@ -61,14 +62,6 @@ void Informer::remove_status(const Scheme_Info &scheme, const DIG_Status &item)
     auto expired_time = std::chrono::system_clock::now() + event_timeout_;
     add_data(std::shared_ptr<Data>{new Data{scheme, expired_time, {}, {item}}});
 }
-enum EventLogType { // Тип события в журнале событий
-  DebugEvent,
-  WarningEvent,
-  CriticalEvent,
-  FatalEvent,
-  InfoEvent,
-  UserEvent
-} ;
 
 void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_Event_Item> &event_pack)
 {
@@ -82,11 +75,11 @@ void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_
         text += '\n';
         switch (item.type_id())
         {
-        case QtDebugMsg: text += "⚪️";  break;
-        case QtWarningMsg: text += "🔶";  break;
-        case QtCriticalMsg: text += "🔴";  break;
-        case QtFatalMsg: text += "🛑";  break;
-        case QtInfoMsg: text += "🔵";  break;
+        case Log_Event_Item::ET_DEBUG: text += "⚪️";  break;
+        case Log_Event_Item::ET_WARNING: text += "🔶";  break;
+        case Log_Event_Item::ET_CRITICAL: text += "🔴";  break;
+        case Log_Event_Item::ET_FATAL: text += "🛑";  break;
+        case Log_Event_Item::ET_INFO: text += "🔵";  break;
 
         default: text += "❕"; break;
         }

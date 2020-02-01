@@ -117,6 +117,7 @@ void Worker::init_informer(QSettings* s)
 {
     informer_ = Helpz::SettingsHelper(
         s, "Informer",
+        Helpz::Param<bool>{"SkipConnectedEvent", false},
         Helpz::Param<int>{"EventTimeoutSecons", 10 * 60}
         ).ptr<Informer>();
 
