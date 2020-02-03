@@ -48,25 +48,35 @@ void WiringPiPlugin::configure(QSettings *settings, Scheme *scheme)
 #ifndef NO_WIRINGPI
     wiringPiSetup();
 
-    QString mode;
-    QVariant pin;
+    QString mode, pud;
+    int pin;
+    bool ok;
+
     for (auto * device : scheme->devices())
     {
         for (Device_Item * item: device->items())
         {
+            pin = item->param("pin").toInt(&ok);
+            if (!ok)
+                continue;
+
             mode = item->param("mode").toString().trimmed().toLower();
-            pin = item->param("pin");
-            if (!mode.isEmpty() && pin.isValid())
-            {
-                if (mode == "in")
-                {
-                    pinMode(pin.toUInt(), INPUT);
-                }
-                else if (mode == "out")
-                {
-                    pinMode(pin.toUInt(), OUTPUT);
-                }
-            }
+            if (mode.isEmpty())
+                continue;
+
+            if (mode == "in")
+                pinMode(pin, INPUT);
+            else if (mode == "out")
+                pinMode(pin, OUTPUT);
+
+            pud = item->param("pud").toString().trimmed().toLower();
+
+            if (pud == "up")
+                pullUpDnControl(pin, PUD_UP);
+            else if (pud == "down")
+                pullUpDnControl(pin, PUD_DOWN);
+            else
+                pullUpDnControl(pin, PUD_OFF);
         }
     }
 #endif
@@ -76,26 +86,26 @@ bool WiringPiPlugin::check(Device* dev)
 {
     std::map<Device_Item*, QVariant> device_items_values;
 
-    bool state;
-    QVariant pin;
+    bool ok, state;
+    int pin;
     QString mode;
     for (Device_Item * item: dev->items())
     {
+        pin = item->param("pin").toInt(&ok);
+        if (!ok)
+            continue;
+
         mode = item->param("mode").toString().trimmed().toLower();
-        if (mode == "in" || mode == "out")
-        {
-            pin = item->param("pin");
-            if (pin.isValid())
-            {
+        if (mode.isEmpty() || (mode != "in" && mode != "out"))
+            continue;
+
 #ifdef NO_WIRINGPI
-                state = item->raw_value().toBool();
+        state = item->raw_value().toBool();
 #else
-                state = digitalRead(pin.toUInt()) ? true : false;
+        state = digitalRead(pin) ? true : false;
 #endif
-                if (!item->is_connected() || item->raw_value().toBool() != state)
-                    device_items_values.emplace(item, state);
-            }
-        }
+        if (!item->is_connected() || item->raw_value().toBool() != state)
+            device_items_values.emplace(item, state);
     }
 
     if (!device_items_values.empty())
