@@ -19,6 +19,7 @@
 #include <Helpz/db_builder.h>
 
 #include <dbus/dbus_interface.h>
+#include <Das/db/dig_status_type.h>
 #include <Das/commands.h>
 
 #include "db/tg_auth.h"
@@ -353,7 +354,7 @@ void Bot::process_directory(uint32_t user_id, const vector<string>& cmd, TgBot::
 
         const char* group_id_str = cmd.at(1).c_str();
         uint32_t group_id = atoi(group_id_str);
-        qDebug() << "subscriber team:" << group_id_str;
+        qDebug() << "subscriber scheme group:" << group_id_str;
 
         const QString sql =
                 "SELECT sg.id, tgs.id FROM das_scheme_group sg "
@@ -480,11 +481,11 @@ void Bot::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
         sql = "SELECT dig.id, s.name, dig.title, gt.title "
               "FROM das_device_item_group dig "
               "LEFT JOIN das_section s ON s.id = dig.section_id AND s.scheme_id = %1 "
-              "LEFT JOIN das_grouptype gt ON gt.id = dig.type_id AND gt.scheme_id = %1 "
-              "WHERE dig.scheme_id = %1 dig.id IN (";
+              "LEFT JOIN das_dig_type gt ON gt.id = dig.type_id AND gt.scheme_id = %1 "
+              "WHERE dig.scheme_id = %1 AND dig.id IN (";
         sql = sql.arg(scheme.parent_id_or_id());
 
-        status_sql = "SELECT id, text, category_id FROM das_status_type WHERE scheme_id = ";
+        status_sql = "WHERE scheme_id = ";
         status_sql += QString::number(scheme.parent_id_or_id());
         status_sql += " AND id IN (";
 
@@ -496,6 +497,12 @@ void Bot::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
 
         sql.replace(sql.size() - 1, 1, QChar(')'));
         status_sql.replace(status_sql.size() - 1, 1, QChar(')'));
+
+        status_sql = db.select_query(db_table<DIG_Status_Type>(), status_sql, {
+                                         DIG_Status_Type::COL_id,
+                                         DIG_Status_Type::COL_text,
+                                         DIG_Status_Type::COL_category_id
+                                     });
 
         std::map<uint32_t, QString> group_title_map;
         QSqlQuery q = db.exec(sql);
@@ -637,7 +644,7 @@ map<uint32_t, string> Bot::list_schemes_names(uint32_t user_id, uint32_t page_nu
     QString search_cond;
     const QString sql = "SELECT s.id, s.title FROM das_scheme s "
             "LEFT JOIN das_scheme_groups sg ON sg.scheme_id = s.id "
-            "LEFT JOIN das_scheme_group_user sgu ON sgu.team_id = sg.scheme_group_id "
+            "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.scheme_group_id "
             "WHERE sgu.user_id = %1%4 GROUP BY s.id LIMIT %2, %3";
 
     if (!search_text.empty())
@@ -757,13 +764,14 @@ void Bot::send_authorization_message(const TgBot::Message& msg) const
 
     const auto user = msg.from;
     Tg_User tg_user(user->id, 0,
-                     QString::fromStdString(user->firstName),
-                     QString::fromStdString(user->lastName),
-                     QString::fromStdString(user->username),
-                     QString::fromStdString(user->languageCode));
+                    QString::fromStdString(user->firstName),
+                    QString::fromStdString(user->lastName),
+                    QString::fromStdString(user->username),
+                    QString::fromStdString(user->languageCode),
+                    chat_id);
 
     const QString suffix = "ON DUPLICATE KEY UPDATE first_name=VALUES(first_name), last_name=VALUES(last_name),"
-                           "user_name=VALUES(user_name), lang=VALUES(lang)";
+                           "user_name=VALUES(user_name), lang=VALUES(lang), private_chat_id=VALUES(private_chat_id)";
     if (!db.insert(db_table<Tg_User>(), Tg_User::to_variantlist(tg_user), nullptr, suffix))
     {
         send_message(chat_id, "Ошибка во время добавления пользователя");

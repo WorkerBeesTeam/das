@@ -11,17 +11,19 @@ namespace Das {
 
 using namespace Helpz::Database;
 
-Informer::Data::Data(const Scheme_Info &scheme, const QVector<DIG_Status> &add_vect,
-                     const QVector<DIG_Status> &del_vect) :
-    expired_time_(std::chrono::system_clock::now() + std::chrono::minutes(15)),
+Informer::Data::Data(const Scheme_Info &scheme, std::chrono::time_point<std::chrono::system_clock> expired_time,
+                     const QVector<DIG_Status> &add_vect, const QVector<DIG_Status> &del_vect) :
+    expired_time_(expired_time),
     scheme_(scheme), add_vect_(add_vect), del_vect_(del_vect)
 {
 }
 
 // ---------------------------------------------------------------------------
 
-Informer::Informer() :
-    break_flag_(false)
+Informer::Informer(bool skip_connected_event, int event_timeout_secs) :
+    break_flag_(false),
+    skip_connected_event_(skip_connected_event),
+    event_timeout_(event_timeout_secs)
 {
     thread_ = new std::thread(&Informer::run, this);
 }
@@ -39,31 +41,32 @@ Informer::~Informer()
 
 void Informer::connected(const Scheme_Info& scheme)
 {
-    add_data(std::shared_ptr<Data>{new Data{scheme, {DIG_Status{}}}}, true);
+    const QVector<DIG_Status> data{DIG_Status{}};
+    auto expired_time = std::chrono::system_clock::now() + event_timeout_;
+    add_data(std::make_shared<Data>(scheme, expired_time, data), skip_connected_event_);
 }
 
-void Informer::disconnected(const Scheme_Info& scheme)
+void Informer::disconnected(const Scheme_Info& scheme, bool just_now)
 {
-    add_data(std::shared_ptr<Data>{new Data{scheme, {}, {DIG_Status{}}}});
+    QVector<DIG_Status> data{DIG_Status{}};
+    if (just_now)
+        data.first().set_args(QStringList{QString()});
+
+    auto expired_time = std::chrono::system_clock::now() + event_timeout_;
+    add_data(std::make_shared<Data>(scheme, expired_time, QVector<DIG_Status>{}, data));
 }
 
 void Informer::add_status(const Scheme_Info &scheme, const DIG_Status &item)
 {
-    add_data(std::shared_ptr<Data>{new Data{scheme, {item}}});
+    auto expired_time = std::chrono::system_clock::now() + event_timeout_;
+    add_data(std::make_shared<Data>(scheme, expired_time, QVector<DIG_Status>{item}));
 }
 
 void Informer::remove_status(const Scheme_Info &scheme, const DIG_Status &item)
 {
-    add_data(std::shared_ptr<Data>{new Data{scheme, {}, {item}}});
+    auto expired_time = std::chrono::system_clock::now() + event_timeout_;
+    add_data(std::make_shared<Data>(scheme, expired_time, QVector<DIG_Status>{}, QVector<DIG_Status>{item}));
 }
-enum EventLogType { // Тип события в журнале событий
-  DebugEvent,
-  WarningEvent,
-  CriticalEvent,
-  FatalEvent,
-  InfoEvent,
-  UserEvent
-} ;
 
 void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_Event_Item> &event_pack)
 {
@@ -77,11 +80,11 @@ void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_
         text += '\n';
         switch (item.type_id())
         {
-        case QtDebugMsg: text += "⚪️";  break;
-        case QtWarningMsg: text += "🔶";  break;
-        case QtCriticalMsg: text += "🔴";  break;
-        case QtFatalMsg: text += "🛑";  break;
-        case QtInfoMsg: text += "🔵";  break;
+        case Log_Event_Item::ET_DEBUG: text += "⚪️";  break;
+        case Log_Event_Item::ET_WARNING: text += "🔶";  break;
+        case Log_Event_Item::ET_CRITICAL: text += "🔴";  break;
+        case Log_Event_Item::ET_FATAL: text += "🛑";  break;
+        case Log_Event_Item::ET_INFO: text += "🔵";  break;
 
         default: text += "❕"; break;
         }
@@ -117,21 +120,47 @@ void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_
     }
 }
 
-void erase_two_vectors(QVector<DIG_Status>& v1, QVector<DIG_Status>& v2)
+void erase_two_vectors(QVector<DIG_Status>& origin_v, QVector<DIG_Status>& diff_v, QVector<DIG_Status>& same_v)
 {
-    v1.erase(std::remove_if(v1.begin(), v1.end(), [&v2](const DIG_Status& item)
+    bool finded;
+    for (auto origin_it = origin_v.begin(); origin_it != origin_v.end(); )
     {
-        for (auto it = v2.begin(); it != v2.end(); ++it)
+        finded = false;
+
+        for (auto diff_it = diff_v.begin(); diff_it != diff_v.end(); ++diff_it)
         {
-            if (item.group_id() == it->group_id() &&
-                item.status_id() == it->status_id())
+            if (origin_it->group_id() == diff_it->group_id() &&
+                origin_it->status_id() == diff_it->status_id())
             {
-                v2.erase(it);
-                return true;
+                diff_v.erase(diff_it);
+                finded = true;
+                break;
             }
         }
-        return false;
-    }), v1.end());
+
+        if (finded)
+        {
+            origin_it = origin_v.erase(origin_it);
+        }
+        else
+        {
+            finded = false;
+            for (const DIG_Status& item: same_v)
+            {
+                if (origin_it->group_id() == item.group_id() &&
+                    origin_it->status_id() == item.status_id())
+                {
+                    finded = true;
+                    break;
+                }
+            }
+
+            if (finded)
+                origin_it = origin_v.erase(origin_it);
+            else
+                ++origin_it;
+        }
+    }
 }
 
 void Informer::add_data(std::shared_ptr<Data>&& data_ptr, bool remove_only)
@@ -145,8 +174,8 @@ void Informer::add_data(std::shared_ptr<Data>&& data_ptr, bool remove_only)
         for (auto d_it = schemedata.begin(); d_it != schemedata.end();)
         {
             std::shared_ptr<Data>& data = *d_it;
-            erase_two_vectors(data->add_vect_, data_ptr->del_vect_);
-            erase_two_vectors(data->del_vect_, data_ptr->add_vect_);
+            erase_two_vectors(data->add_vect_, data_ptr->del_vect_, data_ptr->add_vect_);
+            erase_two_vectors(data->del_vect_, data_ptr->add_vect_, data_ptr->del_vect_);
             if (data->add_vect_.empty() && data->del_vect_.empty())
             {
                 d_it = schemedata.erase(d_it);
@@ -306,7 +335,12 @@ QString Informer::get_status_text(Data* data) const
         return "🚀 На связи!";
 
     if (is_connected_type(data->del_vect_))
-        return "💢 Отключен.";
+    {
+        if (data->del_vect_.front().args().empty())
+            return "💢 Отключен.";
+        else
+            return {};
+    }
 
     QSet<uint32_t> info_id_set, group_id_set;
     for (const DIG_Status& item: data->add_vect_)

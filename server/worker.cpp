@@ -75,7 +75,7 @@ void Worker::on_timer()
     recently_connected_.scheme_id_vect_.erase(std::remove_if(recently_connected_.scheme_id_vect_.begin(), recently_connected_.scheme_id_vect_.end(),
                                                            [this, &now](const Recently_Connected::Recent_Client& item)
     {
-        if ((now - item.disconnect_time_) >= std::chrono::minutes(15))
+        if ((now - item.disconnect_time_) >= disconnect_event_timeout_)
         {
             dbus_->connection_state_changed(item.scheme_, CS_DISCONNECTED);
             return true;

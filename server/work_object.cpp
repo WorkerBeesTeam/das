@@ -109,7 +109,9 @@ void Work_Object::init_server(QSettings* s)
     };
 
     const QString default_dir = qApp->applicationDirPath() + '/';
-    auto [ port, tls_policy_file, certificate_file, certificate_key_file, cleaning_timeout, receive_thread_count, record_thread_count ]
+    auto [ port, tls_policy_file, certificate_file, certificate_key_file,
+            cleaning_timeout, receive_thread_count, record_thread_count,
+            disconnect_event_timeout ]
             = Helpz::SettingsHelper{
         s, "Server",
                 Helpz::Param{"Port", (uint16_t)25588},
@@ -118,8 +120,11 @@ void Work_Object::init_server(QSettings* s)
                 Helpz::Param{"CertificateKeyFile", default_dir + "dtls.key"},
                 Helpz::Param{"CleaningTimeout", (uint32_t)3 * 60},
                 Helpz::Param{"ReceiveThreadCount", (uint16_t)5},
-                Helpz::Param{"RecordThreadCount", (uint16_t)5}
+                Helpz::Param{"RecordThreadCount", (uint16_t)5},
+                Helpz::Param{"DisconnectEventTimeoutSeconds", 60}
     }();
+
+    disconnect_event_timeout_ = std::chrono::seconds{disconnect_event_timeout};
 
     Helpz::DTLS::Server_Thread_Config conf{ port, tls_policy_file.toStdString(), certificate_file.toStdString(), certificate_key_file.toStdString(),
                 cleaning_timeout, receive_thread_count, record_thread_count, 60 };

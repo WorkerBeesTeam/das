@@ -4,9 +4,10 @@ namespace Das {
 namespace Database {
 
 Tg_User::Tg_User(int32_t id, uint32_t user_id, const QString &first_name,
-                 const QString &last_name, const QString &user_name, const QString &lang) :
+                 const QString &last_name, const QString &user_name, const QString &lang, qint64 private_chat_id) :
     id_(id), user_id_(user_id), first_name_(first_name),
-    last_name_(last_name), user_name_(user_name), lang_(lang)
+    last_name_(last_name), user_name_(user_name), lang_(lang),
+    private_chat_id_(private_chat_id)
 {
 }
 
@@ -27,6 +28,9 @@ void Tg_User::set_user_name(const QString &name) { user_name_ = name; }
 
 QString Tg_User::lang() const { return lang_; }
 void Tg_User::set_lang(const QString &name) { lang_ = name; }
+
+qint64 Tg_User::private_chat_id() const { return private_chat_id_; }
+void Tg_User::set_private_chat_id(qint64 private_chat_id) { private_chat_id_ = private_chat_id; }
 
 } // namespace Database
 } // namespace Das
