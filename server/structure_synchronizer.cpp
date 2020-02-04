@@ -839,9 +839,6 @@ bool Structure_Synchronizer::is_can_modify(uint8_t struct_type) const
 //    void insert(const QVector<T>& /*items*/) {}
 //};
 
-//struct Scheme_Table_Helper<>
-//struct Scheme_Table_Helper<>
-
 template<class T>
 bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, bool delete_if_not_exist)
 {

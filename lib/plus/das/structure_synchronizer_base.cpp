@@ -212,7 +212,8 @@ QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_
 template<typename T>
 QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, const QVector<uint32_t>& id_vect, uint32_t scheme_id)
 {
-    QString suffix = Helpz::Database::db_get_items_list_suffix<T>(id_vect, Database::Scheme_Table_Helper<T>::pk_num);
+    using Helper = Database::Scheme_Table_Helper<T>;
+    QString suffix = Helpz::Database::db_get_items_list_suffix<T>(id_vect, Helper::pk_num);
 
     if (Database::has_scheme_id<T>())
     {
@@ -225,6 +226,11 @@ QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, con
     }
 
     fill_suffix(struct_type, suffix);
+
+    if (Helper::pk_num != 0)
+    {
+        suffix += " ORDER BY " + T::table_column_names().at(Helper::pk_num);
+    }
     return suffix;
 }
 
