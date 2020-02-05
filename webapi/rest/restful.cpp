@@ -24,6 +24,7 @@
 #include <Das/db/dig_status_type.h>
 #include <Das/db/dig_status.h>
 #include <Das/db/device_item_value.h>
+#include <plus/das/scheme_info.h>
 #include <dbus/dbus_interface.h>
 
 #include "csrf_middleware.h"
@@ -32,6 +33,8 @@
 
 namespace Das {
 namespace Rest {
+
+using namespace Helpz::Database;
 
 class Multipart_Form_Data_Parser
 {
@@ -137,7 +140,7 @@ QJsonObject get_json_object(const QSqlQuery& query, const QStringList& names)
 
     if (query.record().count() >= T::COL_COUNT)
     {
-        const T item = Helpz::Database::db_build<T>(query);
+        const T item = db_build<T>(query);
         fill_json_object(obj, item, names);
     }
     return obj;
@@ -153,10 +156,10 @@ QJsonObject get_json_object(const QSqlQuery& query)
 template<typename T>
 QJsonArray gen_json_array(const QString& suffix = QString())
 {
-    Helpz::Database::Base& db = Helpz::Database::Base::get_thread_local_instance();
+    Base& db = Base::get_thread_local_instance();
     QStringList names = T::table_column_names();
     QJsonArray json_array;
-    auto q = db.select(Helpz::Database::db_table<T>(), suffix);
+    auto q = db.select(db_table<T>(), suffix);
     while(q.next())
     {
         json_array.push_back(get_json_object<T>(q, names));
@@ -181,7 +184,7 @@ std::string get_scheme_path()
     return get_scheme_path_base() + '{' + get_scheme_base() + "_id:[0-9]+}";
 }
 
-uint32_t get_scheme_id(const served::request& req)
+Scheme_Info get_scheme(const served::request& req)
 {
     const std::string url_path = req.url().path();
     const std::string scheme_path = get_scheme_path_base();
@@ -198,21 +201,21 @@ uint32_t get_scheme_id(const served::request& req)
             if (user_id != 0 && scheme_id != 0)
             {
                 const QString sql =
-                        "SELECT s.id FROM das_scheme s "
+                        "SELECT s.id, s.parent_id FROM das_scheme s "
                         "LEFT JOIN das_scheme_groups sg ON sg.scheme_id = s.id "
                         "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.scheme_group_id "
                         "WHERE s.id = %1 AND sgu.user_id = %2";
 
-                Helpz::Database::Base& db = Helpz::Database::Base::get_thread_local_instance();
+                Base& db = Base::get_thread_local_instance();
                 QSqlQuery q = db.exec(sql.arg(scheme_id).arg(user_id));
                 if (q.next())
-                    return scheme_id;
+                    return {q.value(0).toUInt(), q.value(1).toUInt()};
             }
         }
     }
 
     throw served::request_error(served::status_4XX::NOT_FOUND, "Scheme not found");
-    return 0;
+    return {};
 }
 
 void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_helper, const Config &config)
@@ -242,18 +245,18 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
         const std::string scheme_path = get_scheme_path();
         mux.handle(scheme_path + "/dig_status").get([dbus_iface](served::response& res, const served::request& req)
         {
-            const uint32_t scheme_id = get_scheme_id(req);
+            const Scheme_Info scheme = get_scheme(req);
 
             Scheme_Status scheme_status;
 
-            std::future<void> scheme_status_task = std::async(std::launch::async, [dbus_iface, scheme_id, &scheme_status]() -> void
+            std::future<void> scheme_status_task = std::async(std::launch::async, [dbus_iface, &scheme, &scheme_status]() -> void
             {
                 QMetaObject::invokeMethod(dbus_iface, "get_scheme_status", Qt::BlockingQueuedConnection,
                     Q_RETURN_ARG(Scheme_Status, scheme_status),
-                    Q_ARG(uint32_t, scheme_id));
+                    Q_ARG(uint32_t, scheme.id()));
             });
 
-            Helpz::Database::Base& db = Helpz::Database::Base::get_thread_local_instance();
+            Base& db = Base::get_thread_local_instance();
             QString group_title, sql;
             QStringList status_column_names = DIG_Status::table_column_names();
             QJsonArray j_array;
@@ -268,7 +271,7 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
                           "FROM das_device_item_group g "
                           "LEFT JOIN das_section s ON s.id = g.section_id "
                           "LEFT JOIN das_dig_type gt ON gt.id = g.type_id "
-                          "WHERE g.scheme_id = " + QString::number(scheme_id) + " AND g.id IN (";
+                          "WHERE g.scheme_id = " + QString::number(scheme.parent_id_or_id()) + " AND g.id IN (";
 
                     for (const DIG_Status& status: scheme_status.status_set_)
                         sql += QString::number(status.group_id()) + ',';
@@ -304,7 +307,7 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
                       "LEFT JOIN das_device_item_group g ON g.id = gs.group_id "
                       "LEFT JOIN das_section s ON s.id = g.section_id "
                       "LEFT JOIN das_dig_type gt ON gt.id = g.type_id "
-                      "WHERE gs.scheme_id = " + QString::number(scheme_id);
+                      "WHERE gs.scheme_id = " + QString::number(scheme.id());
 
                 QSqlQuery q = db.exec(sql);
                 while(q.next())
@@ -330,19 +333,20 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
 
         mux.handle(scheme_path + "/device_item_value").get([dbus_iface](served::response& res, const served::request& req)
         {
-            const uint32_t scheme_id = get_scheme_id(req);
+            const Scheme_Info scheme = get_scheme(req);
 
             QVector<Device_Item_Value> unsaved_values;
 
-            std::future<void> unsaved_values_task = std::async(std::launch::async, [dbus_iface, scheme_id, &unsaved_values]() -> void
+            std::future<void> unsaved_values_task = std::async(std::launch::async, [dbus_iface, &scheme, &unsaved_values]() -> void
             {
                 QMetaObject::invokeMethod(dbus_iface, "get_device_item_values", Qt::BlockingQueuedConnection,
                     Q_RETURN_ARG(QVector<Device_Item_Value>, unsaved_values),
-                    Q_ARG(uint32_t, scheme_id));
+                    Q_ARG(uint32_t, scheme.id()));
             });
 
-            Helpz::Database::Base& db = Helpz::Database::Base::get_thread_local_instance();
-            QVector<Device_Item_Value> values = Helpz::Database::db_build_list<Device_Item_Value>(db, "WHERE scheme_id=" + QString::number(scheme_id));
+            Base& db = Base::get_thread_local_instance();
+            QVector<Device_Item_Value> values = db_build_list<Device_Item_Value>(
+                        db, "WHERE scheme_id=" + QString::number(scheme.id()));
 
             QJsonArray j_array;
             unsaved_values_task.get();
@@ -384,15 +388,14 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
 
         mux.handle(scheme_path + "/dig_status_type").get([](served::response& res, const served::request& req)
         {
-            const uint32_t scheme_id = get_scheme_id(req);
+            const Scheme_Info scheme = get_scheme(req);
 
             res.set_header("Content-Type", "application/json");
-            res << gen_json_list<DIG_Status_Type>("WHERE scheme_id=" + QString::number(scheme_id));
+            res << gen_json_list<DIG_Status_Type>("WHERE scheme_id=" + QString::number(scheme.parent_id_or_id()));
         });
 
         mux.handle(scheme_path).get([](served::response& res, const served::request& req)
         {
-//            const uint32_t scheme_id = Auth_Middleware::get_thread_local_user().scheme_id_;
             res.set_header("Content-Type", "application/json");
             res << "{ \"content\": \"Hello, " << req.params["scheme_id"] << "!\" }\n";
 
