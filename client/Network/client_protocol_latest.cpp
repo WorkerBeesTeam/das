@@ -49,20 +49,25 @@ Structure_Synchronizer& Protocol::structure_sync()
     return structure_sync_;
 }
 
-void Protocol::send_mode(const DIG_Mode& mode)
+void Protocol::send_statuses()
 {
-    send(Cmd::SET_MODE).timeout(nullptr, std::chrono::seconds(16), std::chrono::seconds(5)) << mode;
+    send(Cmd::GROUP_STATUSES) << get_group_statuses();
 }
 
-void Protocol::send_status_changed(const DIG_Status &status)
-{
-    send(Cmd::CHANGE_STATUS).timeout([=]()
-    {
-        qCDebug(NetClientLog) << "Send status timeout. Group:" << status.group_id() << "info:" << status.status_id()
-                              << status.args() << "is_removed:" << status.is_removed();
-        send(Cmd::GROUP_STATUSES) << get_group_statuses();
-    }, std::chrono::seconds(5), std::chrono::milliseconds(1500)) << status;
-}
+//void Protocol::send_mode(const DIG_Mode& mode)
+//{
+//    send(Cmd::SET_MODE).timeout(nullptr, std::chrono::seconds(16), std::chrono::seconds(5)) << mode;
+//}
+
+//void Protocol::send_status_changed(const DIG_Status &status)
+//{
+//    send(Cmd::CHANGE_STATUS).timeout([=]()
+//    {
+//        qCDebug(NetClientLog) << "Send status timeout. Group:" << status.group_id() << "info:" << status.status_id()
+//                              << status.args() << "is_removed:" << status.is_removed();
+//        send(Cmd::GROUP_STATUSES) << get_group_statuses();
+//    }, std::chrono::seconds(5), std::chrono::milliseconds(1500)) << status;
+//}
 
 //void Protocol::send_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value> &pack)
 //{

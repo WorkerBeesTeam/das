@@ -31,10 +31,8 @@ public:
 //    virtual void process_statuses(const Scheme_Info& scheme, const QVector<DIG_Status>& add, const QVector<DIG_Status>& remove, const QString& db_name);
 //    virtual void structure_changed(const Scheme_Info& scheme, const QByteArray& data) {}
 //    virtual void dig_param_values_changed(const Scheme_Info& scheme, const QVector<DIG_Param_Value> &pack) {}
-//    virtual void dig_mode_changed(const Scheme_Info& scheme, const DIG_Mode &mode) {}
-
-//    virtual void status_inserted(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id, const QStringList& args) {}
-//    virtual void status_removed(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id) {}
+//    virtual void dig_mode_changed(const Scheme_Info& scheme, const QVector<DIG_Mode> &pack) {}
+//    virtual void status_changed(const Scheme_Info& scheme, const QVector<DIG_Status>& pack) {}
 };
 
 class Interface : public QObject

@@ -35,7 +35,7 @@ public:
     std::set<DIG_Status> get_statuses();
 
     void change_devitem_value(const Device_Item_Value& value);
-    void change_status(const DIG_Status& item);
+    void change_status(const QVector<Log_Status_Item> &pack);
     QVector<DIG_Status> insert_statuses(const QVector<DIG_Status> &statuses);
 private:
     void change_devitem_value_no_block(const Device_Item_Value& value);

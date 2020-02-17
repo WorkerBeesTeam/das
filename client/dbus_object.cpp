@@ -13,7 +13,6 @@ Dbus_Object::Dbus_Object(Worker* worker, const QString& service_name, const QStr
     DBus::Object_Base(service_name, object_path),
     worker_(worker)
 {
-    connect(worker, &Worker::status_changed, this, &Dbus_Object::emit_status_changed);
 }
 
 bool Dbus_Object::can_restart(bool stop)
@@ -129,11 +128,6 @@ void Dbus_Object::write_item_file(uint32_t /*scheme_id*/, uint32_t user_id, uint
 
     write_to_item(0, dev_item_id, raw_data);
     QMetaObject::invokeMethod(worker_->prj(), "write_to_item_file", Qt::QueuedConnection, Q_ARG(QString, file_path));
-}
-
-void Dbus_Object::emit_status_changed(const DIG_Status &status)
-{
-    emit status_changed(worker_->scheme_info(), status);
 }
 
 void Dbus_Object::write_to_item(uint32_t user_id, uint32_t item_id, const QVariant& raw_data)

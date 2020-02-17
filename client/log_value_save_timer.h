@@ -39,8 +39,9 @@ private slots:
     void send_value_pack();
     void send_event_pack();
     void send_param_pack();
+    void send_status_pack();
 private:
-    void save_dig_param_values(std::shared_ptr<QVector<DIG_Param_Value> > pack);
+    void save_dig_param_values(std::shared_ptr<QVector<Log_Param_Item> > pack);
     void stop();
     void process_items(uint32_t timer_id);
 
@@ -57,10 +58,11 @@ private:
 
     QVector<Log_Value_Item> value_pack_;
     QVector<Log_Event_Item> event_pack_;
-    QVector<DIG_Param_Value> param_pack_;
+    QVector<Log_Param_Item> param_pack_;
+    QVector<Log_Status_Item> status_pack_;
 
     std::map<uint32_t, Device_Item_Value> waited_item_values_;
-    QTimer item_values_timer_, value_pack_timer_, event_pack_timer_, param_values_timer_;
+    QTimer item_values_timer_, value_pack_timer_, event_pack_timer_, param_values_timer_, status_pack_timer_;
 };
 
 } // namespace Das

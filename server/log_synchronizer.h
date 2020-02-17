@@ -33,7 +33,7 @@ public:
 protected:
     Helpz::DB::Thread* log_thread();
 
-    virtual QString get_param_name() const = 0;
+    virtual QString get_param_name() const { return {}; }
     virtual void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) = 0;
 private:
     void request_log_range_count();
@@ -66,6 +66,33 @@ private:
     void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) override;
 };
 
+class Log_Sync_Params final : public Log_Sync_Item
+{
+public:
+    Log_Sync_Params(Protocol_Base *protocol);
+
+    void process_pack(QVector<Log_Param_Item> &&pack, uint8_t msg_id);
+    void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) override;
+};
+
+class Log_Sync_Statuses final : public Log_Sync_Item
+{
+public:
+    Log_Sync_Statuses(Protocol_Base *protocol);
+
+    void process_pack(QVector<Log_Status_Item> &&pack, uint8_t msg_id);
+    void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) override;
+};
+
+class Log_Sync_Modes final : public Log_Sync_Item
+{
+public:
+    Log_Sync_Modes(Protocol_Base *protocol);
+
+    void process_pack(QVector<Log_Mode_Item> &&pack, uint8_t msg_id);
+    void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) override;
+};
+
 class Log_Synchronizer
 {
 public:
@@ -80,6 +107,9 @@ public:
 
     Log_Sync_Values values_;
     Log_Sync_Events events_;
+    Log_Sync_Params params_;
+    Log_Sync_Statuses statuses_;
+    Log_Sync_Modes modes_;
 };
 
 } // namespace Server

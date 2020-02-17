@@ -383,6 +383,12 @@ void WebSocket::sendDevice_ItemValues(const Scheme_Info &scheme, const QVector<L
     send(scheme, message);
 }
 
+void WebSocket::send_dig_mode_pack(const Scheme_Info &scheme, const QVector<DIG_Mode> &pack)
+{
+    for (const DIG_Mode& mode: pack)
+        sendModeChanged(scheme, mode);
+}
+
 void WebSocket::sendModeChanged(const Scheme_Info &scheme, const DIG_Mode &mode)
 {
     QByteArray message;

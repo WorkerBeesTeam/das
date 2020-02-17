@@ -60,6 +60,7 @@ signals:
 
 public slots:
     void sendDevice_ItemValues(const Scheme_Info& scheme, const QVector<Log_Value_Item>& pack);
+    void send_dig_mode_pack(const Scheme_Info& scheme, const QVector<DIG_Mode>& pack);
     void sendModeChanged(const Scheme_Info& scheme, const DIG_Mode &mode);
     void send_dig_param_values_changed(const Scheme_Info& scheme, const QVector<DIG_Param_Value> &pack);
     void send_connection_state(const Scheme_Info& scheme, uint8_t connection_state);

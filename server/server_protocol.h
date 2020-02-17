@@ -41,10 +41,6 @@ private:
     void print_version(QIODevice &data_dev);
     void set_time_offset(const QDateTime& scheme_time, const QTimeZone &timeZone);
 
-    void mode_changed(DIG_Mode &&mode);
-    void status_changed(const DIG_Status& item);
-    void dig_param_values_changed(uint32_t user_id, const QVector<DIG_Param_Value> &pack);
-
     bool is_copy_;
     Log_Synchronizer log_sync_;
     Structure_Synchronizer structure_sync_;

@@ -30,7 +30,7 @@ public:
 
     void connected(const Scheme_Info& scheme);
     void disconnected(const Scheme_Info& scheme, bool just_now);
-    void change_status(const Scheme_Info& scheme, const DIG_Status &item);
+    void change_status(const Scheme_Info& scheme, const QVector<DIG_Status> &pack);
 
     void send_event_messages(const Scheme_Info &scheme, const QVector<Log_Event_Item> &event_pack);
 private:

@@ -34,6 +34,9 @@ Log_Value_Save_Timer::Log_Value_Save_Timer(Worker *worker) :
     connect(&param_values_timer_, &QTimer::timeout, this, &Log_Value_Save_Timer::send_param_pack);
     param_values_timer_.setSingleShot(true);
 
+    connect(&status_pack_timer_, &QTimer::timeout, this, &Log_Value_Save_Timer::send_status_pack);
+    status_pack_timer_.setSingleShot(true);
+
     const int now_msecs = QTime::currentTime().msecsSinceStartOfDay();
 
     const QVector<Save_Timer> save_timers = DB::Helper::get_save_timer_vect();
@@ -70,6 +73,7 @@ Log_Value_Save_Timer::~Log_Value_Save_Timer()
     save_to_db(value_pack_);
     save_to_db(event_pack_);
     save_to_db(param_pack_);
+    save_to_db(status_pack_);
 }
 
 QVector<Device_Item_Value> Log_Value_Save_Timer::get_unsaved_values() const
@@ -147,29 +151,32 @@ void Log_Value_Save_Timer::add_log_event_item(const Log_Event_Item &item)
 
 void Log_Value_Save_Timer::add_param_value(const DIG_Param_Value &param_value)
 {
-    param_pack_.push_back(param_value);
-    param_pack_.back().set_flag(true); // is new param, not sync log
-
+    param_pack_.push_back(reinterpret_cast<const Log_Param_Item&>(param_value));
     param_values_timer_.start(5);
 }
 
 void Log_Value_Save_Timer::status_changed(const DIG_Status &status)
 {
-    auto proto = worker_->net_protocol();
-    if (proto)
-        proto->send_status_changed(status);
+    status_pack_.push_back(reinterpret_cast<const Log_Status_Item&>(status));
+
+    if (!status_pack_timer_.isActive())
+        status_pack_timer_.start(250);
 }
 
 void Log_Value_Save_Timer::dig_mode_changed(const DIG_Mode &mode)
 {
     DB::Helper::set_mode(mode);
 
-    QMetaObject::invokeMethod(worker_->dbus(), "dig_mode_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(DIG_Mode, mode));
+    const Log_Mode_Item& log_mode = reinterpret_cast<const Log_Mode_Item&>(mode);
 
-    auto proto = worker_->net_protocol();
-    if (proto)
-        proto->send_mode(mode);
+    std::shared_ptr<QVector<Log_Mode_Item>> pack = std::make_shared<QVector<Log_Mode_Item>>(QVector<Log_Mode_Item>{log_mode});
+//    pack->
+
+    const QVector<DIG_Mode>& mode_pack = reinterpret_cast<QVector<DIG_Mode>&>(*pack);
+    QMetaObject::invokeMethod(worker_->dbus(), "dig_mode_changed", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Mode>, mode_pack));
+
+    send(Log_Type::LOG_MODE, pack);
 }
 
 void Log_Value_Save_Timer::save_item_values()
@@ -228,11 +235,10 @@ void Log_Value_Save_Timer::send_value_pack()
     std::shared_ptr<QVector<Log_Value_Item>> pack = std::make_shared<QVector<Log_Value_Item>>(std::move(value_pack_));
     value_pack_.clear();
 
-    send(Log_Type::LOG_VALUE, pack);
-
     QMetaObject::invokeMethod(worker_->dbus(), "device_item_values_available", Qt::QueuedConnection,
                               Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<Log_Value_Item>, *pack));
-//    emit worker_->dbus()->device_item_values_available(worker_->scheme_info(), *pack);
+
+    send(Log_Type::LOG_VALUE, pack);
 }
 
 void Log_Value_Save_Timer::send_event_pack()
@@ -240,16 +246,15 @@ void Log_Value_Save_Timer::send_event_pack()
     std::shared_ptr<QVector<Log_Event_Item>> pack = std::make_shared<QVector<Log_Event_Item>>(std::move(event_pack_));
     event_pack_.clear();
 
-    send(Log_Type::LOG_EVENT, pack);
-
     QMetaObject::invokeMethod(worker_->dbus(), "event_message_available", Qt::QueuedConnection,
                               Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<Log_Event_Item>, *pack));
-//    emit worker_->dbus()->event_message_available(worker_->scheme_info(), *pack);
+
+    send(Log_Type::LOG_EVENT, pack);
 }
 
 void Log_Value_Save_Timer::send_param_pack()
 {
-    std::shared_ptr<QVector<DIG_Param_Value>> pack = std::make_shared<QVector<DIG_Param_Value>>(std::move(param_pack_));
+    std::shared_ptr<QVector<Log_Param_Item>> pack = std::make_shared<QVector<Log_Param_Item>>(std::move(param_pack_));
     param_pack_.clear();
 
     if (pack->empty())
@@ -257,15 +262,23 @@ void Log_Value_Save_Timer::send_param_pack()
 
     save_dig_param_values(pack);
 
-    send(Log_Type::LOG_PARAM, pack);
-
+    const QVector<DIG_Param_Value>& param_pack = reinterpret_cast<QVector<DIG_Param_Value>&>(*pack);
     QMetaObject::invokeMethod(worker_->dbus(), "dig_param_values_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Param_Value>, *pack));
+                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Param_Value>, param_pack));
 
+    send(Log_Type::LOG_PARAM, pack);
+}
 
-//    auto proto = worker_->net_protocol();
-//    if (proto)
-//        proto->send_dig_param_values(user_id, *pack);
+void Log_Value_Save_Timer::send_status_pack()
+{
+    std::shared_ptr<QVector<Log_Status_Item>> pack = std::make_shared<QVector<Log_Status_Item>>(std::move(status_pack_));
+    status_pack_.clear();
+
+    const QVector<DIG_Status>& status_pack = reinterpret_cast<QVector<DIG_Status>&>(*pack);
+    QMetaObject::invokeMethod(worker_->dbus(), "status_changed", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Status>, status_pack));
+
+    send(Log_Type::LOG_STATUS, pack);
 }
 
 void Log_Value_Save_Timer::stop()
@@ -274,6 +287,7 @@ void Log_Value_Save_Timer::stop()
     value_pack_timer_.stop();
     event_pack_timer_.stop();
     param_values_timer_.stop();
+    status_pack_timer_.stop();
 
     //timer_.stop();
     for (QTimer *timer : timers_list_)
@@ -338,7 +352,7 @@ void Log_Value_Save_Timer::process_items(uint32_t timer_id)
         send(LOG_VALUE, std::move(pack));
 }
 
-void Log_Value_Save_Timer::save_dig_param_values(std::shared_ptr<QVector<DIG_Param_Value>> pack)
+void Log_Value_Save_Timer::save_dig_param_values(std::shared_ptr<QVector<Log_Param_Item>> pack)
 {
     if (pack->empty())
         return;
@@ -361,7 +375,7 @@ void Log_Value_Save_Timer::save_dig_param_values(std::shared_ptr<QVector<DIG_Par
 
     auto dbg = qDebug(Service::Log()).nospace() << pack->front().user_id() << "|Params changed:";
 
-    for (const DIG_Param_Value& item: *pack)
+    for (const Log_Param_Item& item: *pack)
     {
         dbg << '\n' << item.group_param_id() << ": " << item.value().left(16);
 
@@ -400,6 +414,9 @@ void Log_Value_Save_Timer::save_dig_param_values(std::shared_ptr<QVector<DIG_Par
 //    static Log_PK_Increaser log_increaser;
 //    return log_increaser;
 //}
+
+template<typename T> void send_pack_timeout(Ver::Client::Protocol& /*proto*/) {}
+template<> void send_pack_timeout<Log_Status_Item>(Ver::Client::Protocol& proto) { proto.send_statuses(); }
 
 template<typename T>
 void Log_Value_Save_Timer::send(Log_Type_Wrapper log_type, std::shared_ptr<QVector<T> > pack)

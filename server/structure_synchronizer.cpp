@@ -199,20 +199,23 @@ void Structure_Synchronizer::change_devitem_value(const Device_Item_Value &value
     change_devitem_value_no_block(value);
 }
 
-void Structure_Synchronizer::change_status(const DIG_Status &item)
+void Structure_Synchronizer::change_status(const QVector<Log_Status_Item> &pack)
 {
     std::lock_guard lock(data_mutex_);
-    for (auto it = status_set_.begin(); it != status_set_.end(); ++it)
+    for (const Log_Status_Item& status: pack)
     {
-        if (it->group_id() == item.group_id() && it->status_id() == item.status_id())
+        for (auto it = status_set_.begin(); it != status_set_.end(); ++it)
         {
-            status_set_.erase(it);
-            break;
+            if (it->group_id() == status.group_id() && it->status_id() == status.status_id())
+            {
+                status_set_.erase(it);
+                break;
+            }
         }
-    }
 
-    if (!item.is_removed())
-        status_set_.insert(item);
+        if (!status.is_removed())
+            status_set_.insert(status);
+    }
 }
 
 QVector<DIG_Status> Structure_Synchronizer::insert_statuses(const QVector<DIG_Status> &statuses)

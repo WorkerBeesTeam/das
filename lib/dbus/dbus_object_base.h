@@ -26,8 +26,8 @@ namespace DBus {
     void time_info(const Scheme_Info& scheme, const QTimeZone& tz, qint64 time_offset); \
     void structure_changed(const Scheme_Info& scheme, const QByteArray& data); \
     void dig_param_values_changed(const Scheme_Info& scheme, const QVector<DIG_Param_Value> &pack); \
-    void dig_mode_changed(const Scheme_Info& scheme, const DIG_Mode &mode); \
-    void status_changed(const Scheme_Info& scheme, const DIG_Status &item);
+    void status_changed(const Scheme_Info& scheme, const QVector<DIG_Status>& pack); \
+    void dig_mode_changed(const Scheme_Info& scheme, const QVector<DIG_Mode> &pack);
 
 class Object_Base : public QObject, protected QDBusContext
 {

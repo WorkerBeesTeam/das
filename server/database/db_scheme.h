@@ -143,10 +143,10 @@ public:
 //        db_thread_->add_pending_query(valueLogSql(name), std::move(values_pack));
 //    }
 
-    void deffered_set_mode(const DIG_Mode &mode);
+//    void deffered_set_mode(const DIG_Mode &mode);
 //    void deffered_save_status(uint32_t scheme_id, uint32_t group_id, uint32_t info_id, const QStringList& args);
 //    void deffered_remove_status(uint32_t scheme_id, uint32_t group_id, uint32_t info_id);
-    void deffered_save_dig_param_value(uint32_t scheme_id, const QVector<DIG_Param_Value> &pack);
+//    void deffered_save_dig_param_value(uint32_t scheme_id, const QVector<DIG_Param_Value> &pack);
 
 //    Code_Item get_code_info(uint32_t scheme_id, uint32_t code_id);
 //    QVector<Code_Item> get_code(uint32_t scheme_id);

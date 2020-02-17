@@ -26,8 +26,10 @@ public:
     Log_Sender& log_sender();
     Structure_Synchronizer& structure_sync();
 
-    void send_mode(const DIG_Mode &mode);
-    void send_status_changed(const DIG_Status &status);
+    void send_statuses();
+
+//    void send_mode(const DIG_Mode &mode);
+//    void send_status_changed(const DIG_Status &status);
 //    void send_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack);
 
 //    bool modify_scheme(uint32_t user_id, quint8 struct_type, QIODevice* data_dev);

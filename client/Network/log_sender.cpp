@@ -56,13 +56,14 @@ void Log_Sender::send_data(Log_Type_Wrapper log_type, uint8_t msg_id)
     {
         protocol_->send_answer(Cmd::LOG_DATA_REQUEST, msg_id) << true;
 
-        if (log_type == LOG_VALUE)
-        {
-            send_log_data<Log_Value_Item>(log_type);
-        }
-        else if (log_type == LOG_EVENT)
-        {
-            send_log_data<Log_Event_Item>(log_type);
+        switch (log_type.value()) {
+        case LOG_VALUE:  send_log_data<Log_Value_Item>(log_type); break;
+        case LOG_EVENT:  send_log_data<Log_Event_Item>(log_type); break;
+        case LOG_PARAM:  send_log_data<Log_Param_Item>(log_type); break;
+        case LOG_STATUS: send_log_data<Log_Status_Item>(log_type); break;
+        case LOG_MODE:   send_log_data<Log_Mode_Item>(log_type); break;
+        default:
+            break;
         }
     }
 }

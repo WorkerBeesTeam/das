@@ -122,19 +122,6 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
         Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Structure_Synchronizer::insert_statuses, &structure_sync_);
         break;
 
-    case Cmd::SET_MODE:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::mode_changed);
-        break;
-    case Cmd::CHANGE_STATUS:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::status_changed);
-        break;
-    case Cmd::SET_DIG_PARAM_VALUES:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::dig_param_values_changed);
-        break;
-
     case Cmd::MODIFY_SCHEME:
         send_answer(cmd, msg_id);
 
@@ -243,28 +230,6 @@ void Protocol::set_time_offset(const QDateTime& scheme_time, const QTimeZone& ti
 
     qDebug().noquote() << title() << "setTimeOffset" << time().offset
               << (time().zone.isValid() ? time().zone.id().constData()/*displayName(QTimeZone::GenericTime).toStdString()*/ : "invalid");
-}
-
-void Protocol::mode_changed(DIG_Mode&& mode)
-{
-    mode.set_scheme_id(id());
-    db()->deffered_set_mode(mode);
-    QMetaObject::invokeMethod(work_object()->dbus_, "dig_mode_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(DIG_Mode, mode));
-}
-
-void Protocol::status_changed(const DIG_Status &item)
-{
-    structure_sync()->change_status(item);
-    QMetaObject::invokeMethod(work_object()->dbus_, "status_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(DIG_Status, item));
-}
-
-void Protocol::dig_param_values_changed(uint32_t /*user_id*/, const QVector<DIG_Param_Value>& pack)
-{
-    db()->deffered_save_dig_param_value(id(), pack);
-    QMetaObject::invokeMethod(work_object()->dbus_, "dig_param_values_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(QVector<DIG_Param_Value>, pack));
 }
 
 #if 0
