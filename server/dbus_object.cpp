@@ -76,7 +76,7 @@ Scheme_Status Dbus_Object::get_scheme_status(uint32_t scheme_id) const
     {
         std::shared_ptr<Protocol_Base> p = std::static_pointer_cast<Protocol_Base>(node->protocol());
         scheme_status.connection_state_ = p->connection_state();
-        Ver_2_4::Server::Protocol* proto = dynamic_cast<Ver_2_4::Server::Protocol*>(p.get());
+        Ver::Server::Protocol* proto = dynamic_cast<Ver::Server::Protocol*>(p.get());
         if (proto)
         {
             scheme_status.status_set_ = proto->structure_sync()->get_statuses();
@@ -94,7 +94,7 @@ QVector<Device_Item_Value> Dbus_Object::get_device_item_values(uint32_t scheme_i
     std::shared_ptr<Helpz::DTLS::Server_Node> node = find_client(scheme_id);
     if (node)
     {
-        std::shared_ptr<Ver_2_4::Server::Protocol> proto = std::dynamic_pointer_cast<Ver_2_4::Server::Protocol>(node->protocol());
+        std::shared_ptr<Ver::Server::Protocol> proto = std::dynamic_pointer_cast<Ver::Server::Protocol>(node->protocol());
         if (proto)
         {
             return proto->structure_sync()->get_devitem_values();

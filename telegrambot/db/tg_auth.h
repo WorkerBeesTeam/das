@@ -6,7 +6,7 @@
 #include <Das/daslib_global.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Tg_Auth
 {
@@ -28,9 +28,9 @@ private:
     QString token_;
 };
 
-} // namespace Database
+} // namespace DB
 
-using Tg_Auth = Database::Tg_Auth;
+using Tg_Auth = DB::Tg_Auth;
 
 } // namespace Das
 

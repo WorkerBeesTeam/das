@@ -1,7 +1,7 @@
 #include "base_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 Base_Type::Base_Type(uint32_t id, const QString &name, uint32_t scheme_id) :
     Schemed_Model(scheme_id),
@@ -39,5 +39,5 @@ QDataStream &operator<<(QDataStream &ds, const Titled_Type &item)
     return ds << static_cast<const Base_Type&>(item) << item.title();
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

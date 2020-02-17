@@ -13,9 +13,9 @@ namespace Network {
 class WebSocket;
 } // namespace Network
 
-namespace Database {
+namespace DB {
 class global;
-} // namespace Database
+} // namespace DB
 
 class Base_Synchronizer
 {
@@ -44,7 +44,7 @@ public:
 protected:
     uint32_t scheme_id() const;
     QString title() const;
-    std::shared_ptr<Database::global> db();
+    std::shared_ptr<DB::global> db();
 
     Server::Protocol_Base* protocol_;
 };

@@ -6,13 +6,13 @@
 #include <Das/type_managers.h>
 #include <Das/section.h>
 
-DevicesTableModel::DevicesTableModel(Das::Database::Device_Item_Type_Manager* mng, const QVector<Das::Device *> *devices_vector, QModbusServer *modbus_server, QObject* parent)
+DevicesTableModel::DevicesTableModel(Das::DB::Device_Item_Type_Manager* mng, const QVector<Das::Device *> *devices_vector, QModbusServer *modbus_server, QObject* parent)
     : QAbstractItemModel(parent), device_item_type_manager_(mng)
 {
     add_items(devices_vector, modbus_server);
 }
 
-DevicesTableModel::DevicesTableModel(Das::Database::Device_Item_Type_Manager *mng, QObject *parent)
+DevicesTableModel::DevicesTableModel(Das::DB::Device_Item_Type_Manager *mng, QObject *parent)
     : QAbstractItemModel(parent), device_item_type_manager_(mng)
 {
 

@@ -1,7 +1,7 @@
 #include "tg_user.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 Tg_User::Tg_User(int32_t id, uint32_t user_id, const QString &first_name,
                  const QString &last_name, const QString &user_name, const QString &lang, qint64 private_chat_id) :
@@ -32,5 +32,5 @@ void Tg_User::set_lang(const QString &name) { lang_ = name; }
 qint64 Tg_User::private_chat_id() const { return private_chat_id_; }
 void Tg_User::set_private_chat_id(qint64 private_chat_id) { private_chat_id_ = private_chat_id; }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

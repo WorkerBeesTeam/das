@@ -13,7 +13,7 @@
 #include "client_protocol_latest.h"
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Client {
 
 Protocol::Protocol(Worker *worker, const Authentication_Info &auth_info) :
@@ -31,7 +31,7 @@ Protocol::Protocol(Worker *worker, const Authentication_Info &auth_info) :
 //    connect(this, &Protocol::lostValues, worker, &Worker::sendLostValues, Qt::QueuedConnection);
     connect(this, &Protocol::getServerInfo, worker->prj->ptr(), &Scheme::dumpInfoToStream, Qt::DirectConnection);
     connect(this, &Protocol::setServerInfo, worker->prj->ptr(), &Scheme::initFromStream, Qt::BlockingQueuedConnection);
-    connect(this, &Protocol::saveServerInfo, worker->database(), &Database::saveScheme, Qt::BlockingQueuedConnection);
+    connect(this, &Protocol::saveServerInfo, worker->database(), &DB::saveScheme, Qt::BlockingQueuedConnection);
     */
 }
 
@@ -49,33 +49,25 @@ Structure_Synchronizer& Protocol::structure_sync()
     return structure_sync_;
 }
 
-void Protocol::send_mode(uint32_t user_id, uint mode_id, uint32_t group_id)
+void Protocol::send_mode(const DIG_Mode& mode)
 {
-    send(Cmd::SET_MODE).timeout(nullptr, std::chrono::seconds(16), std::chrono::seconds(5)) << user_id << mode_id << group_id;
+    send(Cmd::SET_MODE).timeout(nullptr, std::chrono::seconds(16), std::chrono::seconds(5)) << mode;
 }
 
-void Protocol::send_status_added(uint32_t group_id, uint32_t info_id, const QStringList& args, uint32_t)
+void Protocol::send_status_changed(const DIG_Status &status)
 {
-    send(Cmd::ADD_STATUS).timeout([=]()
+    send(Cmd::CHANGE_STATUS).timeout([=]()
     {
-        qCDebug(NetClientLog) << "Send status added timeout. Group:" << group_id << "info:" << info_id << args;
+        qCDebug(NetClientLog) << "Send status timeout. Group:" << status.group_id() << "info:" << status.status_id()
+                              << status.args() << "is_removed:" << status.is_removed();
         send(Cmd::GROUP_STATUSES) << get_group_statuses();
-    }, std::chrono::seconds(5), std::chrono::milliseconds(1500)) << group_id << info_id << args;
+    }, std::chrono::seconds(5), std::chrono::milliseconds(1500)) << status;
 }
 
-void Protocol::send_status_removed(uint32_t group_id, uint32_t info_id, uint32_t)
-{
-    send(Cmd::REMOVE_STATUS).timeout([=]()
-    {
-        qCDebug(NetClientLog) << "Send status removed timeout. Group:" << group_id << "info:" << info_id;
-        send(Cmd::GROUP_STATUSES) << get_group_statuses();
-    }, std::chrono::seconds(5), std::chrono::milliseconds(1500)) << group_id << info_id;
-}
-
-void Protocol::send_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value> &pack)
-{
-    send(Cmd::SET_DIG_PARAM_VALUES).timeout(nullptr, std::chrono::seconds(16), std::chrono::seconds(5)) << user_id << pack;
-}
+//void Protocol::send_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value> &pack)
+//{
+//    send(Cmd::SET_DIG_PARAM_VALUES).timeout(nullptr, std::chrono::seconds(16), std::chrono::seconds(5)) << user_id << pack;
+//}
 
 QVector<DIG_Status> Protocol::get_group_statuses() const
 {
@@ -93,12 +85,6 @@ void Protocol::write_to_item(uint32_t user_id, uint32_t item_id, const QVariant&
 {
     QMetaObject::invokeMethod(worker()->prj(), "write_to_item", Qt::QueuedConnection,
                               Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, item_id), Q_ARG(QVariant, raw_data));
-}
-
-void Protocol::set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id)
-{
-    QMetaObject::invokeMethod(worker(), "set_mode", Qt::QueuedConnection,
-                              Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, mode_id), Q_ARG(uint32_t, group_id));
 }
 
 void Protocol::set_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack)
@@ -152,11 +138,11 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
     case Cmd::RESTART:                  apply_parse(data_dev, &Protocol::restart);                          break;
     case Cmd::WRITE_TO_ITEM:            apply_parse(data_dev, &Protocol::write_to_item);                    break;
     case Cmd::WRITE_TO_ITEM_FILE:       process_item_file(data_dev);                                        break;
-    case Cmd::SET_MODE:                 apply_parse(data_dev, &Protocol::set_mode);                         break;
-    case Cmd::SET_DIG_PARAM_VALUES:   apply_parse(data_dev, &Protocol::set_dig_param_values);           break;
+    case Cmd::SET_MODE:                 Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Worker::set_mode, worker()); break;
+    case Cmd::SET_DIG_PARAM_VALUES:     apply_parse(data_dev, &Protocol::set_dig_param_values);           break;
     case Cmd::EXEC_SCRIPT_COMMAND:      apply_parse(data_dev, &Protocol::parse_script_command, &data_dev);  break;
 
-    case Cmd::GET_SCHEME:              Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Structure_Synchronizer::send_scheme_structure, &structure_sync_, msg_id, &data_dev); break;
+    case Cmd::GET_SCHEME:               Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Structure_Synchronizer::send_scheme_structure, &structure_sync_, msg_id, &data_dev); break;
     case Cmd::MODIFY_SCHEME:
     {
         send_answer(Cmd::MODIFY_SCHEME, msg_id);
@@ -171,7 +157,7 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
         };
 
         Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Structure_Synchronizer::process_modify_message, &structure_sync_,
-                           &data_dev, Database::Schemed_Model::default_scheme_id(), bad_fix_func);
+                           &data_dev, DB::Schemed_Model::default_scheme_id(), bad_fix_func);
         break;
     }
 
@@ -285,7 +271,7 @@ void Protocol::send_version(uint8_t msg_id)
     send_answer(Cmd::VERSION, msg_id)
             << Helpz::DTLS::ver_major() << Helpz::DTLS::ver_minor() << Helpz::DTLS::ver_build()
             << Helpz::Network::ver_major() << Helpz::Network::ver_minor() << Helpz::Network::ver_build()
-            << Helpz::Database::ver_major() << Helpz::Database::ver_minor() << Helpz::Database::ver_build()
+            << Helpz::DB::ver_major() << Helpz::DB::ver_minor() << Helpz::DB::ver_build()
             << Helpz::Service::ver_major() << Helpz::Service::ver_minor() << Helpz::Service::ver_build()
             << Lib::ver_major() << Lib::ver_minor() << Lib::ver_build()
             << (quint8)VER_MJ << (quint8)VER_MN << (int)VER_B;
@@ -448,5 +434,5 @@ private:
 #endif
 
 } // namespace Client
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das

@@ -115,7 +115,7 @@ QHash<int, QByteArray> EquipmentModel::roleNames() const
 {
     return QMultiHash<int, QByteArray>( {
         { ModeRole, "auto" },
-        { ModelRole, "dig_mode_iteml" } }) + TemplateModel::roleNames();
+        { ModelRole, "model" } }) + TemplateModel::roleNames();
 }
 
 QVariant EquipmentModel::data(const EquipmentItem &item, int role) const

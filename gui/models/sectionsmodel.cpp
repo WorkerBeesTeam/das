@@ -136,8 +136,7 @@ void SectionsModel::reset()
         for (Device_item_Group* group: sct->groups())
         {
             connect(group, &Device_item_Group::item_changed, this, &SectionsModel::newValue);
-            connect(group, &Device_item_Group::status_added, this, &SectionsModel::groupStatusChanged);
-            connect(group, &Device_item_Group::status_removed, this, &SectionsModel::groupStatusChanged);
+            connect(group, &Device_item_Group::status_changed, this, &SectionsModel::groupStatusChanged);
             items.push_back( SectionModelItem( sct, group) );
         }
 
@@ -208,7 +207,7 @@ QHash<int, QByteArray> SectionsModel::roleNames() const
                 }) + TemplateModel::roleNames();
 }
 
-void SectionsModel::groupStatusChanged(uint32_t /*status*/)
+void SectionsModel::groupStatusChanged(const DIG_Status & /*status*/)
 {
     auto group = static_cast<Device_item_Group*>(sender());
     for (uint i = 0; i < items.size(); i++)

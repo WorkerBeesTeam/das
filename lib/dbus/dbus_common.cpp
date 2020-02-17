@@ -61,8 +61,8 @@ inline const QDBusArgument &operator>>(const QDBusArgument &arg, std::set<T> &li
     return arg;
 }
 
-template<typename T, typename O>
-void load_to_setter(const QDBusArgument &arg, O& obj, void (O::*setter)(T))
+template<typename T, typename O, typename OB>
+void load_to_setter(const QDBusArgument &arg, O& obj, void (OB::*setter)(T))
 {
     typename std::decay<T>::type value;
     arg >> value;
@@ -87,50 +87,50 @@ const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Scheme_Info &item
     return arg;
 }
 
-QDBusArgument &operator<<(QDBusArgument &arg, const Das::Log_Base_Item &item)
+QDBusArgument &operator<<(QDBusArgument &arg, const Das::DB::Log_Base_Item &item)
 {
     qint64 timestamp = item.timestamp_msecs();
     if (item.flag())
-        timestamp |= Das::Log_Base_Item::LOG_FLAG;
+        timestamp |= Das::DB::Log_Base_Item::LOG_FLAG;
     arg << timestamp << item.user_id();
     return arg;
 }
 
-const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Log_Base_Item &item)
+const QDBusArgument &operator>>(const QDBusArgument &arg, Das::DB::Log_Base_Item &item)
 {
     qint64 timestamp;
     arg >> timestamp;
 
-    item.set_flag(timestamp & Das::Log_Base_Item::LOG_FLAG);
-    item.set_timestamp_msecs(timestamp & ~Das::Log_Base_Item::LOG_FLAG);
+    item.set_flag(timestamp & Das::DB::Log_Base_Item::LOG_FLAG);
+    item.set_timestamp_msecs(timestamp & ~Das::DB::Log_Base_Item::LOG_FLAG);
 
-    load_to_setter(arg, item, &Das::Log_Base_Item::set_user_id);
+    load_to_setter(arg, item, &Das::DB::Log_Base_Item::set_user_id);
     return arg;
 }
 
-QDBusArgument &operator<<(QDBusArgument &arg, const Das::Log_Value_Item &item)
+QDBusArgument &operator<<(QDBusArgument &arg, const Das::DB::Log_Value_Item &item)
 {
     QByteArray data;
     QDataStream ds(&data, QIODevice::WriteOnly);
     ds << item.raw_value() << item.value();
 
     arg.beginStructure();
-    arg << static_cast<const Das::Log_Base_Item&>(item) << data << item.item_id();
+    arg << static_cast<const Das::DB::Log_Base_Item&>(item) << data << item.item_id();
     arg.endStructure();
     return arg;
 }
 
-const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Log_Value_Item &item)
+const QDBusArgument &operator>>(const QDBusArgument &arg, Das::DB::Log_Value_Item &item)
 {
     QByteArray data;
     QVariant raw_value, value;
 
     arg.beginStructure();
-    arg >> static_cast<Das::Log_Base_Item&>(item) >> data;
+    arg >> static_cast<Das::DB::Log_Base_Item&>(item) >> data;
     QDataStream ds(&data, QIODevice::ReadOnly);
     ds >> raw_value >> value;
 
-    load_to_setter(arg, item, &Das::Log_Value_Item::set_item_id);
+    load_to_setter(arg, item, &Das::DB::Log_Value_Item::set_item_id);
     arg.endStructure();
 
     item.set_raw_value(raw_value);
@@ -138,21 +138,21 @@ const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Log_Value_Item &i
     return arg;
 }
 
-QDBusArgument &operator<<(QDBusArgument &arg, const Das::Log_Event_Item &item)
+QDBusArgument &operator<<(QDBusArgument &arg, const Das::DB::Log_Event_Item &item)
 {
     arg.beginStructure();
-    arg << static_cast<const Das::Log_Base_Item&>(item) << item.type_id() << item.category() << item.text();
+    arg << static_cast<const Das::DB::Log_Base_Item&>(item) << item.type_id() << item.category() << item.text();
     arg.endStructure();
     return arg;
 }
 
-const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Log_Event_Item &item)
+const QDBusArgument &operator>>(const QDBusArgument &arg, Das::DB::Log_Event_Item &item)
 {
     arg.beginStructure();
-    arg >> static_cast<Das::Log_Base_Item&>(item);
-    load_to_setter(arg, item, &Das::Log_Event_Item::set_type_id);
-    load_to_setter(arg, item, &Das::Log_Event_Item::set_category);
-    load_to_setter(arg, item, &Das::Log_Event_Item::set_text);
+    arg >> static_cast<Das::DB::Log_Base_Item&>(item);
+    load_to_setter(arg, item, &Das::DB::Log_Event_Item::set_type_id);
+    load_to_setter(arg, item, &Das::DB::Log_Event_Item::set_category);
+    load_to_setter(arg, item, &Das::DB::Log_Event_Item::set_text);
     arg.endStructure();
     return arg;
 }
@@ -197,10 +197,10 @@ QDBusArgument &operator<<(QDBusArgument &arg, const Das::Device_Item_Value &item
 {
     QByteArray data;
     QDataStream ds(&data, QIODevice::WriteOnly);
-    ds << item.raw() << item.display();
+    ds << item.raw_value() << item.value();
 
     arg.beginStructure();
-    arg << item.device_item_id() << data;
+    arg << item.item_id() << data;
     arg.endStructure();
     return arg;
 }
@@ -210,7 +210,7 @@ const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Device_Item_Value
     QByteArray data;
 
     arg.beginStructure();
-    load_to_setter(arg, item, &Das::Device_Item_Value::set_device_item_id);
+    load_to_setter(arg, item, &Das::Device_Item_Value::set_item_id);
     arg >> data;
     arg.endStructure();
 
@@ -218,8 +218,8 @@ const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Device_Item_Value
     QDataStream ds(&data, QIODevice::ReadOnly);
     ds >> raw_value >> value;
 
-    item.set_raw(raw_value);
-    item.set_display(value);
+    item.set_raw_value(raw_value);
+    item.set_value(value);
     return arg;
 }
 

@@ -13,7 +13,7 @@
 #include <plus/das/status_helper.h>
 
 namespace Helpz {
-namespace Database {
+namespace DB {
 class Base;
 }
 }
@@ -30,8 +30,7 @@ public:
 
     void connected(const Scheme_Info& scheme);
     void disconnected(const Scheme_Info& scheme, bool just_now);
-    void add_status(const Scheme_Info& scheme, const DIG_Status &item);
-    void remove_status(const Scheme_Info& scheme, const DIG_Status& item);
+    void change_status(const Scheme_Info& scheme, const DIG_Status &item);
 
     void send_event_messages(const Scheme_Info &scheme, const QVector<Log_Event_Item> &event_pack);
 private:

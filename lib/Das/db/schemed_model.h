@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class Schemed_Model
 {
@@ -23,7 +23,7 @@ private:
     uint32_t scheme_id_;
 };
 
-} // namespace Database
+} // namespace DB
 } // namespace Das
 
 #endif // DAS_DATABASE_SCHEMED_MODEL_H

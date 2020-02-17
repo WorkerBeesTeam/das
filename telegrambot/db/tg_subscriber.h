@@ -6,7 +6,7 @@
 #include <Das/daslib_global.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Tg_Subscriber
 {
@@ -28,9 +28,9 @@ private:
     qint64 chat_id_;
 };
 
-} // namespace Database
+} // namespace DB
 
-using Tg_Subscriber = Database::Tg_Subscriber;
+using Tg_Subscriber = DB::Tg_Subscriber;
 
 } // namespace Das
 

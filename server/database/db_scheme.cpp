@@ -16,12 +16,12 @@
 #include "db_scheme.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
-using namespace Helpz::Database;
+using namespace Helpz::DB;
 
-scheme::scheme(const QString &name, Helpz::Database::Thread* db_thread) :
-    Base(Helpz::Database::Connection_Info::common(), name),
+scheme::scheme(const QString &name, Helpz::DB::Thread* db_thread) :
+    Base(Helpz::DB::Connection_Info::common(), name),
     db_thread_(db_thread)
 {}
 
@@ -51,24 +51,23 @@ QDateTime scheme::dateFromMsec(qint64 date_ms, const QTimeZone &tz) {
 
 
 
-void scheme::deffered_set_mode(uint32_t scheme_id, uint32_t mode_id, uint32_t group_id)
+void scheme::deffered_set_mode(const DIG_Mode& mode)
 {
-    db_thread_->add([scheme_id, mode_id, group_id](Base* db)
+    db_thread_->add([mode](Base* db)
     {
-        Table table = db_table<DIG_Mode_Item>();
-        table.field_names().erase(table.field_names().begin(), table.field_names().begin() + 2);
-        table.field_names().removeLast(); // remove scheme_id
+        Table table = db_table<DIG_Mode>();
 
-        QVariantList values{mode_id};
+        const QVariantList values { mode.timestamp_msecs(), mode.user_id(), mode.mode_id() };
+        const QString where = "scheme_id = " + QString::number(mode.scheme_id())
+                        + " AND group_id = " + QString::number(mode.group_id());
+        const std::vector<uint> field_ids{DIG_Mode::COL_timestamp_msecs, DIG_Mode::COL_user_id, DIG_Mode::COL_mode_id};
 
-        const QString where = "scheme_id = " + QString::number(scheme_id) + " AND group_id = " + QString::number(group_id);
-        const QSqlQuery q = db->update(table, values, where);
+        const QSqlQuery q = db->update(table, values, where, field_ids);
         if (!q.isActive() || q.numRowsAffected() <= 0)
         {
-            table = db_table<DIG_Mode_Item>();
             table.field_names().removeFirst(); // remove id
 
-            QVariantList ins_values{ group_id, mode_id, scheme_id };
+            QVariantList ins_values{ mode.timestamp_msecs(), mode.user_id(), mode.group_id(), mode.mode_id(), mode.scheme_id() };
             if (!db->insert(table, ins_values))
             {
                 // TODO: do something
@@ -80,7 +79,7 @@ void scheme::deffered_set_mode(uint32_t scheme_id, uint32_t mode_id, uint32_t gr
 /*
 void scheme::deffered_save_status(uint32_t scheme_id, uint32_t group_id, uint32_t info_id, const QStringList &args)
 {
-    Helpz::Database::Table table = {db_table_name<DIG_Status>(db_name(scheme_id)), {}, {"group_id", "status_id", "args"}};
+    Helpz::DB::Table table = {db_table_name<DIG_Status>(db_name(scheme_id)), {}, {"group_id", "status_id", "args"}};
     QString sql = insert_query(table, 3);
 
     std::vector<QVariantList> values_pack{{group_id, info_id, args.join(';')}};
@@ -102,15 +101,24 @@ void scheme::deffered_save_dig_param_value(uint32_t scheme_id, const QVector<DIG
     db_thread_->add([scheme_id, pack](Base* db)
     {
         Table table = db_table<DIG_Param_Value>();
-        table.field_names().erase(table.field_names().begin(), table.field_names().begin() + 2);
-        table.field_names().removeLast(); // remove scheme_id
+
+        using T = DIG_Param_Value;
+        QStringList field_names{
+            table.field_names().at(T::COL_timestamp_msecs),
+            table.field_names().at(T::COL_user_id),
+            table.field_names().at(T::COL_value)
+        };
+
+        table.field_names() = std::move(field_names);
 
         const QString where = "scheme_id = " + QString::number(scheme_id) + " AND group_param_id = ";
-        QVariantList values{QVariant()};
+        QVariantList values{QVariant(), QVariant(), QVariant()};
 
         for(const DIG_Param_Value& item: pack)
         {
-            values.front() = item.value();
+            values.front() = item.timestamp_msecs();
+            values[1] = item.user_id();
+            values.back() = item.value();
 
             const QSqlQuery q = db->update(table, values, where + QString::number(item.group_param_id()));
             if (!q.isActive() || q.numRowsAffected() <= 0)
@@ -118,7 +126,8 @@ void scheme::deffered_save_dig_param_value(uint32_t scheme_id, const QVector<DIG
                 Table ins_table = db_table<DIG_Param_Value>();
                 ins_table.field_names().removeFirst(); // remove id
 
-                QVariantList ins_values{ item.group_param_id(), item.value(), scheme_id };
+                const QVariantList ins_values{ item.timestamp_msecs(), item.user_id(), item.group_param_id(),
+                                               item.value(), scheme_id };
                 if (!db->insert(ins_table, ins_values))
                 {
                     // TODO: do something
@@ -188,14 +197,14 @@ void scheme::deferred_clear_status(uint32_t scheme_id)
 
 // -----------------------------------------------------------------------------------
 
-/*static*/ std::shared_ptr<global> global::open(const QString &name, Helpz::Database::Thread* db_thread)
+/*static*/ std::shared_ptr<global> global::open(const QString &name, Helpz::DB::Thread* db_thread)
 {
     std::stringstream s; s << std::this_thread::get_id();
 
     return std::make_shared<global>(name + '_' + QString::fromStdString(s.str()), db_thread);
 }
 
-global::global(const QString &name, Helpz::Database::Thread* db_thread) :
+global::global(const QString &name, Helpz::DB::Thread* db_thread) :
     scheme(name, db_thread)
 {}
 
@@ -321,5 +330,5 @@ void global::check_auth(const Authentication_Info &auth_info, Server::Protocol_B
                                     static_cast<uint>(hash.size()));
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

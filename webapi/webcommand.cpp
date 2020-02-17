@@ -33,7 +33,7 @@ void WebCommand::write_command(std::shared_ptr<Network::Websocket_Client> client
         break;
 
     case Das::WS_WRITE_TO_DEV_ITEM:
-    case Das::WS_CHANGE_DIG_MODE_ITEM:
+    case Das::WS_CHANGE_DIG_MODE:
     case Das::WS_CHANGE_DIG_PARAM_VALUES:
     case Das::WS_EXEC_SCRIPT:
     case Das::WS_RESTART:

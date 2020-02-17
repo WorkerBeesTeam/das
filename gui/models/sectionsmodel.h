@@ -79,7 +79,7 @@ public:
         return combo_values;
     }
 private slots:
-    void groupStatusChanged(uint32_t status);
+    void groupStatusChanged(const DIG_Status& status);
 private:
     void newValue(Device_Item *item);
 

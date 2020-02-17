@@ -34,7 +34,7 @@
 namespace Das {
 namespace Rest {
 
-using namespace Helpz::Database;
+using namespace Helpz::DB;
 
 class Multipart_Form_Data_Parser
 {
@@ -348,6 +348,16 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
             QVector<Device_Item_Value> values = db_build_list<Device_Item_Value>(
                         db, "WHERE scheme_id=" + QString::number(scheme.id()));
 
+            auto fill_obj = [](QJsonObject& obj, const Device_Item_Value& value)
+            {
+                obj.insert("ts", value.timestamp_msecs());
+                obj.insert("user_id", static_cast<int>(value.user_id()));
+                obj.insert("raw", QJsonValue::fromVariant(value.raw_value()));
+                obj.insert("display", QJsonValue::fromVariant(value.value()));
+                obj.insert("raw_value", QJsonValue::fromVariant(value.raw_value()));
+                obj.insert("value", QJsonValue::fromVariant(value.value()));
+            };
+
             QJsonArray j_array;
             unsaved_values_task.get();
             QVector<Device_Item_Value>::iterator unsaved_it;
@@ -355,21 +365,19 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
             for (const Device_Item_Value& value: values)
             {
                 QJsonObject j_obj;
-                j_obj.insert("id", static_cast<int>(value.device_item_id()));
+                j_obj.insert("id", static_cast<int>(value.item_id()));
 
                 unsaved_it = unsaved_values.begin();
                 while (true)
                 {
                     if (unsaved_it == unsaved_values.end())
                     {
-                        j_obj.insert("raw", QJsonValue::fromVariant(value.raw()));
-                        j_obj.insert("display", QJsonValue::fromVariant(value.display()));
+                        fill_obj(j_obj, value);
                         break;
                     }
-                    else if (unsaved_it->device_item_id() == value.device_item_id())
+                    else if (unsaved_it->item_id() == value.item_id())
                     {
-                        j_obj.insert("raw", QJsonValue::fromVariant(unsaved_it->raw()));
-                        j_obj.insert("display", QJsonValue::fromVariant(unsaved_it->display()));
+                        fill_obj(j_obj, *unsaved_it);
                         unsaved_values.erase(unsaved_it);
                         break;
                     }

@@ -12,7 +12,7 @@ namespace Das {
 
 class Scripted_Scheme;
 
-namespace Ver_2_4 {
+namespace Ver {
 namespace Client {
 
 using namespace Das::Client;
@@ -26,10 +26,9 @@ public:
     Log_Sender& log_sender();
     Structure_Synchronizer& structure_sync();
 
-    void send_mode(uint32_t user_id, uint mode_id, uint32_t group_id);
-    void send_status_added(uint32_t group_id, uint32_t info_id, const QStringList& args, uint32_t);
-    void send_status_removed(uint32_t group_id, uint32_t info_id, uint32_t);
-    void send_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack);
+    void send_mode(const DIG_Mode &mode);
+    void send_status_changed(const DIG_Status &status);
+//    void send_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack);
 
 //    bool modify_scheme(uint32_t user_id, quint8 struct_type, QIODevice* data_dev);
 private:
@@ -37,7 +36,6 @@ private:
 
     void restart(uint32_t user_id);
     void write_to_item(uint32_t user_id, uint32_t item_id, const QVariant& raw_data);
-    void set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
     void set_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack);
     void exec_script_command(uint32_t user_id, const QString& script, bool is_function, const QVariantList& arguments);
 
@@ -62,7 +60,7 @@ private:
 };
 
 } // namespace Client
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das
 
 #endif // DAS_PROTOCOL_LATEST_H

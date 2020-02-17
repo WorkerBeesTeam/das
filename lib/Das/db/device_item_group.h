@@ -9,7 +9,7 @@
 #include <Das/db/schemed_model.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Device_Item_Group : public Schemed_Model
 {
@@ -46,7 +46,7 @@ private:
 QDataStream &operator>>(QDataStream &ds, Device_Item_Group& group);
 QDataStream &operator<<(QDataStream &ds, const Device_Item_Group& group);
 
-} // namespace Database
+} // namespace DB
 } // namespace Das
 
 #endif // DAS_DATABASE_DEVICE_ITEM_GROUP_H

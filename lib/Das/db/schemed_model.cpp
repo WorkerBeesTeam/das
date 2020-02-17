@@ -1,7 +1,7 @@
 #include "schemed_model.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 Schemed_Model::Schemed_Model(uint32_t scheme_id) :
     scheme_id_(scheme_id)
@@ -14,5 +14,5 @@ void Schemed_Model::set_default_scheme_id(uint32_t scheme_id) { default_scheme_i
 uint32_t Schemed_Model::scheme_id() const { return scheme_id_; }
 void Schemed_Model::set_scheme_id(uint32_t scheme_id) { scheme_id_ = scheme_id; }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

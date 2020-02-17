@@ -36,7 +36,10 @@ void One_Wire_Therm_Task::read_therm_data(Device *dev)
     int idx;
     double t;
     bool ok;
-    std::map<Device_Item*, QVariant> new_values;
+    std::map<Device_Item*, Device::Data_Item> new_values;
+    std::vector<Device_Item*> device_items_disconected;
+
+    const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
 
     for (Device_Item * item: items)
     {
@@ -49,7 +52,7 @@ void One_Wire_Therm_Task::read_therm_data(Device *dev)
                 {
                     qCWarning(OneWireThermLog) << "Read failed unit: " << unit << file_.fileName() << file_.errorString();
                 }
-                new_values.emplace(item, QVariant());
+                device_items_disconected.push_back(item);
             }
             else
             {
@@ -62,14 +65,17 @@ void One_Wire_Therm_Task::read_therm_data(Device *dev)
                         t = data_lines.at(1).mid(idx + 2).toInt(&ok) / 1000.;
                         if (ok)
                         {
-                            new_values.emplace(item, QVariant(t));
+                            Device::Data_Item data_item{0, timestamp_msecs, t};
+                            new_values.emplace(item, std::move(data_item));
                         }
+                        else
+                            device_items_disconected.push_back(item);
                     }
+                    else
+                        device_items_disconected.push_back(item);
                 }
                 else
-                {
-                    new_values.emplace(item, QVariant());
-                }
+                    device_items_disconected.push_back(item);
                 file_.close();
             }
         }
@@ -78,7 +84,13 @@ void One_Wire_Therm_Task::read_therm_data(Device *dev)
     if (!new_values.empty())
     {
         QMetaObject::invokeMethod(dev, "set_device_items_values",
-                                  QArgument<std::map<Device_Item*, QVariant>>("std::map<Device_Item*, QVariant>", new_values));
+                                  QArgument<std::map<Device_Item*, Device::Data_Item>>("std::map<Device_Item*, Device::Data_Item>", new_values));
+    }
+
+    if (!device_items_disconected.empty())
+    {
+        QMetaObject::invokeMethod(dev, "set_device_items_disconnect", Qt::QueuedConnection,
+                                  Q_ARG(std::vector<Device_Item*>, device_items_disconected));
     }
 }
 

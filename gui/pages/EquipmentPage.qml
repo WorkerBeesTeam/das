@@ -53,7 +53,7 @@ SectionsView {
                 }
             }
 
-            property var grp_model: model.dig_mode_iteml
+            property var grp_model: model.model
 
             ListView {
                 id: grp_view

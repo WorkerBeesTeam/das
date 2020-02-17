@@ -6,7 +6,7 @@
 #include <Das/daslib_global.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Tg_User
 {
@@ -44,9 +44,9 @@ private:
     QString first_name_, last_name_, user_name_, lang_;
 };
 
-} // namespace Database
+} // namespace DB
 
-using Tg_User = Database::Tg_User;
+using Tg_User = DB::Tg_User;
 
 } // namespace Das
 

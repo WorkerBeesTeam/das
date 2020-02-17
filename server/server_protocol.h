@@ -10,7 +10,7 @@
 #include "server_protocol_base.h"
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Server {
 
 using namespace Das::Server;
@@ -41,9 +41,8 @@ private:
     void print_version(QIODevice &data_dev);
     void set_time_offset(const QDateTime& scheme_time, const QTimeZone &timeZone);
 
-    void mode_changed(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
-    void status_added(const DIG_Status& item);
-    void status_removed(uint32_t group_id, uint32_t status_id);
+    void mode_changed(DIG_Mode &&mode);
+    void status_changed(const DIG_Status& item);
     void dig_param_values_changed(uint32_t user_id, const QVector<DIG_Param_Value> &pack);
 
     bool is_copy_;
@@ -52,7 +51,7 @@ private:
 };
 
 } // namespace Server
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das
 
 #endif // DAS_SERVER_PROTOCOL_H

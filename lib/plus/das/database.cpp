@@ -9,7 +9,7 @@
 #include <Das/db/dig_param_value.h>
 #include <Das/db/dig_status.h>
 #include <Das/db/device_item_value.h>
-#include <Das/db/dig_mode_item.h>
+#include <Das/db/dig_mode.h>
 #include <Das/type_managers.h>
 #include <Das/scheme.h>
 #include <Das/device.h>
@@ -19,15 +19,15 @@
 #include "database.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
-using namespace Helpz::Database;
+using namespace Helpz::DB;
 
 Helper::Helper(QObject *parent) :
-    QObject(parent), Helpz::Database::Base::Base{} {}
+    QObject(parent), Helpz::DB::Base::Base{} {}
 
-Helper::Helper(const Helpz::Database::Connection_Info& info, const QString &name, QObject *parent) :
-    QObject(parent), Helpz::Database::Base::Base{info, name} {}
+Helper::Helper(const Helpz::DB::Connection_Info& info, const QString &name, QObject *parent) :
+    QObject(parent), Helpz::DB::Base::Base{info, name} {}
 
 /*static*/ QString Helper::get_default_suffix()
 {
@@ -51,17 +51,20 @@ QString Helper::get_default_where_suffix()
     return db_build_list<Code_Item>(db, get_default_where_suffix());
 }
 
-bool Helper::set_mode(uint32_t mode_id, uint32_t group_id)
+bool Helper::set_mode(const DIG_Mode &mode)
 {
     Base& db = Base::get_thread_local_instance();
-    Table table = db_table<DIG_Mode_Item>();
+    Table table = db_table<DIG_Mode>();
 
-    const QString where = get_default_suffix() + " AND group_id = " + QString::number(group_id);
-    const QSqlQuery q = db.update(table, { mode_id }, where, {DIG_Mode_Item::COL_mode_id});
+    const QVariantList values { mode.timestamp_msecs(), mode.user_id(), mode.mode_id() };
+    const QString where = get_default_suffix() + " AND group_id = " + QString::number(mode.group_id());
+    const std::vector<uint> field_ids{DIG_Mode::COL_timestamp_msecs, DIG_Mode::COL_user_id, DIG_Mode::COL_mode_id};
+
+    const QSqlQuery q = db.update(table, values, where, field_ids);
     if (!q.isActive() || q.numRowsAffected() <= 0)
     {
         table.field_names().removeFirst();
-        if (!db.insert(table, { group_id, mode_id, Schemed_Model::default_scheme_id() }))
+        if (!db.insert(table, { mode.timestamp_msecs(), mode.user_id(), mode.group_id(), mode.mode_id(), Schemed_Model::default_scheme_id() }))
             return false;
     }
     return true;
@@ -71,7 +74,7 @@ void Helper::fill_types(Type_Managers *type_mng)
 {
     type_mng->device_item_type_mng_.set(db_build_list<Device_Item_Type>(*this, get_default_where_suffix()));
     type_mng->group_type_mng_.set(db_build_list<DIG_Type>(*this, get_default_where_suffix()));
-    type_mng->dig_mode_mng_.set(db_build_list<DIG_Mode>(*this, get_default_where_suffix()));
+    type_mng->dig_mode_type_mng_.set(db_build_list<DIG_Mode_Type>(*this, get_default_where_suffix()));
     type_mng->sign_mng_.set(db_build_list<Sign_Type>(*this, get_default_where_suffix()));
     type_mng->param_mng_.set(db_build_list<DIG_Param_Type>(*this, get_default_where_suffix() + " ORDER BY parent_id"));
     type_mng->dig_status_category_mng_.set(db_build_list<DIG_Status_Category>(*this, get_default_where_suffix()));
@@ -112,14 +115,14 @@ void Helper::fill_devices(Scheme* scheme, std::map<uint32_t, Device_item_Group*>
 
             for (int j = 0; j < device_item_values.size(); )
             {
-                if (device_item_values.at(j).device_item_id() != device_item.id())
+                if (device_item_values.at(j).item_id() != device_item.id())
                 {
                     ++j;
                     continue;
                 }
 
                 Device_Item_Value value = device_item_values.takeAt(j);
-                device_item.set_data(value.raw(), value.display());
+                device_item.set_data(value.raw_value(), value.value());
             }
 
             dev_item = dev->create_item(std::move(device_item));
@@ -162,10 +165,10 @@ void Helper::fill_section(Scheme* scheme, std::map<uint32_t, Device_item_Group*>
         groups = &tmp_groups;
 
     QVector<Section> sections = db_build_list<Section>(*this, get_default_where_suffix());
-    QVector<Database::Device_Item_Group> item_groups =
-            db_build_list<Database::Device_Item_Group>(*this, get_default_where_suffix() + " ORDER BY section_id ASC");
+    QVector<DB::Device_Item_Group> item_groups =
+            db_build_list<DB::Device_Item_Group>(*this, get_default_where_suffix() + " ORDER BY section_id ASC");
     del(db_table_name<DIG_Status>(), get_default_suffix());
-    QVector<DIG_Mode_Item> dig_mode_items = db_build_list<DIG_Mode_Item>(*this, get_default_where_suffix());
+    QVector<DIG_Mode> dig_modes = db_build_list<DIG_Mode>(*this, get_default_where_suffix());
     QVector<DIG_Param> dig_params = db_build_list<DIG_Param>(*this, get_default_where_suffix());
     QVector<DIG_Param_Value> dig_param_values = db_build_list<DIG_Param_Value>(*this, get_default_where_suffix());
     QString dig_param_value;
@@ -186,19 +189,20 @@ void Helper::fill_section(Scheme* scheme, std::map<uint32_t, Device_item_Group*>
                 continue;
             }
 
-            Database::Device_Item_Group item_group = item_groups.takeAt(i);
+            DB::Device_Item_Group item_group = item_groups.takeAt(i);
             group = sct->add_group(std::move(item_group), 0);
             groups->emplace(group->id(), group);
 
-            for (int j = 0; j < dig_mode_items.size(); )
+            for (int j = 0; j < dig_modes.size(); )
             {
-                if (dig_mode_items.at(j).group_id() != group->id())
+                if (dig_modes.at(j).group_id() != group->id())
                 {
                     ++j;
                     continue;
                 }
 
-                group->set_mode_id(dig_mode_items.takeAt(j).mode_id());
+                const DIG_Mode dig_mode = dig_modes.takeAt(j);
+                group->set_mode(dig_mode.mode_id(), dig_mode.user_id(), dig_mode.timestamp_msecs());
             }
 
             for (int j = 0; j < dig_params.size(); )
@@ -209,7 +213,7 @@ void Helper::fill_section(Scheme* scheme, std::map<uint32_t, Device_item_Group*>
                     continue;
                 }
 
-                DIG_Param dig_param = dig_params.takeAt(j);
+                const DIG_Param dig_param = dig_params.takeAt(j);
 
                 auto it = std::find_if(dig_param_values.begin(), dig_param_values.end(),
                                        [&dig_param](const DIG_Param_Value& param_value) { return param_value.group_param_id() == dig_param.id(); });
@@ -254,5 +258,5 @@ void Helper::init_scheme(Scheme *scheme, bool typesAlreadyFilled)
         group.second->finalize();
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

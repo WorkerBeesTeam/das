@@ -13,8 +13,7 @@ Dbus_Object::Dbus_Object(Worker* worker, const QString& service_name, const QStr
     DBus::Object_Base(service_name, object_path),
     worker_(worker)
 {
-    connect(worker, &Worker::status_added, this, &Dbus_Object::emit_status_added);
-    connect(worker, &Worker::status_removed, this, &Dbus_Object::emit_status_removed);
+    connect(worker, &Worker::status_changed, this, &Dbus_Object::emit_status_changed);
 }
 
 bool Dbus_Object::can_restart(bool stop)
@@ -76,13 +75,13 @@ void Dbus_Object::send_message_to_scheme(uint32_t /*scheme_id*/, uint8_t ws_cmd,
         switch (ws_cmd)
         {
         case WS_WRITE_TO_DEV_ITEM:        Helpz::apply_parse(ds, &Dbus_Object::write_to_item, this); break;
-        case WS_CHANGE_DIG_MODE_ITEM:        Helpz::apply_parse(ds, &Worker::set_mode, worker_); break;
-        case WS_CHANGE_DIG_PARAM_VALUES:Helpz::apply_parse(ds, &Dbus_Object::set_dig_param_values, this); break;
+        case WS_CHANGE_DIG_MODE:          Helpz::apply_parse(ds, &Worker::set_mode, worker_); break;
+        case WS_CHANGE_DIG_PARAM_VALUES:  Helpz::apply_parse(ds, &Dbus_Object::set_dig_param_values, this); break;
         case WS_EXEC_SCRIPT:              Helpz::apply_parse(ds, &Dbus_Object::parse_script_command, this, &ds); break;
         case WS_RESTART:                  worker_->restart_service_object(user_id); break;
         case WS_STRUCT_MODIFY:
             Helpz::apply_parse(ds, &Worker_Structure_Synchronizer::process_modify_message, worker_->structure_sync(),
-                               ds.device(), Database::Schemed_Model::default_scheme_id(), nullptr);
+                               ds.device(), DB::Schemed_Model::default_scheme_id(), nullptr);
             break;
 
         default:
@@ -132,14 +131,9 @@ void Dbus_Object::write_item_file(uint32_t /*scheme_id*/, uint32_t user_id, uint
     QMetaObject::invokeMethod(worker_->prj(), "write_to_item_file", Qt::QueuedConnection, Q_ARG(QString, file_path));
 }
 
-void Dbus_Object::emit_status_added(uint32_t group_id, uint32_t info_id, const QStringList& args, uint32_t /*user_id*/)
+void Dbus_Object::emit_status_changed(const DIG_Status &status)
 {
-    emit status_inserted(worker_->scheme_info(), group_id, info_id, args);
-}
-
-void Dbus_Object::emit_status_removed(uint32_t group_id, uint32_t info_id, uint32_t /*user_id*/)
-{
-    emit status_removed(worker_->scheme_info(), group_id, info_id);
+    emit status_changed(worker_->scheme_info(), status);
 }
 
 void Dbus_Object::write_to_item(uint32_t user_id, uint32_t item_id, const QVariant& raw_data)

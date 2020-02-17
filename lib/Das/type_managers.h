@@ -9,7 +9,7 @@
 #include "db/device_item_type.h"
 #include "db/dig_status_type.h"
 #include "db/dig_param_type.h"
-#include "db/dig_mode.h"
+#include "db/dig_mode_type.h"
 #include "db/dig_status_category.h"
 #include "db/dig_type.h"
 #include "db/plugin_type.h"
@@ -23,7 +23,7 @@ struct DAS_LIBRARY_SHARED_EXPORT Type_Managers
     Status_Manager status_mng_;
     DIG_Param_Type_Manager param_mng_;
     Device_Item_Type_Manager device_item_type_mng_;
-    DIG_Mode_Manager dig_mode_mng_;
+    DIG_Mode_Type_Manager dig_mode_type_mng_;
     DIG_Status_Category_Manager dig_status_category_mng_;
     DIG_Type_Manager group_type_mng_;
 

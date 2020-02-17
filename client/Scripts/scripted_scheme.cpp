@@ -114,8 +114,7 @@ Scripted_Scheme::Scripted_Scheme(Worker* worker, Helpz::ConsoleReader *consoleRe
 
     using T = Scripted_Scheme;
     connect(this, &T::mode_changed, worker, &Worker::mode_changed, Qt::QueuedConnection);
-    connect(this, &T::status_added, worker, &Worker::status_added, Qt::QueuedConnection);
-    connect(this, &T::status_removed, worker, &Worker::status_removed, Qt::QueuedConnection);
+    connect(this, &T::status_changed, worker, &Worker::status_changed, Qt::QueuedConnection);
 //    connect(worker, &Worker::dumpSectionsInfo, this, &T::dumpInfo, Qt::BlockingQueuedConnection);
 
     connect(this, &Scripted_Scheme::day_time_changed, &day_time_, &DayTimeHelper::init, Qt::QueuedConnection);
@@ -163,10 +162,10 @@ void Scripted_Scheme::reinitialization()
     script_engine_->popContext();
     /*QScriptContext* ctx = */script_engine_->pushContext();
 
-    std::unique_ptr<Database::Helper> db(new Database::Helper(Helpz::Database::Connection_Info::common(),
+    std::unique_ptr<DB::Helper> db(new DB::Helper(Helpz::DB::Connection_Info::common(),
                                                               "SchemeManager_" + QString::number((quintptr)this)));
     db->fill_types(this);
-    const QVector<Code_Item> code_vect = Database::Helper::get_code_item_vect();
+    const QVector<Code_Item> code_vect = DB::Helper::get_code_item_vect();
     scripts_initialization(code_vect);
 
     day_time_.stop();
@@ -189,10 +188,9 @@ void Scripted_Scheme::reinitialization()
         for (Device_item_Group* group: sct->groups())
         {
             connect(group, &Device_item_Group::item_changed, this, &Scripted_Scheme::item_changed);
-            connect(group, &Device_item_Group::mode_changed, this, &Scripted_Scheme::dig_mode_item_changed);
+            connect(group, &Device_item_Group::mode_changed, this, &Scripted_Scheme::dig_mode_changed);
             connect(group, &Device_item_Group::param_changed, this, &Scripted_Scheme::dig_param_changed);
-            connect(group, &Device_item_Group::status_added, this, &Scripted_Scheme::status_added);
-            connect(group, &Device_item_Group::status_removed, this, &Scripted_Scheme::status_removed);
+            connect(group, &Device_item_Group::status_changed, this, &Scripted_Scheme::status_changed);
 
             connect(group, &Device_item_Group::connection_state_change, this, &Scripted_Scheme::sct_connection_state_change);
 
@@ -275,7 +273,7 @@ void Scripted_Scheme::register_types()
 }
 
 template<typename T>
-void init_types(QScriptValue& parent, const QString& prop_name, Database::Base_Type_Manager<T>& type_mng)
+void init_types(QScriptValue& parent, const QString& prop_name, DB::Base_Type_Manager<T>& type_mng)
 {
     QScriptValue types_obj = parent.property(prop_name);
     QString name;
@@ -343,7 +341,7 @@ void Scripted_Scheme::scripts_initialization(const QVector<Code_Item>& code_vect
     QScriptValue types = api.property("type");
     init_types(types, "item", device_item_type_mng_);
     init_types(types, "group", group_type_mng_);
-    init_types(types, "mode", dig_mode_mng_);
+    init_types(types, "mode", dig_mode_type_mng_);
     init_types(types, "param", param_mng_);
 
     // Begin load user scripts
@@ -534,22 +532,14 @@ QScriptValue Scripted_Scheme::call_function(int handler_type, const QScriptValue
     return QScriptValue();
 }
 
-void Scripted_Scheme::dig_mode_item_changed(uint32_t user_id, uint32_t mode_id, uint32_t group_id)
+void Scripted_Scheme::dig_mode_changed(uint32_t user_id, uint32_t mode_id, uint32_t group_id)
 {
-    QMetaObject::invokeMethod(worker_->dbus(), "dig_mode_item_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(uint32_t, mode_id), Q_ARG(uint32_t, group_id));
-
-    auto proto = worker_->net_protocol();
-    if (proto)
-    {
-        proto->send_mode(user_id, mode_id, group_id);
-    }
-
     auto group = static_cast<Device_item_Group*>(sender());
     if (!group)
-    {
         return;
-    }
+
+    emit dig_mode_available(group->mode_data());
+
     QScriptValue groupObj = script_engine_->newQObject(group);
 
     call_function(FUNC_CHANGED_MODE, { groupObj, mode_id, user_id });
@@ -562,7 +552,7 @@ void Scripted_Scheme::dig_param_changed(Param* param, uint32_t user_id)
     if (!group)
         return;
 
-    DIG_Param_Value dig_param_value{param->id(), param->value().toString()};
+    DIG_Param_Value dig_param_value{DB::Log_Base_Item::current_timestamp(), user_id, param->id(), param->value().toString()};
     emit param_value_changed(dig_param_value);
 
     call_function(FUNC_COUNT + group->type_id(), { script_engine_->newQObject(group), QScriptValue(), user_id });
@@ -572,11 +562,11 @@ QElapsedTimer t;
 void Scripted_Scheme::item_changed(Device_Item *item, uint32_t user_id, const QVariant& old_raw_value)
 {
     if (!item)
-    {
         return;
-    }
 
     auto group = static_cast<Device_item_Group*>(sender());
+    if (!group)
+        return;
 
     uint8_t save_algorithm = device_item_type_mng_.save_algorithm(item->type_id());
     if (save_algorithm == Device_Item_Type::SA_INVALID)
@@ -584,14 +574,9 @@ void Scripted_Scheme::item_changed(Device_Item *item, uint32_t user_id, const QV
         qWarning(SchemeLog).nospace() << user_id << "|Неправильный параметр сохранения: " << item->toString();
     }
     bool immediately = save_algorithm == Device_Item_Type::SA_IMMEDIATELY;
-    Log_Value_Item log_value_item{ QDateTime::currentDateTimeUtc().toMSecsSinceEpoch(), user_id, immediately,
-                item->id(), item->raw_value(), item->value() };
+    Log_Value_Item log_value_item = reinterpret_cast<const Log_Value_Item&>(item->data());
+    log_value_item.set_need_to_save(immediately);
     emit log_item_available(log_value_item);
-
-    if (!group)
-    {
-        return;
-    }
 
     QScriptValue groupObj = script_engine_->newQObject(group);
     QScriptValue itemObj = script_engine_->newQObject(item);
@@ -704,9 +689,9 @@ QVector<DIG_Status> Scripted_Scheme::get_group_statuses() const
     {
         for (const Device_item_Group* group: sct->groups())
         {
-            for (auto it: group->get_statuses())
+            for (const DIG_Status& status: group->get_statuses())
             {
-                status_vect.push_back(DIG_Status{0, group->id(), it.first, it.second});
+                status_vect.push_back(status);
             }
         }
     }
@@ -721,7 +706,7 @@ QVector<Device_Item_Value> Scripted_Scheme::get_device_item_values() const
     {
         for (const Device_Item* item: dev->items())
         {
-            values.push_back(Device_Item_Value{item->id(), item->raw_value(), item->value()});
+            values.push_back(item->data());
         }
     }
     return values;

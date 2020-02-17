@@ -1,7 +1,7 @@
 #include "save_timer.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 Save_Timer::Save_Timer(uint32_t id, uint32_t interval) :
     id_(id), interval_(interval)
@@ -38,5 +38,5 @@ QDataStream& operator<<(QDataStream& ds, const Save_Timer& item)
     return ds << item.id() << item.interval();
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

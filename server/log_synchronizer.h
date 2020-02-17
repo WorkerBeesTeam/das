@@ -15,7 +15,7 @@
 #include "base_synchronizer.h"
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Server {
 
 using namespace Das::Server;
@@ -31,7 +31,7 @@ public:
     void check();
     void process_log_data(QIODevice& data_dev, uint8_t msg_id);
 protected:
-    Helpz::Database::Thread* log_thread();
+    Helpz::DB::Thread* log_thread();
 
     virtual QString get_param_name() const = 0;
     virtual void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) = 0;
@@ -74,6 +74,7 @@ public:
     void check();
 
     void process_data(Log_Type_Wrapper type_id, QIODevice* data_dev, uint8_t msg_id);
+    void process_pack(Log_Type_Wrapper type_id, QIODevice* data_dev, uint8_t msg_id);
     Log_Sync_Item* log_sync_item(uint8_t type_id);
     void request_log_data(uint8_t type_id);
 
@@ -82,7 +83,7 @@ public:
 };
 
 } // namespace Server
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das
 
 #endif // DAS_LOG_SYNCHRONIZER_H

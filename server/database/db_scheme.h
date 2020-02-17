@@ -30,17 +30,17 @@
 #include "../server_protocol.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
-class scheme : public Helpz::Database::Base
+class scheme : public Helpz::DB::Base
 {
 public:
-    scheme(const QString& name, Helpz::Database::Thread* db_thread);
+    scheme(const QString& name, Helpz::DB::Thread* db_thread);
 public:
 
     /*std::unique_ptr<LogSyncInfo[]> getLastLogSyncInfo(const QString &name)
     {
-        Helpz::Database::Table table = {db_name(name) + ".das_settings", {}, {"value"}};
+        Helpz::DB::Table table = {db_name(name) + ".das_settings", {}, {"value"}};
         QString where = "WHERE param = '%1'";
 
         auto get_sync_info = [&](uint8_t log_type, LogSyncInfo& info)
@@ -143,7 +143,7 @@ public:
 //        db_thread_->add_pending_query(valueLogSql(name), std::move(values_pack));
 //    }
 
-    void deffered_set_mode(uint32_t scheme_id, uint32_t mode_id, uint32_t group_id);
+    void deffered_set_mode(const DIG_Mode &mode);
 //    void deffered_save_status(uint32_t scheme_id, uint32_t group_id, uint32_t info_id, const QStringList& args);
 //    void deffered_remove_status(uint32_t scheme_id, uint32_t group_id, uint32_t info_id);
     void deffered_save_dig_param_value(uint32_t scheme_id, const QVector<DIG_Param_Value> &pack);
@@ -152,15 +152,15 @@ public:
 //    QVector<Code_Item> get_code(uint32_t scheme_id);
 //    void deferred_clear_status(uint32_t scheme_id);
 private:
-    Helpz::Database::Thread* db_thread_;
+    Helpz::DB::Thread* db_thread_;
 };
 
 class global : public scheme
 {
 public:
-    static std::shared_ptr<global> open(const QString& name, Helpz::Database::Thread* db_thread);
+    static std::shared_ptr<global> open(const QString& name, Helpz::DB::Thread* db_thread);
 
-    global(const QString& name, Helpz::Database::Thread* db_thread);
+    global(const QString& name, Helpz::DB::Thread* db_thread);
     using scheme::scheme;
 
     QVector<QPair<QUuid, QString>> getUserDevices(const QString& login, const QString& password);
@@ -169,7 +169,7 @@ private:
     static bool compare_django_passhash(const QString &password, const QByteArray& passHashData);
 };
 
-} // namespace Database
+} // namespace DB
 } // namespace Das
 
 #endif // DAS_DATABASE_SCHEME_H

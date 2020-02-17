@@ -43,8 +43,8 @@ private:
 signals:
 private slots:
 private:
-    Helpz::Database::Connection_Info* db_conn_info_;
-    Helpz::Database::Thread* db_pending_thread_;
+    Helpz::DB::Connection_Info* db_conn_info_;
+    Helpz::DB::Thread* db_pending_thread_;
 
     Dbus_Handler* dbus_handler_;
     DBus::Interface* dbus_;

@@ -12,7 +12,7 @@
 #include "client_protocol.h"
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Client {
 
 using namespace Das::Client;
@@ -33,7 +33,7 @@ private:
 };
 
 } // namespace Client
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das
 
 #endif // DAS_LOG_SENDER_H

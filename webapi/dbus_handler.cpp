@@ -55,10 +55,10 @@ void Dbus_Handler::dig_param_values_changed(const Scheme_Info& scheme, const QVe
                               Q_ARG(Scheme_Info, scheme), Q_ARG(QVector<DIG_Param_Value>, pack));
 }
 
-void Dbus_Handler::dig_mode_item_changed(const Scheme_Info& scheme, uint32_t mode_id, uint32_t group_id)
+void Dbus_Handler::dig_mode_changed(const Scheme_Info& scheme, const DIG_Mode &mode)
 {
     QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "sendModeChanged", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, scheme), Q_ARG(uint32_t, mode_id), Q_ARG(uint32_t, group_id));
+                              Q_ARG(Scheme_Info, scheme), Q_ARG(DIG_Mode, mode));
 }
 
 void Dbus_Handler::status_inserted(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id, const QStringList& args)

@@ -11,51 +11,44 @@ namespace Das {
 
 Device_Item::Device_Item(uint32_t id, const QString& name, uint32_t type_id, const QVariantList& extra_values,
                        uint32_t parent_id, uint32_t device_id, uint32_t group_id) :
-    QObject(), Database::Device_Item(id, name, type_id, extra_values, parent_id, device_id, group_id),
-    connection_state_(true), device_(nullptr), group_(nullptr), parent_(nullptr)
+    QObject(), DB::Device_Item(id, name, type_id, extra_values, parent_id, device_id, group_id),
+    device_(nullptr), group_(nullptr), parent_(nullptr)
 {
+    set_connection_state(true, true);
 }
 
 Device_Item::Device_Item(Device_Item &&o) :
-    QObject(), Database::Device_Item(std::move(o)),
-    connection_state_(std::move(o.connection_state_)),
+    QObject(), DB::Device_Item(std::move(o)),
     device_(std::move(o.device_)), group_(std::move(o.group_)), parent_(std::move(o.parent_)),
-    raw_value_(std::move(o.raw_value_)), display_value_(std::move(o.display_value_)),
-    childs_(std::move(o.childs_))
+    data_(std::move(o.data_)), childs_(std::move(o.childs_))
 {
 }
 
 Device_Item::Device_Item(const Device_Item &o) :
-    QObject(), Database::Device_Item(o),
-    connection_state_(o.connection_state_),
+    QObject(), DB::Device_Item(o),
     device_(o.device_), group_(o.group_), parent_(o.parent_),
-    raw_value_(o.raw_value_), display_value_(o.display_value_),
-    childs_(o.childs_)
+    data_(o.data_), childs_(o.childs_)
 {
 }
 
 Device_Item &Device_Item::operator =(Device_Item &&o)
 {
-    Database::Device_Item::operator =(std::move(o));
-    connection_state_ = std::move(o.connection_state_);
+    DB::Device_Item::operator =(std::move(o));
     device_ = std::move(o.device_);
     group_ = std::move(o.group_);
     parent_ = std::move(o.parent_);
-    raw_value_ = std::move(o.raw_value_);
-    display_value_ = std::move(o.display_value_);
+    data_ = std::move(o.data_);
     childs_ = std::move(o.childs_);
     return *this;
 }
 
 Device_Item &Device_Item::operator =(const Device_Item &o)
 {
-    Database::Device_Item::operator =(o);
-    connection_state_ = o.connection_state_;
+    DB::Device_Item::operator =(o);
     device_ = o.device_;
     group_ = o.group_;
     parent_ = o.parent_;
-    raw_value_ = o.raw_value_;
-    display_value_ = o.display_value_;
+    data_ = o.data_;
     childs_ = o.childs_;
     return *this;
 }
@@ -119,33 +112,45 @@ uint8_t Device_Item::register_type() const
     return device_ ? device_->type_mng()->register_type(type_id()) : 0;
 }
 
+qint64 Device_Item::value_time() const { return data_.timestamp_msecs(); }
+uint32_t Device_Item::value_user_id() const { return data_.user_id(); }
+
+const DB::Device_Item_Value &Device_Item::data() const { return data_; }
+
 QVariant Device_Item::value() const
 {
     std::lock_guard lock(mutex_);
-    return display_value_;
+    return data_.value();
 }
 
 void Device_Item::set_display_value(const QVariant &val)
 {
     std::lock_guard lock(mutex_);
-    if (is_connected() != val.isValid() || display_value_.type() != val.type() || display_value_ != val)
+    const QVariant display_value = data_.value();
+    if (is_connected() != val.isValid() || display_value.type() != val.type() || display_value != val)
     {
-        display_value_ = val;
-        emit value_changed(0, val);
+        data_.set_value(val);
+        emit value_changed(0, display_value);
     }
 }
 
-bool Device_Item::set_data(const QVariant &raw, const QVariant &val, uint32_t user_id)
+bool Device_Item::set_data(const QVariant &raw, const QVariant &val, uint32_t user_id, qint64 value_time)
 {
     std::lock_guard lock(mutex_);
-    if (raw_value_.type() != raw.type() || raw_value_ != raw ||
-        display_value_.type() != val.type() || display_value_ != val)
-    {
-        QVariant old_value = raw_value_;
-        raw_value_ = raw;
-        display_value_ = val;
+    const QVariant raw_value = data_.raw_value();
 
-        emit value_changed(user_id, old_value);
+    if (raw_value.type() != raw.type() || raw_value != raw ||
+        data_.value().type() != val.type() || data_.value() != val)
+    {
+        data_.set_timestamp_msecs(value_time);
+        data_.set_user_id(user_id);
+        data_.set_raw_value(raw);
+        data_.set_value(val);
+
+        if (data_.item_id() != id())
+            data_.set_item_id(id());
+
+        emit value_changed(user_id, raw_value);
         return true;
     }
     return false;
@@ -154,7 +159,7 @@ bool Device_Item::set_data(const QVariant &raw, const QVariant &val, uint32_t us
 QVariant Device_Item::raw_value() const
 {
     std::lock_guard lock(mutex_);
-    return raw_value_;
+    return data_.raw_value();
 }
 
 bool Device_Item::write(const QVariant& display_value, uint32_t mode_id, uint32_t user_id)
@@ -200,7 +205,7 @@ bool Device_Item::write(const QVariant& display_value, uint32_t mode_id, uint32_
             set_data(file_hash, file_name);
             return true;
         }
-        else if (raw_value_.type() != raw_data->type() || raw_value_ != *raw_data
+        else if (data_.raw_value().type() != raw_data->type() || data_.raw_value() != *raw_data
                  || register_type() == Device_Item_Type::RT_SIMPLE_BUTTON)
         {
             emit group_->control_state_changed(this, *raw_data, user_id);
@@ -218,43 +223,44 @@ bool Device_Item::write(const QVariant& display_value, uint32_t mode_id, uint32_
         if (!is_control()) dbg << "NOT CONTROL";
         if (!is_connected()) dbg << "NOT CONNECTED";
         if (mode_id != 0 && mode_id != group_->mode_id()) dbg << "MODE" << mode_id << "CURRENT" << group_->mode_id();
-        if (raw_value_.type() == raw_data->type() && raw_value_ == *raw_data) dbg << "SAME VALUE:" << raw_value();
+        if (data_.raw_value().type() == raw_data->type() && data_.raw_value() == *raw_data) dbg << "SAME VALUE:" << raw_value();
         if (isSignalConnected(is_can_change_signal) && !is_can_change(display_value, user_id)) dbg << "is_can_change return false";
         dbg << toString() << "new value:" << *raw_data << "data:" << display_value;
     }
     return false;
 }
 
-bool Device_Item::set_raw_value(const QVariant& data, bool force, uint32_t user_id, bool silent)
+bool Device_Item::set_raw_value(const QVariant& raw_data, bool force, uint32_t user_id, bool silent, qint64 value_time)
 {
     std::lock_guard lock(mutex_);
+
     static const QMetaMethod raw_to_display_signal = QMetaMethod::fromSignal(&Device_Item::raw_to_display);
+    const QVariant display_data = isSignalConnected(raw_to_display_signal) ? raw_to_display(raw_data) : raw_data;
 
-//    if (!Prt::Equals(value(), data))
     if (register_type() == Device_Item_Type::RT_SIMPLE_BUTTON)
-    {
         force = true;
-    }
 
-    if (force || data.isValid() != raw_value_.isValid() || raw_value_.type() != data.type() || raw_value_ != data
-            || (isSignalConnected(raw_to_display_signal) && display_value_ != raw_to_display(data)))
+    const QVariant raw_value = data_.raw_value();
+
+    if (force || raw_data.isValid() != raw_value.isValid() || raw_value.type() != raw_data.type() || raw_value != raw_data
+            || data_.value().type() != display_data.type() || data_.value() != display_data)
     {
-        QVariant old_value = raw_value_;
-        raw_value_ = data;
+        data_.set_timestamp_msecs(value_time);
+        data_.set_user_id(user_id);
+        data_.set_raw_value(raw_data);
+        data_.set_value(display_data);
 
-        if (isSignalConnected(raw_to_display_signal))
-            display_value_ = raw_to_display(data);
-        else
-            display_value_ = data;
+        if (data_.item_id() != id())
+            data_.set_item_id(id());
 
         if (!silent)
         {
-            if (connection_state_ && (!old_value.isValid() || !raw_value_.isValid()))
+            if (connection_state_real() && (!raw_value.isValid() || !data_.raw_value().isValid()))
             {
                 emit connection_state_changed(is_connected());
             }
 
-            emit value_changed(user_id, old_value);
+            emit value_changed(user_id, raw_value);
         }
         return true;
     }
@@ -268,20 +274,23 @@ Device_Item *Device_Item::child(int index) const
     return nullptr;
 }
 
+bool Device_Item::connection_state_real() const { return data_.flag(); }
+void Device_Item::set_connection_state_real(bool state) { data_.set_flag(state); }
+
 QVector<Device_Item *> Device_Item::childs() const { return childs_; }
 
-bool Device_Item::is_connected() const { return connection_state_ && raw_value_.isValid(); }
+bool Device_Item::is_connected() const { return connection_state_real() && data_.raw_value().isValid(); }
 
 bool Device_Item::set_connection_state(bool value, bool silent)
 {
-    if (connection_state_ != value)
+    if (connection_state_real() != value)
     {
-        connection_state_ = value;
-        if (raw_value_.isValid())
+        set_connection_state_real(value);
+        if (data_.raw_value().isValid())
         {
             if (!silent)
             {
-                emit connection_state_changed(connection_state_);
+                emit connection_state_changed(value);
             }
             return true;
         }
@@ -317,7 +326,7 @@ QString Device_Item::toString()
         string = group_->section()->toString() + ' ';
     string += display_name();
     if (is_connected())
-        string += " value " + display_value_.toString() + '(' + raw_value_.toString() + ')';
+        string += " value " + data_.value().toString() + '(' + data_.raw_value().toString() + ')';
     else
         string += " Не подключен";
     return string;

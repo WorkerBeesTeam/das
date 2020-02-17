@@ -1,9 +1,9 @@
 #include "db_thread_manager.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
-Thread_Manager::Thread_Manager(Helpz::Database::Connection_Info info) :
+Thread_Manager::Thread_Manager(Helpz::DB::Connection_Info info) :
     db_thread_(info, 5, 90),
     db_log_thread_(info, 1)
 {
@@ -14,12 +14,12 @@ Thread_Manager::~Thread_Manager()
 {
 }
 
-Helpz::Database::Thread* Thread_Manager::thread()
+Helpz::DB::Thread* Thread_Manager::thread()
 {
     return &db_thread_;
 }
 
-Helpz::Database::Thread *Thread_Manager::log_thread()
+Helpz::DB::Thread *Thread_Manager::log_thread()
 {
     return &db_log_thread_;
 }

@@ -18,7 +18,7 @@
 
 namespace Das {
 /*
-namespace Database {
+namespace DB {
 class global;
 }
 namespace Network {
@@ -45,7 +45,7 @@ extern Network::WebSocket* webSock;
 extern Helpz::DTLS::Server_Thread* server_thread;
 */
 
-extern Helpz::Database::Connection_Info* db_conn_info;
+extern Helpz::DB::Connection_Info* db_conn_info;
 
 } // namespace Das
 

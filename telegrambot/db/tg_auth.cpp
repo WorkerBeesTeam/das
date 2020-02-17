@@ -1,7 +1,7 @@
 #include "tg_auth.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 Tg_Auth::Tg_Auth(int32_t tg_user_id, qint64 expired, const QString &token) :
     tg_user_id_(tg_user_id), expired_(expired), token_(token)
@@ -17,5 +17,5 @@ void Tg_Auth::set_expired(qint64 timestamp) { expired_ = timestamp; }
 QString Tg_Auth::token() const { return token_; }
 void Tg_Auth::set_token(const QString &token) { token_ = token; }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

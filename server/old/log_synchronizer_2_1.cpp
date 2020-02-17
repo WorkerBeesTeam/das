@@ -24,7 +24,7 @@ void Log_Sync_Item::init_last_time()
 {
     QString where = "param = '" + get_param_name() + '\'';
     auto db_ptr = db();
-    Helpz::Database::Table table{db_ptr->db_name(name()) + ".das_settings", {}, {"value"}};
+    Helpz::DB::Table table{db_ptr->db_name(name()) + ".das_settings", {}, {"value"}};
 
     auto q = db_ptr->select(table, "WHERE " + where);
     if (q.next())
@@ -44,14 +44,14 @@ void Log_Sync_Item::check(qint64 request_time)
     }
 }
 
-Helpz::Database::Thread *Log_Sync_Item::log_thread()
+Helpz::DB::Thread *Log_Sync_Item::log_thread()
 {
     return protocol()->work_object()->db_thread_mng_->log_thread();
 }
 
-QString Log_Sync_Item::log_insert_sql(const std::shared_ptr<Database::global>& db_ptr, const QString& name) const
+QString Log_Sync_Item::log_insert_sql(const std::shared_ptr<DB::global>& db_ptr, const QString& name) const
 {
-    Helpz::Database::Table table = get_log_table(db_ptr, name);
+    Helpz::DB::Table table = get_log_table(db_ptr, name);
     return db_ptr->insert_query(table, table.field_names().size(), {}, {}, "INSERT IGNORE");
 }
 
@@ -123,12 +123,12 @@ bool Log_Sync_Item::process_log_range_count(uint32_t remote_count, bool just_che
     return true;
 }
 
-void Log_Sync_Item::save_sync_time(const std::shared_ptr<Database::global>& db_ptr)
+void Log_Sync_Item::save_sync_time(const std::shared_ptr<DB::global>& db_ptr)
 {
     last_time_ = request_time_;
     qCDebug(Sync_Log).noquote() << title() << t_str() << "save_sync_time" << last_time_;
 
-    Helpz::Database::Table table{db_ptr->db_name(name()) + ".das_settings", {}, {"param", "value"}};
+    Helpz::DB::Table table{db_ptr->db_name(name()) + ".das_settings", {}, {"param", "value"}};
     QString sql = db_ptr->insert_query(table, 2, "ON DUPLICATE KEY UPDATE value = VALUES(value)");
 
     std::vector<QVariantList> values_pack{{get_param_name(), QString::number(last_time_)}};
@@ -187,10 +187,10 @@ void Log_Sync_Item::process_log_data(QIODevice& data_dev)
 }
 
 // ------------------------------------------------------------------------------------------
-QString get_q_array(const Helpz::Database::Table& table, int row_count)
+QString get_q_array(const Helpz::DB::Table& table, int row_count)
 {
     return "INSERT IGNORE INTO " + table.name() + '(' + table.field_names().join(',') + ") VALUES" +
-            Helpz::Database::Base::get_q_array(table.field_names().size(), row_count);
+            Helpz::DB::Base::get_q_array(table.field_names().size(), row_count);
 }
 
 Log_Sync_Values::Log_Sync_Values(Protocol_Base *protocol) :
@@ -222,12 +222,12 @@ void Log_Sync_Values::process_pack(const QVector<Log_Value_Item>& pack)
     }
 
     auto db_ptr = db();
-    QString sql = db_ptr->insert_query(Helpz::Database::db_table<Device_Item_Value>(Database::global::db_name(name())), 3, "ON DUPLICATE KEY UPDATE raw = VALUES(raw), display = VALUES(display)");
+    QString sql = db_ptr->insert_query(Helpz::DB::db_table<Device_Item_Value>(DB::global::db_name(name())), 3, "ON DUPLICATE KEY UPDATE raw = VALUES(raw), display = VALUES(display)");
     log_thread()->add_pending_query(std::move(sql), std::move(values_pack));
 
     if (row_count)
     {
-        auto table = Helpz::Database::db_table<Log_Value_Item>(Database::global::db_name(name()));
+        auto table = Helpz::DB::db_table<Log_Value_Item>(DB::global::db_name(name()));
         log_thread()->add_pending_query(get_q_array(table, row_count), {log_values_pack});
 //        log_thread()->add_pending_query(log_insert_sql(db_ptr, name()), std::move(log_values_pack));
     }
@@ -238,9 +238,9 @@ QString Log_Sync_Values::t_str() const
     return "[V]";
 }
 
-Helpz::Database::Table Log_Sync_Values::get_log_table(const std::shared_ptr<Database::global>& db_ptr, const QString& name) const
+Helpz::DB::Table Log_Sync_Values::get_log_table(const std::shared_ptr<DB::global>& db_ptr, const QString& name) const
 {
-    return Helpz::Database::db_table<Log_Value_Item>(db_ptr->db_name(name));
+    return Helpz::DB::db_table<Log_Value_Item>(db_ptr->db_name(name));
 }
 
 QString Log_Sync_Values::get_param_name() const
@@ -256,7 +256,7 @@ void Log_Sync_Values::fill_log_data(QIODevice& data_dev, QString &sql, QVariantL
     for (const Log_Value_Item& item: data)
         values_pack += Log_Value_Item::to_variantlist(item);
 
-    auto table = Helpz::Database::db_table<Log_Value_Item>(Database::global::db_name(name()));
+    auto table = Helpz::DB::db_table<Log_Value_Item>(DB::global::db_name(name()));
     sql = get_q_array(table, data.size());
 }
 
@@ -276,7 +276,7 @@ void Log_Sync_Events::process_pack(const QVector<Log_Event_Item>& pack)
         values_pack += Log_Event_Item::to_variantlist(item);
 
 //    auto db_ptr = db();
-    auto table = Helpz::Database::db_table<Log_Event_Item>(Database::global::db_name(name()));
+    auto table = Helpz::DB::db_table<Log_Event_Item>(DB::global::db_name(name()));
     log_thread()->add_pending_query(get_q_array(table, pack.size()), {values_pack});
 //    log_thread()->add_pending_query(log_insert_sql(db_ptr, name()), std::move(values_pack));
 
@@ -289,9 +289,9 @@ QString Log_Sync_Events::t_str() const
     return "[E]";
 }
 
-Helpz::Database::Table Log_Sync_Events::get_log_table(const std::shared_ptr<Database::global>& db_ptr, const QString& name) const
+Helpz::DB::Table Log_Sync_Events::get_log_table(const std::shared_ptr<DB::global>& db_ptr, const QString& name) const
 {
-    return Helpz::Database::db_table<Log_Event_Item>(db_ptr->db_name(name));
+    return Helpz::DB::db_table<Log_Event_Item>(db_ptr->db_name(name));
 }
 
 QString Log_Sync_Events::get_param_name() const
@@ -307,7 +307,7 @@ void Log_Sync_Events::fill_log_data(QIODevice& data_dev, QString &sql, QVariantL
     for (const Log_Event_Item& item: data)
         values_pack += Log_Event_Item::to_variantlist(item);
 
-    auto table = Helpz::Database::db_table<Log_Event_Item>(Database::global::db_name(name()));
+    auto table = Helpz::DB::db_table<Log_Event_Item>(DB::global::db_name(name()));
     sql = get_q_array(table, data.size());
 }
 

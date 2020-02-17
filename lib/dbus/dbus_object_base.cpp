@@ -52,12 +52,12 @@ uint16_t Object_Base::cmd_from_web_command(quint8 cmd, int proto_version) const
 
     switch (cmd)
     {
-    case Das::WS_WRITE_TO_DEV_ITEM:         return Ver_2_4::Cmd::WRITE_TO_ITEM;
-    case Das::WS_CHANGE_DIG_MODE_ITEM:         return Ver_2_4::Cmd::SET_MODE;
-    case Das::WS_CHANGE_DIG_PARAM_VALUES: return Ver_2_4::Cmd::SET_DIG_PARAM_VALUES;
-    case Das::WS_EXEC_SCRIPT:               return Ver_2_4::Cmd::EXEC_SCRIPT_COMMAND;
-    case Das::WS_RESTART:                   return Ver_2_4::Cmd::RESTART;
-    case Das::WS_STRUCT_MODIFY:             return Ver_2_4::Cmd::MODIFY_SCHEME;
+    case Das::WS_WRITE_TO_DEV_ITEM:         return Ver::Cmd::WRITE_TO_ITEM;
+    case Das::WS_CHANGE_DIG_MODE:           return Ver::Cmd::SET_MODE;
+    case Das::WS_CHANGE_DIG_PARAM_VALUES:   return Ver::Cmd::SET_DIG_PARAM_VALUES;
+    case Das::WS_EXEC_SCRIPT:               return Ver::Cmd::EXEC_SCRIPT_COMMAND;
+    case Das::WS_RESTART:                   return Ver::Cmd::RESTART;
+    case Das::WS_STRUCT_MODIFY:             return Ver::Cmd::MODIFY_SCHEME;
     default: break;
     }
     return 0;

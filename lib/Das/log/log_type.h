@@ -8,8 +8,15 @@ namespace Das {
 QString log_table_name(uint8_t log_type, const QString& db_name = QString());
 
 enum Log_Type : uint8_t {
-    LOG_VALUE = 1,
+    LOG_UNKNOWN,
+
+    LOG_VALUE,
     LOG_EVENT,
+    LOG_PARAM,
+    LOG_STATUS,
+    LOG_MODE,
+
+    LOG_COUNT
 };
 
 class Log_Type_Wrapper

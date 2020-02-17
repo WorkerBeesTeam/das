@@ -96,7 +96,7 @@ private:
 
     Ui::Main_Window *ui_;
 
-    Das::Database::Helper db_manager_;
+    Das::DB::Helper db_manager_;
     Das::Scheme das_scheme_;
 
     QTimer temp_timer_;

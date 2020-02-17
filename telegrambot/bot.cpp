@@ -31,7 +31,7 @@
 namespace Das {
 
 using namespace std;
-using namespace Helpz::Database;
+using namespace Helpz::DB;
 
 Bot::Bot(DBus::Interface *dbus_iface, const string &token, const string& webhook_url, uint16_t port, const string &webhook_cert) :
     QThread(),

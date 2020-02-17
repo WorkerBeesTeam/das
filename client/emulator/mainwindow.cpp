@@ -131,7 +131,7 @@ void Main_Window::init_database()
                 Helpz::Param<int>{"Port", -1},
                 Helpz::Param<QString>{"Driver", "QMYSQL"},
                 Helpz::Param<QString>{"ConnectOptions", QString()}
-    ).obj<Helpz::Database::Connection_Info>();
+    ).obj<Helpz::DB::Connection_Info>();
 
     db_manager_.set_connection_info(db_info);
     qDebug() << "Open SQL is" << db_manager_.create_connection();

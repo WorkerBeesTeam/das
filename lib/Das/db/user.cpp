@@ -1,7 +1,7 @@
 #include "user.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 User::User(uint32_t id, bool is_superuser, bool is_staff, bool is_active,
             const QDateTime &date_joined, const QDateTime &last_login, const QString &username,
@@ -127,5 +127,5 @@ QDataStream &operator>>(QDataStream &ds, User_Groups &item)
     return ds >> item.id_ >> item.user_id_ >> item.group_id_;
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

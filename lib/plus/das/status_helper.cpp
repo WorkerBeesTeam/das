@@ -2,7 +2,7 @@
 
 namespace Das {
 
-/*static*/ std::vector<Status_Helper::Section> Status_Helper::get_group_names(const QSet<uint32_t>& group_id_set, Helpz::Database::Base& db, uint32_t scheme_id)
+/*static*/ std::vector<Status_Helper::Section> Status_Helper::get_group_names(const QSet<uint32_t>& group_id_set, Helpz::DB::Base& db, uint32_t scheme_id)
 {
     if (group_id_set.empty())
         return {};

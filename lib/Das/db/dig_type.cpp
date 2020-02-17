@@ -1,7 +1,7 @@
 #include "dig_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 DIG_Type::DIG_Type(uint id, const QString &name, const QString &title, const QString &description) :
     Titled_Type(id, name, title), description_(description)
@@ -21,5 +21,5 @@ QDataStream &operator>>(QDataStream &ds, DIG_Type &item)
     return ds >> static_cast<Titled_Type&>(item) >> item.description_;
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

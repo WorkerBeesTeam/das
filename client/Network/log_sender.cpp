@@ -7,10 +7,10 @@
 #include "log_sender.h"
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Client {
 
-using namespace Helpz::Database;
+using namespace Helpz::DB;
 
 Log_Sender::Log_Sender(Protocol_Base *protocol) :
     request_data_size_(200),
@@ -22,12 +22,12 @@ template<typename T>
 void Log_Sender::send_log_data(const Log_Type_Wrapper& log_type)
 {
     Base& db = Base::get_thread_local_instance();
-    QVector<T> log_data = db_build_list<T>(db, Database::Helper::get_default_where_suffix() + " LIMIT " + QString::number(request_data_size_));
+    QVector<T> log_data = db_build_list<T>(db, DB::Helper::get_default_where_suffix() + " LIMIT " + QString::number(request_data_size_));
     if (!log_data.empty())
     {
         protocol_->send(Cmd::LOG_DATA_REQUEST).answer([log_data](QIODevice& /*dev*/)
         {
-            QString where = Database::Helper::get_default_suffix() + " AND "
+            QString where = DB::Helper::get_default_suffix() + " AND "
                     + T::table_column_names().at(T::COL_timestamp_msecs) + " IN (";
             for (const T& item: log_data)
             {
@@ -68,5 +68,5 @@ void Log_Sender::send_data(Log_Type_Wrapper log_type, uint8_t msg_id)
 }
 
 } // namespace Client
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das

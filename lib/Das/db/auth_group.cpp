@@ -1,7 +1,7 @@
 #include "auth_group.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 Auth_Group_Permission::Auth_Group_Permission(uint32_t id, uint32_t group_id, uint32_t permission_id) :
     id_(id), group_id_(group_id), permission_id_(permission_id)
@@ -48,5 +48,5 @@ QDataStream &operator>>(QDataStream &ds, Auth_Group_Permission &item)
     return ds >> item.id_ >> item.group_id_ >> item.permission_id_;
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

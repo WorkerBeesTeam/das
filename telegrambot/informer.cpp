@@ -9,7 +9,7 @@
 
 namespace Das {
 
-using namespace Helpz::Database;
+using namespace Helpz::DB;
 
 Informer::Data::Data(const Scheme_Info &scheme, std::chrono::time_point<std::chrono::system_clock> expired_time,
                      const QVector<DIG_Status> &add_vect, const QVector<DIG_Status> &del_vect) :
@@ -56,16 +56,27 @@ void Informer::disconnected(const Scheme_Info& scheme, bool just_now)
     add_data(std::make_shared<Data>(scheme, expired_time, QVector<DIG_Status>{}, data));
 }
 
-void Informer::add_status(const Scheme_Info &scheme, const DIG_Status &item)
+void Informer::change_status(const Scheme_Info &scheme, const DIG_Status &item)
 {
-    auto expired_time = std::chrono::system_clock::now() + event_timeout_;
-    add_data(std::make_shared<Data>(scheme, expired_time, QVector<DIG_Status>{item}));
-}
+    const QVector<DIG_Status> vect{item};
 
-void Informer::remove_status(const Scheme_Info &scheme, const DIG_Status &item)
-{
-    auto expired_time = std::chrono::system_clock::now() + event_timeout_;
-    add_data(std::make_shared<Data>(scheme, expired_time, QVector<DIG_Status>{}, QVector<DIG_Status>{item}));
+    std::chrono::system_clock::time_point expired_time;
+
+    if (item.timestamp_msecs() == 0)
+    {
+        expired_time = std::chrono::system_clock::now() + event_timeout_;
+    }
+    else
+    {
+        typedef std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> __from;
+        expired_time = std::chrono::time_point_cast<std::chrono::system_clock::duration>
+               (__from(std::chrono::milliseconds(item.timestamp_msecs())));
+    }
+
+    if (item.is_removed())
+        add_data(std::make_shared<Data>(scheme, expired_time, QVector<DIG_Status>{}, vect));
+    else
+        add_data(std::make_shared<Data>(scheme, expired_time, vect));
 }
 
 void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_Event_Item> &event_pack)

@@ -12,10 +12,10 @@
 #include "log_synchronizer.h"
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Server {
 
-using namespace Helpz::Database;
+using namespace Helpz::DB;
 
 Log_Sync_Item::Log_Sync_Item(Log_Type type, Protocol_Base *protocol) :
     Base_Synchronizer(protocol),
@@ -129,15 +129,11 @@ void Log_Sync_Values::process_pack(QVector<Log_Value_Item> &&pack, uint8_t msg_i
 
     uint32_t s_id = scheme_id();
 
-    Device_Item_Value devitem_value;
     QVariantList values_pack, tmp_values;
     int row_count = 0;
     for (Log_Value_Item& item: pack)
     {
-        devitem_value.set_device_item_id(item.item_id());
-        devitem_value.set_raw(item.raw_value());
-        devitem_value.set_display(item.value());
-        static_cast<Protocol*>(protocol())->structure_sync()->change_devitem_value(devitem_value);
+        static_cast<Protocol*>(protocol())->structure_sync()->change_devitem_value(item);
 
         if (item.need_to_save())
         {
@@ -292,13 +288,31 @@ void Log_Synchronizer::check()
 
 void Log_Synchronizer::process_data(Log_Type_Wrapper type_id, QIODevice *data_dev, uint8_t msg_id)
 {
-    if (type_id == LOG_VALUE)
+    switch (type_id.value())
     {
+    case LOG_VALUE:
         values_.process_log_data(*data_dev, msg_id);
-    }
-    else if (type_id == LOG_EVENT)
-    {
+        break;
+    case LOG_VALUE:
         events_.process_log_data(*data_dev, msg_id);
+        break;
+    default:
+        break;
+    }
+}
+
+void Log_Synchronizer::process_pack(Log_Type_Wrapper type_id, QIODevice *data_dev, uint8_t msg_id)
+{
+    switch (type_id.value())
+    {
+    case LOG_VALUE:
+        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Sync_Values::process_pack, &values_, msg_id);
+        break;
+    case LOG_VALUE:
+        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Sync_Events::process_pack, &events_, msg_id);
+        break;
+    default:
+        break;
     }
 }
 
@@ -316,5 +330,5 @@ Log_Sync_Item *Log_Synchronizer::log_sync_item(uint8_t type_id)
 }
 
 } // namespace Server
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das

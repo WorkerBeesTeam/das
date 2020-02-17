@@ -383,12 +383,12 @@ void WebSocket::sendDevice_ItemValues(const Scheme_Info &scheme, const QVector<L
     send(scheme, message);
 }
 
-void WebSocket::sendModeChanged(const Scheme_Info &scheme, uint32_t mode_id, uint32_t group_id)
+void WebSocket::sendModeChanged(const Scheme_Info &scheme, const DIG_Mode &mode)
 {
     QByteArray message;
     QDataStream ds(&message, QIODevice::WriteOnly);
     ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
-    ds << (quint8)WS_DIG_MODE_ITEM << scheme.id() << mode_id << group_id;
+    ds << (quint8)WS_DIG_MODE << scheme.id() << mode.mode_id() << mode.group_id();
     send(scheme, message);
 }
 

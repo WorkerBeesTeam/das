@@ -17,7 +17,7 @@
 #include <Das/checkerinterface.h>
 #include <Das/device.h>
 #include <Das/db/dig_status.h>
-#include <Das/db/dig_mode_item.h>
+#include <Das/db/dig_mode.h>
 
 #include "dbus_object.h"
 #include "worker.h"
@@ -109,7 +109,7 @@ const Scheme_Info &Worker::scheme_info() const
     return scheme_info_;
 }
 
-Helpz::Database::Thread* Worker::db_pending() { return db_pending_thread_.get(); }
+Helpz::DB::Thread* Worker::db_pending() { return db_pending_thread_.get(); }
 
 /*static*/ std::unique_ptr<QSettings> Worker::settings()
 {
@@ -127,13 +127,13 @@ Worker_Structure_Synchronizer* Worker::structure_sync()
     return structure_sync_;
 }
 
-std::shared_ptr<Ver_2_4::Client::Protocol> Worker::net_protocol()
+std::shared_ptr<Ver::Client::Protocol> Worker::net_protocol()
 {
     if (net_thread_)
     {
         auto client = net_thread_->client();
         if (client)
-            return std::static_pointer_cast<Ver_2_4::Client::Protocol>(client->protocol());
+            return std::static_pointer_cast<Ver::Client::Protocol>(client->protocol());
     }
     return {};
 }
@@ -186,7 +186,7 @@ void Worker::init_database(QSettings* s)
                 s, db_conf_group_name,
                 Z::Param<uint32_t>{"SchemeId", 1})();
 
-    Database::Schemed_Model::set_default_scheme_id(scheme_id);
+    DB::Schemed_Model::set_default_scheme_id(scheme_id);
 
     auto db_info = Helpz::SettingsHelper
         #if (__cplusplus < 201402L) || (defined(__GNUC__) && (__GNUC__ < 7))
@@ -202,11 +202,11 @@ void Worker::init_database(QSettings* s)
                 Z::Param<QString>{"Prefix", "das_"},
                 Z::Param<QString>{"Driver", "QMYSQL"},
                 Z::Param<QString>{"ConnectOptions", QString()}
-    ).obj<Helpz::Database::Connection_Info>();
+    ).obj<Helpz::DB::Connection_Info>();
 
-    Helpz::Database::Connection_Info::set_common(db_info);
+    Helpz::DB::Connection_Info::set_common(db_info);
 
-    db_pending_thread_.reset(new Helpz::Database::Thread);
+    db_pending_thread_.reset(new Helpz::DB::Thread);
 }
 
 void Worker::init_scheme(QSettings* s)
@@ -293,7 +293,7 @@ void Worker::init_network_client(QSettings* s)
 
     Helpz::DTLS::Create_Client_Protocol_Func_T func = [this, auth_info](const std::string& app_protocol) -> std::shared_ptr<Helpz::Network::Protocol>
     {
-        std::shared_ptr<Ver_2_4::Client::Protocol> ptr = std::make_shared<Ver_2_4::Client::Protocol>(this, auth_info);
+        std::shared_ptr<Ver::Client::Protocol> ptr = std::make_shared<Ver::Client::Protocol>(this, auth_info);
 
         if (app_protocol != DAS_PROTOCOL_LATEST)
         {
@@ -539,18 +539,14 @@ void Worker::save_server_data(const QUuid &devive_uuid, const QString &login, co
     }
 }
 
-bool Worker::set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id)
+void Worker::set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id)
 {
-    if (Database::Helper::set_mode(mode_id, group_id))
-    {
-        QMetaObject::invokeMethod(prj(), "set_mode", Qt::QueuedConnection, Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, mode_id), Q_ARG(uint32_t, group_id) );
-        return true;
-    }
+    // ATTENTION: This function calls from diffrent threads
 
-    return false;
+    QMetaObject::invokeMethod(prj(), "set_mode", Qt::QueuedConnection, Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, mode_id), Q_ARG(uint32_t, group_id));
 }
 
-QVariant db_get_dig_status_id(Helpz::Database::Base* db, const QString& table_name, uint32_t group_id, uint32_t info_id)
+QVariant db_get_dig_status_id(Helpz::DB::Base* db, const QString& table_name, uint32_t group_id, uint32_t info_id)
 {
     auto q = db->select({table_name, {}, {"id"}}, QString("WHERE group_id = %1 AND status_id = %2").arg(group_id).arg(info_id));
     if (q.next())
@@ -566,8 +562,8 @@ void Worker::update_plugin_param_names(const QVector<Plugin_Type>& plugins)
     QDataStream ds(&data, QIODevice::ReadWrite);
     ds << plugins << uint32_t(0) << uint32_t(0);
     ds.device()->seek(0);
-    structure_sync_->process_modify_message(0, Ver_2_4::ST_PLUGIN_TYPE, ds.device(),
-                                            Database::Schemed_Model::default_scheme_id(), nullptr);
+    structure_sync_->process_modify_message(0, Ver::ST_PLUGIN_TYPE, ds.device(),
+                                            DB::Schemed_Model::default_scheme_id(), nullptr);
 
     for (Device* dev: prj()->devices())
     {

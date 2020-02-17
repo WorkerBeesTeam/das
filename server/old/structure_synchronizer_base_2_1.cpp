@@ -25,7 +25,7 @@ QDataStream &operator<<(QDataStream &ds, const Ver_2_1_DIG_Status &item)
     return ds << item.id() << static_cast<const DIG_Status&>(item);
 }
 
-Structure_Synchronizer_Base::Structure_Synchronizer_Base(Helpz::Database::Thread *db_thread) :
+Structure_Synchronizer_Base::Structure_Synchronizer_Base(Helpz::DB::Thread *db_thread) :
     modified_(false), db_thread_(db_thread)
 {
 }
@@ -95,7 +95,7 @@ void Structure_Synchronizer_Base::process_modify_message(uint32_t user_id, uint8
     }
 }
 
-QByteArray Structure_Synchronizer_Base::get_structure_hash(uint8_t struct_type, Helpz::Database::Base& db, const QString& db_name)
+QByteArray Structure_Synchronizer_Base::get_structure_hash(uint8_t struct_type, Helpz::DB::Base& db, const QString& db_name)
 {
     QBuffer buffer;
     buffer.open(QIODevice::ReadWrite);
@@ -106,7 +106,7 @@ QByteArray Structure_Synchronizer_Base::get_structure_hash(uint8_t struct_type, 
     return QCryptographicHash::hash(buffer.buffer(), QCryptographicHash::Sha1);
 }
 
-QByteArray Structure_Synchronizer_Base::get_structure_hash_for_all(Helpz::Database::Base& db, const QString& db_name)
+QByteArray Structure_Synchronizer_Base::get_structure_hash_for_all(Helpz::DB::Base& db, const QString& db_name)
 {
     std::vector<uint8_t> struct_type_array = get_main_table_types();
     QBuffer buffer;
@@ -119,7 +119,7 @@ QByteArray Structure_Synchronizer_Base::get_structure_hash_for_all(Helpz::Databa
     return QCryptographicHash::hash(buffer.buffer(), QCryptographicHash::Sha1);
 }
 
-Helpz::Database::Thread *Structure_Synchronizer_Base::db_thread() const
+Helpz::DB::Thread *Structure_Synchronizer_Base::db_thread() const
 {
     return db_thread_;
 }
@@ -164,12 +164,12 @@ bool Structure_Synchronizer_Base::is_main_table(uint8_t struct_type) const
 
 QString Structure_Synchronizer_Base::get_suffix(uint8_t /*struct_type*/) { return {}; }
 
-void Structure_Synchronizer_Base::add_structure_data(uint8_t struct_type, QDataStream& ds, Helpz::Database::Base& db, const QString& db_name)
+void Structure_Synchronizer_Base::add_structure_data(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, const QString& db_name)
 {
     add_structure_template(struct_type, ds, db, db_name);
 }
 
-void Structure_Synchronizer_Base::add_structure_items_data(uint8_t struct_type, const QVector<uint32_t>& id_vect, QDataStream& ds, Helpz::Database::Base& db, const QString& db_name)
+void Structure_Synchronizer_Base::add_structure_items_data(uint8_t struct_type, const QVector<uint32_t>& id_vect, QDataStream& ds, Helpz::DB::Base& db, const QString& db_name)
 {
     if (id_vect.isEmpty())
     {
@@ -181,7 +181,7 @@ void Structure_Synchronizer_Base::add_structure_items_data(uint8_t struct_type, 
     }
 }
 
-QVector<QPair<uint32_t, uint16_t>> Structure_Synchronizer_Base::get_structure_hash_vect_by_type(uint8_t struct_type, Helpz::Database::Base& db, const QString& db_name)
+QVector<QPair<uint32_t, uint16_t>> Structure_Synchronizer_Base::get_structure_hash_vect_by_type(uint8_t struct_type, Helpz::DB::Base& db, const QString& db_name)
 {
     switch (struct_type)
     {
@@ -224,7 +224,7 @@ template<typename T>
 QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, const QVector<uint32_t>& id_vect)
 {
     QString first_suffix = get_suffix(struct_type);
-    QString second_suffix = Helpz::Database::get_items_list_suffix<T>(id_vect);
+    QString second_suffix = Helpz::DB::get_items_list_suffix<T>(id_vect);
 
     if (!first_suffix.isEmpty() && !second_suffix.isEmpty())
     {
@@ -247,12 +247,12 @@ QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, con
 }
 
 template<typename T>
-QVector<T> Structure_Synchronizer_Base::get_db_list(uint8_t struct_type, Helpz::Database::Base& db, const QString& db_name, const QVector<uint32_t>& id_vect)
+QVector<T> Structure_Synchronizer_Base::get_db_list(uint8_t struct_type, Helpz::DB::Base& db, const QString& db_name, const QVector<uint32_t>& id_vect)
 {
-    return Helpz::Database::db_build_list<T>(db, get_db_list_suffix<T>(struct_type, id_vect), db_name);
+    return Helpz::DB::db_build_list<T>(db, get_db_list_suffix<T>(struct_type, id_vect), db_name);
 }
 
-void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QDataStream& ds, Helpz::Database::Base& db, const QString& db_name, const QVector<uint32_t>& id_vect)
+void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, const QString& db_name, const QVector<uint32_t>& id_vect)
 {
     switch (struct_type)
     {
@@ -291,14 +291,14 @@ void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QD
 }
 
 template<typename T>
-QVector<QPair<uint32_t, uint16_t>> Structure_Synchronizer_Base::get_structure_hash_vect(uint8_t struct_type, Helpz::Database::Base& db, const QString& db_name)
+QVector<QPair<uint32_t, uint16_t>> Structure_Synchronizer_Base::get_structure_hash_vect(uint8_t struct_type, Helpz::DB::Base& db, const QString& db_name)
 {
     QVector<QPair<uint32_t, uint16_t>> hash_vect;
 
     QByteArray data;
     QDataStream ds(&data, QIODevice::WriteOnly);
 
-    QVector<T> items = Helpz::Database::db_build_list<T>(db, get_suffix(struct_type), db_name);
+    QVector<T> items = Helpz::DB::db_build_list<T>(db, get_suffix(struct_type), db_name);
     for (const T& item: items)
     {
         ds << item;
@@ -315,7 +315,7 @@ template<typename T>
 void Structure_Synchronizer_Base::modify(QVector<T>&& upd_vect, QVector<T>&& insrt_vect, QVector<uint32_t>&& del_vect, uint32_t user_id,
                                     uint8_t struct_type, const QString& db_name, std::function<std::shared_ptr<Bad_Fix>()> get_bad_fix)
 {
-    db_thread_->add([=](Helpz::Database::Base* db) mutable
+    db_thread_->add([=](Helpz::DB::Base* db) mutable
     {
         auto start_point = std::chrono::system_clock::now();
 
@@ -365,19 +365,19 @@ void Structure_Synchronizer_Base::modify(QVector<T>&& upd_vect, QVector<T>&& ins
 }
 
 template<class T>
-bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::Database::Base& db,
+bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::Base& db,
                                           const QVector<T>& update_vect,
                                           QVector<T>& insert_vect,
                                           const QVector<uint32_t>& delete_vect,
                                           const QString& db_name)
 {
-    Helpz::Database::Table table{ Helpz::Database::db_table<T>(db_name) };
+    Helpz::DB::Table table{ Helpz::DB::db_table<T>(db_name) };
 
     struct UncheckForeign
     {
-        UncheckForeign(Helpz::Database::Base* p) : p_(p) { p->exec("SET foreign_key_checks=0;"); }
+        UncheckForeign(Helpz::DB::Base* p) : p_(p) { p->exec("SET foreign_key_checks=0;"); }
         ~UncheckForeign() { p_->exec("SET foreign_key_checks=1;"); }
-        Helpz::Database::Base* p_;
+        Helpz::DB::Base* p_;
     } uncheck_foreign(&db);
 
     // DELETE

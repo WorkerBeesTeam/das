@@ -9,7 +9,7 @@
 #include <Das/db/schemed_model.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT DIG_Param : public Schemed_Model
 {
@@ -38,9 +38,9 @@ private:
 QDataStream& operator<<(QDataStream& ds, const DIG_Param& item);
 QDataStream& operator>>(QDataStream& ds, DIG_Param& item);
 
-} // namespace Database
+} // namespace DB
 
-using DIG_Param = Database::DIG_Param;
+using DIG_Param = DB::DIG_Param;
 
 } // namespace Das
 

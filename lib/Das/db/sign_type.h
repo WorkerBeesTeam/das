@@ -5,7 +5,7 @@
 #include "base_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Sign_Type : public Base_Type
 {
@@ -15,10 +15,10 @@ public:
 };
 typedef Base_Type_Manager<Sign_Type> Sign_Manager;
 
-} // namespace Database
+} // namespace DB
 
-using Sign_Type = Database::Sign_Type;
-using Sign_Manager = Database::Sign_Manager;
+using Sign_Type = DB::Sign_Type;
+using Sign_Manager = DB::Sign_Manager;
 
 } // namespace Das
 
