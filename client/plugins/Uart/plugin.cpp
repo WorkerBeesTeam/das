@@ -12,38 +12,11 @@ namespace Das {
 
 Q_LOGGING_CATEGORY(UartLog, "uart")
 
-Uart_Plugin::Uart_Plugin() :
-    QObject()
-{}
+// ----------------------------------------------------------
 
-Uart_Plugin::~Uart_Plugin()
+void Uart_Thread::start(Uart::Config config)
 {
-    if (thread_.joinable())
-    {
-        stop();
-        thread_.join();
-    }
-}
-
-void Uart_Plugin::configure(QSettings *settings, Scheme */*scheme*/)
-{
-    using Helpz::Param;
-
-    config_ = Helpz::SettingsHelper
-        #if (__cplusplus < 201402L) || (defined(__GNUC__) && (__GNUC__ < 7))
-            <Param<QString>,Param<QSerialPort::BaudRate>,Param<QSerialPort::DataBits>,
-                            Param<QSerialPort::Parity>,Param<QSerialPort::StopBits>,
-                            Param<QSerialPort::FlowControl>>
-        #endif
-            (
-                settings, "Uart",
-                Param<QString>{"Port", QString{}},
-                Param<QSerialPort::BaudRate>{"BaudRate", QSerialPort::Baud9600},
-                Param<QSerialPort::DataBits>{"DataBits", QSerialPort::Data8},
-                Param<QSerialPort::Parity>{"Parity", QSerialPort::NoParity},
-                Param<QSerialPort::StopBits>{"StopBits", QSerialPort::OneStop},
-                Param<QSerialPort::FlowControl>{"FlowControl", QSerialPort::NoFlowControl}
-    ).obj<Uart::Config>();
+    config_ = std::move(config);
 
     is_port_name_in_config_ = !config_.name_.isEmpty();
     if (!is_port_name_in_config_)
@@ -56,11 +29,12 @@ void Uart_Plugin::configure(QSettings *settings, Scheme */*scheme*/)
 
     break_ = false;
 
-    std::thread th(&Uart_Plugin::run, this);
-    thread_.swap(th);
+    QThread::start();
+//    std::thread th(&Uart_Plugin::run, this);
+//    thread_.swap(th);
 }
 
-bool Uart_Plugin::check(Device* dev)
+bool Uart_Thread::check(Device *dev)
 {
     if (!dev)
         return false;
@@ -78,14 +52,14 @@ bool Uart_Plugin::check(Device* dev)
     return true;
 }
 
-void Uart_Plugin::stop()
+void Uart_Thread::stop()
 {
     std::lock_guard lock(mutex_);
     break_ = true;
     cond_.notify_one();
 }
 
-void Uart_Plugin::write(std::vector<Write_Cache_Item>& items)
+void Uart_Thread::write(std::vector<Write_Cache_Item> &items)
 {
     std::lock_guard lock(mutex_);
     for (Write_Cache_Item& item: items)
@@ -98,7 +72,7 @@ void Uart_Plugin::write(std::vector<Write_Cache_Item>& items)
     cond_.notify_one();
 }
 
-void Uart_Plugin::run()
+void Uart_Thread::run()
 {
     QSerialPort port;
 
@@ -166,7 +140,7 @@ void Uart_Plugin::run()
     }
 }
 
-void Uart_Plugin::set_config(QSerialPort &port)
+void Uart_Thread::set_config(QSerialPort &port)
 {
     port.setPortName(config_.name_);
     port.setBaudRate(config_.baud_rate_);
@@ -176,7 +150,7 @@ void Uart_Plugin::set_config(QSerialPort &port)
     port.setFlowControl(config_.flow_control_);
 }
 
-void Uart_Plugin::reconnect(QSerialPort &port)
+void Uart_Thread::reconnect(QSerialPort &port)
 {
     if (port.isOpen())
         port.close();
@@ -202,7 +176,7 @@ void parse_value(QDataStream& ds, Device::Data_Item& data)
     data.raw_data_ = value;
 }
 
-void Uart_Plugin::read_item(QSerialPort &port, Device_Item *item)
+void Uart_Thread::read_item(QSerialPort &port, Device_Item *item)
 {
     if (!port.isOpen())
     {
@@ -259,7 +233,7 @@ void Uart_Plugin::read_item(QSerialPort &port, Device_Item *item)
     device_items_values_[item->device()].emplace(item, std::move(data_item));
 }
 
-void Uart_Plugin::write_item(QSerialPort &port, const Write_Cache_Item &item)
+void Uart_Thread::write_item(QSerialPort &port, const Write_Cache_Item &item)
 {
     if (!port.isOpen())
     {
@@ -272,6 +246,59 @@ void Uart_Plugin::write_item(QSerialPort &port, const Write_Cache_Item &item)
     device_items_values_[item.dev_item_->device()].emplace(item.dev_item_, std::move(data_item));
 
     // TODO: write data to port
+}
+
+// ----------------------------------------------------------
+
+Uart_Plugin::Uart_Plugin() :
+    QObject()
+{}
+
+Uart_Plugin::~Uart_Plugin()
+{
+    if (thread_.joinable())
+    {
+        thread_.stop();
+        thread_.join();
+    }
+}
+
+void Uart_Plugin::configure(QSettings *settings, Scheme */*scheme*/)
+{
+    using Helpz::Param;
+
+    Uart::Config config = Helpz::SettingsHelper
+        #if (__cplusplus < 201402L) || (defined(__GNUC__) && (__GNUC__ < 7))
+            <Param<QString>,Param<QSerialPort::BaudRate>,Param<QSerialPort::DataBits>,
+                            Param<QSerialPort::Parity>,Param<QSerialPort::StopBits>,
+                            Param<QSerialPort::FlowControl>>
+        #endif
+            (
+                settings, "Uart",
+                Param<QString>{"Port", QString{}},
+                Param<QSerialPort::BaudRate>{"BaudRate", QSerialPort::Baud9600},
+                Param<QSerialPort::DataBits>{"DataBits", QSerialPort::Data8},
+                Param<QSerialPort::Parity>{"Parity", QSerialPort::NoParity},
+                Param<QSerialPort::StopBits>{"StopBits", QSerialPort::OneStop},
+                Param<QSerialPort::FlowControl>{"FlowControl", QSerialPort::NoFlowControl}
+    ).obj<Uart::Config>();
+
+    thread_.start(std::move(config));
+}
+
+bool Uart_Plugin::check(Device* dev)
+{
+    thread_.check(dev);
+}
+
+void Uart_Plugin::stop()
+{
+    thread_.stop();
+}
+
+void Uart_Plugin::write(std::vector<Write_Cache_Item>& items)
+{
+    thread_.write(items);
 }
 
 } // namespace Das
