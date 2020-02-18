@@ -308,7 +308,7 @@ void Uart_Plugin::configure(QSettings *settings, Scheme */*scheme*/)
 
 bool Uart_Plugin::check(Device* dev)
 {
-    thread_.check(dev);
+    return thread_.check(dev);
 }
 
 void Uart_Plugin::stop()
