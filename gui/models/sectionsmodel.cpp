@@ -95,7 +95,7 @@ GroupStatusInfo SectionModelItem::getStatusInfo() const
         uint statusType = 0;
         const QVector<DIG_Status_Type>& types = group->section()->type_managers()->status_mng_.types();
         for (auto it = types.cbegin(); it != types.cend(); ++it)
-            if (it->groupType_id == group->type_id() &&
+            if (it->group_type_id == group->type_id() &&
                     checkStatus(*it) &&
                     it->type_id >= statusType)
             {

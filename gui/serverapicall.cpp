@@ -438,7 +438,7 @@ void ServerApiCall::proc_scheme_detail(QNetworkReply *reply)
                             json.value(title_str).toString(),
                             json.value("description").toString(),
                             (DIG_Param_Type::Value_Type)json.value("type").toInt(),
-                            static_cast<uint>(json.value("groupType_id").toInt()),
+                            static_cast<uint>(json.value("group_type_id").toInt()),
                             static_cast<uint>(json.value("parent_id").toInt()) });
     }
 

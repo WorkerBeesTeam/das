@@ -171,9 +171,9 @@ inline Delete_Info_List db_delete_info<DIG_Type>(const QString& db_name)
     return {
         { Helpz::DB::db_table_name<Device_item_Group>(db_name), "type_id", db_delete_info<Device_item_Group>(db_name) },
         { Helpz::DB::db_table_name<DIG_Mode_Type>(db_name), "group_type_id", {}, true },
-        { Helpz::DB::db_table_name<Device_Item_Type>(db_name), "groupType_id", db_delete_info<Device_Item_Type>(db_name) },
-        { Helpz::DB::db_table_name<DIG_Param_Type>(db_name), "groupType_id", db_delete_info<DIG_Param_Type>(db_name) },
-        { Helpz::DB::db_table_name<DIG_Status_Type>(db_name), "groupType_id", db_delete_info<DIG_Status_Type>(db_name) },
+        { Helpz::DB::db_table_name<Device_Item_Type>(db_name), "group_type_id", db_delete_info<Device_Item_Type>(db_name) },
+        { Helpz::DB::db_table_name<DIG_Param_Type>(db_name), "group_type_id", db_delete_info<DIG_Param_Type>(db_name) },
+        { Helpz::DB::db_table_name<DIG_Status_Type>(db_name), "group_type_id", db_delete_info<DIG_Status_Type>(db_name) },
     };
 }
 
