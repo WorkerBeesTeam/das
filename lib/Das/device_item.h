@@ -11,6 +11,7 @@
 #include "daslib_global.h"
 
 #include <Das/db/device_item.h>
+#include <Das/db/device_item_value.h>
 
 namespace Das {
 
@@ -20,7 +21,7 @@ typedef QVector< DevicePtr > Devices;
 
 class Device_item_Group;
 
-class DAS_LIBRARY_SHARED_EXPORT Device_Item : public QObject, public Database::Device_Item
+class DAS_LIBRARY_SHARED_EXPORT Device_Item : public QObject, public DB::Device_Item
 {
     Q_OBJECT
     Q_PROPERTY(uint32_t id READ id WRITE set_id)
@@ -36,6 +37,8 @@ class DAS_LIBRARY_SHARED_EXPORT Device_Item : public QObject, public Database::D
     Q_PROPERTY(Device_Item* parent READ parent WRITE set_parent)
     Q_PROPERTY(Device_item_Group* group READ group WRITE set_group)
     Q_PROPERTY(bool is_connected READ is_connected)
+    Q_PROPERTY(qint64 value_time READ value_time)
+    Q_PROPERTY(uint32_t value_user_id READ value_user_id)
 public:
     Device_Item(uint32_t id = 0, const QString& name = {}, uint32_t type_id = 0, const QVariantList& extra_values = {},
                uint32_t parent_id = 0, uint32_t device_id = 0, uint32_t group_id = 0);
@@ -57,6 +60,11 @@ public:
     void set_device(Device* device);
 
     uint8_t register_type() const;
+
+    qint64 value_time() const;
+    uint32_t value_user_id() const;
+
+    const DB::Device_Item_Value& data() const;
 
     QVariant value() const;
     void set_display_value(const QVariant& val); // TODO: DELETE IT
@@ -83,12 +91,13 @@ public slots:
     bool is_control() const;
 
     bool write(const QVariant& display_value, uint32_t mode_id = 0, uint32_t user_id = 0);
-    bool set_raw_value(const QVariant &data, bool force = false, uint32_t user_id = 0, bool silent = false);
-    bool set_data(const QVariant& raw, const QVariant& val, uint32_t user_id = 0);
+    bool set_raw_value(const QVariant &raw_data, bool force = false, uint32_t user_id = 0, bool silent = false, qint64 value_time = DB::Log_Base_Item::current_timestamp());
+    bool set_data(const QVariant& raw, const QVariant& val, uint32_t user_id = 0, qint64 value_time = DB::Log_Base_Item::current_timestamp());
     Device_Item* child(int index) const;
 
 private:
-    bool connection_state_;
+    bool connection_state_real() const;
+    void set_connection_state_real(bool state);
 
     Device* device_;
     Device_item_Group* group_;
@@ -96,7 +105,7 @@ private:
 
     mutable std::recursive_mutex mutex_; // Сейчас в программе есть вызовы функции raw_value из других потоков, поэтому пока добавим mutex.
 
-    QVariant raw_value_, display_value_;
+    DB::Device_Item_Value data_;
 
     QVector< Device_Item* > childs_;
 };

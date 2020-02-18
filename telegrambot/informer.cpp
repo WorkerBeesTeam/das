@@ -9,7 +9,7 @@
 
 namespace Das {
 
-using namespace Helpz::Database;
+using namespace Helpz::DB;
 
 Informer::Data::Data(const Scheme_Info &scheme, std::chrono::time_point<std::chrono::system_clock> expired_time,
                      const QVector<DIG_Status> &add_vect, const QVector<DIG_Status> &del_vect) :
@@ -56,16 +56,40 @@ void Informer::disconnected(const Scheme_Info& scheme, bool just_now)
     add_data(std::make_shared<Data>(scheme, expired_time, QVector<DIG_Status>{}, data));
 }
 
-void Informer::add_status(const Scheme_Info &scheme, const DIG_Status &item)
+void Informer::change_status(const Scheme_Info &scheme, const QVector<DIG_Status> &pack)
 {
-    auto expired_time = std::chrono::system_clock::now() + event_timeout_;
-    add_data(std::make_shared<Data>(scheme, expired_time, QVector<DIG_Status>{item}));
-}
+    using TIME_T = std::chrono::system_clock::time_point;
+    struct Status_Data {
+        QVector<DIG_Status> add_vect_, del_vect_;
+    };
 
-void Informer::remove_status(const Scheme_Info &scheme, const DIG_Status &item)
-{
-    auto expired_time = std::chrono::system_clock::now() + event_timeout_;
-    add_data(std::make_shared<Data>(scheme, expired_time, QVector<DIG_Status>{}, QVector<DIG_Status>{item}));
+    std::map<TIME_T, Status_Data> status_map;
+
+    for (const DIG_Status& status: pack)
+    {
+        TIME_T expired_time;
+
+        if (status.timestamp_msecs() == 0)
+        {
+            expired_time = std::chrono::system_clock::now() + event_timeout_;
+        }
+        else
+        {
+            typedef std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> __from;
+            expired_time = std::chrono::time_point_cast<std::chrono::system_clock::duration>
+                   (__from(std::chrono::milliseconds(status.timestamp_msecs())));
+        }
+
+        Status_Data& data = status_map[expired_time];
+
+        if (status.is_removed())
+            data.del_vect_.push_back(status);
+        else
+            data.add_vect_.push_back(status);
+    }
+
+    for (const auto& it: status_map)
+        add_data(std::make_shared<Data>(scheme, it.first, it.second.add_vect_, it.second.del_vect_));
 }
 
 void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_Event_Item> &event_pack)

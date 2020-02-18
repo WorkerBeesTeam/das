@@ -55,22 +55,16 @@ void Dbus_Handler::dig_param_values_changed(const Scheme_Info& scheme, const QVe
                               Q_ARG(Scheme_Info, scheme), Q_ARG(QVector<DIG_Param_Value>, pack));
 }
 
-void Dbus_Handler::dig_mode_item_changed(const Scheme_Info& scheme, uint32_t mode_id, uint32_t group_id)
+void Dbus_Handler::dig_mode_changed(const Scheme_Info& scheme, const QVector<DIG_Mode> &pack)
 {
-    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "sendModeChanged", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, scheme), Q_ARG(uint32_t, mode_id), Q_ARG(uint32_t, group_id));
+    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "send_dig_mode_pack", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, scheme), Q_ARG(QVector<DIG_Mode>, pack));
 }
 
-void Dbus_Handler::status_inserted(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id, const QStringList& args)
+void Dbus_Handler::status_changed(const Scheme_Info& scheme, const QVector<DIG_Status> &pack)
 {
-    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "sendStatusInserted", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, scheme), Q_ARG(uint32_t, group_id), Q_ARG(uint32_t, info_id), Q_ARG(QStringList, args));
-}
-
-void Dbus_Handler::status_removed(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id)
-{
-    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "sendStatusRemoved", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, scheme), Q_ARG(uint32_t, group_id), Q_ARG(uint32_t, info_id));
+    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "send_dig_status_changed", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, scheme), Q_ARG(QVector<DIG_Status>, pack));
 }
 
 } // namespace WebApi

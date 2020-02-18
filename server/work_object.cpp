@@ -15,7 +15,7 @@
 
 namespace Das {
 
-Helpz::Database::Connection_Info* db_conn_info;
+Helpz::DB::Connection_Info* db_conn_info;
 
 namespace Server {
 
@@ -66,11 +66,11 @@ void Work_Object::init_database(QSettings* s)
                 Helpz::Param{"Prefix", "das_"},
                 Helpz::Param{"Driver", "QMYSQL"}, // QPSQL
                 Helpz::Param{"ConnectOptions", QString()}
-                ).ptr<Helpz::Database::Connection_Info>();
+                ).ptr<Helpz::DB::Connection_Info>();
     db_conn_info = db_conn_info_;
-    Helpz::Database::Connection_Info::set_common(*db_conn_info_);
+    Helpz::DB::Connection_Info::set_common(*db_conn_info_);
 
-    db_thread_mng_ = new Database::Thread_Manager{*db_conn_info_};
+    db_thread_mng_ = new DB::Thread_Manager{*db_conn_info_};
 }
 
 void Work_Object::init_server(QSettings* s)
@@ -82,7 +82,7 @@ void Work_Object::init_server(QSettings* s)
             if (proto == "das/2.4")
             {
                 *choose_out = proto;
-                return std::make_shared<Ver_2_4::Server::Protocol>(this);
+                return std::make_shared<Ver::Server::Protocol>(this);
             }
             else if (true) {}
             else if (proto == "das/2.1" && (choose_out->empty() || proto == "das/2.0"))

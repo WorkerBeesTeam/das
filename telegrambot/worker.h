@@ -43,8 +43,8 @@ public slots:
     void processCommands(const QStringList& args);
 private slots:
 private:
-    Helpz::Database::Connection_Info* db_conn_info_;
-    Helpz::Database::Thread* db_pending_thread_;
+    Helpz::DB::Connection_Info* db_conn_info_;
+    Helpz::DB::Thread* db_pending_thread_;
 
     Bot* bot_;
 

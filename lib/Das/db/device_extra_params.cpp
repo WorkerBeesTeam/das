@@ -4,7 +4,7 @@
 #include "device_extra_params.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 Device_Extra_Params::Device_Extra_Params(const QVariantMap& extra) :
     extra_(extra)
@@ -104,5 +104,5 @@ QDataStream& operator<<(QDataStream& ds, const Device_Extra_Params& item)
     return ds << item.params_to_value_list();
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

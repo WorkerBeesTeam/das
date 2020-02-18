@@ -60,12 +60,12 @@ QDateTime Protocol_Base::get_value_time(qint64 time_msecs) const
     }
 }
 
-std::shared_ptr<Database::global> Protocol_Base::db()
+std::shared_ptr<DB::global> Protocol_Base::db()
 {
     return work_object_->db_thread_mng_->get_db();
 }
 
-Helpz::Database::Thread* Protocol_Base::db_thread()
+Helpz::DB::Thread* Protocol_Base::db_thread()
 {
     return work_object_->db_thread_mng_->thread();
 }

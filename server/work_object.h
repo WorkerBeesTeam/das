@@ -8,7 +8,7 @@
 //QT_FORWARD_DECLARE_CLASS(QSettings)
 
 namespace Helpz {
-namespace Database {
+namespace DB {
 class Connection_Info;
 }
 namespace DTLS {
@@ -19,7 +19,7 @@ class Server_Node;
 
 namespace Das {
 
-namespace Database {
+namespace DB {
 class Thread_Manager;
 }
 
@@ -48,9 +48,9 @@ protected:
 
     std::chrono::seconds disconnect_event_timeout_;
 public:
-    Helpz::Database::Connection_Info* db_conn_info_;
+    Helpz::DB::Connection_Info* db_conn_info_;
 
-    Database::Thread_Manager* db_thread_mng_;
+    DB::Thread_Manager* db_thread_mng_;
 
     Helpz::DTLS::Server_Thread* server_thread_;
 

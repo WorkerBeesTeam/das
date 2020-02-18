@@ -39,9 +39,6 @@ public slots:
     void send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& raw_data) override;
     QString get_ip_address(uint32_t scheme_id) const override;
     void write_item_file(uint32_t scheme_id, uint32_t user_id, uint32_t dev_item_id, const QString& file_name, const QString& file_path) override;
-private slots:
-    void emit_status_added(uint32_t group_id, uint32_t info_id, const QStringList& args, uint32_t user_id);
-    void emit_status_removed(uint32_t group_id, uint32_t info_id, uint32_t user_id);
 private:
     void write_to_item(uint32_t user_id, uint32_t item_id, const QVariant &raw_data);
     void set_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack);

@@ -12,7 +12,7 @@
 namespace Das
 {
 
-class DAS_LIBRARY_SHARED_EXPORT Section : public QObject, public Database::Base_Type
+class DAS_LIBRARY_SHARED_EXPORT Section : public QObject, public DB::Base_Type
 {
     Q_OBJECT
     Q_PROPERTY(uint32_t id READ id WRITE set_id)
@@ -44,7 +44,7 @@ public:
         xExecuting       = 16,
     };
 
-    Device_item_Group* add_group(Database::Device_Item_Group&& grp, uint32_t mode_id);
+    Device_item_Group* add_group(DB::Device_Item_Group&& grp, uint32_t mode_id);
 
     Q_INVOKABLE QVector<Device_item_Group*> groups_by_dev_Device_item_type(uint device_item_type_id) const;
     Q_INVOKABLE Device_item_Group* group_by_dev_Device_item_type(uint device_item_type_id) const;

@@ -60,13 +60,14 @@ signals:
 
 public slots:
     void sendDevice_ItemValues(const Scheme_Info& scheme, const QVector<Log_Value_Item>& pack);
-    void sendModeChanged(const Scheme_Info& scheme, uint32_t mode_id, uint32_t group_id);
+    void send_dig_mode_pack(const Scheme_Info& scheme, const QVector<DIG_Mode>& pack);
+    void sendModeChanged(const Scheme_Info& scheme, const DIG_Mode &mode);
     void send_dig_param_values_changed(const Scheme_Info& scheme, const QVector<DIG_Param_Value> &pack);
     void send_connection_state(const Scheme_Info& scheme, uint8_t connection_state);
     void sendEventMessage(const Scheme_Info& scheme, const QVector<Log_Event_Item>& event_pack);
 
-    void sendStatusInserted(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id, const QStringList& args);
-    void sendStatusRemoved(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id);
+    void send_dig_status_changed(const Scheme_Info& scheme, const QVector<DIG_Status> &pack);
+    void send_dig_status(const Scheme_Info &scheme, const DIG_Status& status);
     void send_structure_changed(const Scheme_Info& scheme, const QByteArray& data);
     void send_time_info(const Scheme_Info& scheme, const QTimeZone& tz, qint64 time_offset);
     void send_ip_address(const Scheme_Info& scheme, const QString& ip_address);

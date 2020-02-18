@@ -33,11 +33,11 @@ private Q_SLOTS:
 
     void has_scheme_id_test()
     {
-        QCOMPARE(Database::has_scheme_id<Device>(), true);
-        QCOMPARE(Database::has_scheme_id<User>(), false);
-        QCOMPARE(Database::has_scheme_id<User_Groups>(), false);
-        QCOMPARE(Database::has_scheme_id<Auth_Group>(), false);
-        QCOMPARE(Database::has_scheme_id<Auth_Group_Permission>(), false);
+        QCOMPARE(DB::has_scheme_id<Device>(), true);
+        QCOMPARE(DB::has_scheme_id<User>(), false);
+        QCOMPARE(DB::has_scheme_id<User_Groups>(), false);
+        QCOMPARE(DB::has_scheme_id<Auth_Group>(), false);
+        QCOMPARE(DB::has_scheme_id<Auth_Group_Permission>(), false);
     }
 
     // ---------- Proto_Scheme ----------

@@ -383,12 +383,18 @@ void WebSocket::sendDevice_ItemValues(const Scheme_Info &scheme, const QVector<L
     send(scheme, message);
 }
 
-void WebSocket::sendModeChanged(const Scheme_Info &scheme, uint32_t mode_id, uint32_t group_id)
+void WebSocket::send_dig_mode_pack(const Scheme_Info &scheme, const QVector<DIG_Mode> &pack)
+{
+    for (const DIG_Mode& mode: pack)
+        sendModeChanged(scheme, mode);
+}
+
+void WebSocket::sendModeChanged(const Scheme_Info &scheme, const DIG_Mode &mode)
 {
     QByteArray message;
     QDataStream ds(&message, QIODevice::WriteOnly);
     ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
-    ds << (quint8)WS_DIG_MODE_ITEM << scheme.id() << mode_id << group_id;
+    ds << (quint8)WS_DIG_MODE << scheme.id() << mode.mode_id() << mode.group_id();
     send(scheme, message);
 }
 
@@ -416,21 +422,23 @@ void WebSocket::sendEventMessage(const Scheme_Info& scheme, const QVector<Log_Ev
     send(scheme, message);
 }
 
-void WebSocket::sendStatusInserted(const Scheme_Info &scheme, uint32_t group_id, uint32_t info_id, const QStringList &args)
+void WebSocket::send_dig_status_changed(const Scheme_Info &scheme, const QVector<DIG_Status> &pack)
 {
-    QByteArray message;
-    QDataStream ds(&message, QIODevice::WriteOnly);
-    ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
-    ds << (quint8)WS_GROUP_STATUS_ADDED << scheme.id() << group_id << info_id << args;
-    send(scheme, message);
+    for (const DIG_Status& status: pack)
+        send_dig_status(scheme, status);
 }
 
-void WebSocket::sendStatusRemoved(const Scheme_Info &scheme, uint32_t group_id, uint32_t info_id)
+void WebSocket::send_dig_status(const Scheme_Info &scheme, const DIG_Status &status)
 {
+    const uint8_t cmd = status.is_removed() ? WS_GROUP_STATUS_REMOVED : WS_GROUP_STATUS_ADDED;
+
     QByteArray message;
     QDataStream ds(&message, QIODevice::WriteOnly);
     ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
-    ds << (quint8)WS_GROUP_STATUS_REMOVED << scheme.id() << group_id << info_id;
+    ds << cmd << scheme.id() << status.group_id() << status.status_id();
+    if (!status.is_removed())
+        ds << status.args();
+
     send(scheme, message);
 }
 

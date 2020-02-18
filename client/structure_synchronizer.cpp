@@ -10,14 +10,14 @@
 #include "structure_synchronizer.h"
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Client {
 
-Structure_Synchronizer::Structure_Synchronizer(Helpz::Database::Thread *db_thread, Protocol* protocol) :
+Structure_Synchronizer::Structure_Synchronizer(Helpz::DB::Thread *db_thread, Protocol* protocol) :
     Structure_Synchronizer_Base(db_thread),
     protocol_(protocol)
 {
-    qRegisterMetaType<std::shared_ptr<Ver_2_4::Client::Protocol>>("std::shared_ptr<Ver_2_4::Client::Protocol_Base>");
+    qRegisterMetaType<std::shared_ptr<Ver::Client::Protocol>>("std::shared_ptr<Ver::Client::Protocol_Base>");
 }
 
 /*static*/ QString Structure_Synchronizer::get_scheme_group_users_fill_sql()
@@ -65,7 +65,7 @@ void Structure_Synchronizer::send_scheme_structure(uint8_t struct_type, uint8_t 
 void Structure_Synchronizer::send_structure_items_hash(uint8_t struct_type, uint8_t msg_id)
 {
     Worker* worker = protocol_->worker();
-    db_thread()->add_query([worker, struct_type, msg_id](Helpz::Database::Base *db)
+    db_thread()->add_query([worker, struct_type, msg_id](Helpz::DB::Base *db)
     {
         auto proto = worker->net_protocol();
         if (proto)
@@ -78,15 +78,15 @@ void Structure_Synchronizer::send_structure_items_hash(uint8_t struct_type, uint
     });
 }
 
-void Structure_Synchronizer::add_structure_items_hash(uint8_t struct_type, QDataStream& ds, Helpz::Database::Base& db)
+void Structure_Synchronizer::add_structure_items_hash(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db)
 {
-    ds << get_structure_hash_map_by_type(struct_type, db, Database::Schemed_Model::default_scheme_id());
+    ds << get_structure_hash_map_by_type(struct_type, db, DB::Schemed_Model::default_scheme_id());
 }
 
 void Structure_Synchronizer::send_structure_items(const QVector<uint32_t>& id_vect, uint8_t struct_type, uint8_t msg_id)
 {
     Worker* worker = protocol_->worker();
-    db_thread()->add_query([worker, id_vect, struct_type, msg_id](Helpz::Database::Base *db)
+    db_thread()->add_query([worker, id_vect, struct_type, msg_id](Helpz::DB::Base *db)
     {
         auto proto = worker->net_protocol();
         if (proto)
@@ -94,7 +94,7 @@ void Structure_Synchronizer::send_structure_items(const QVector<uint32_t>& id_ve
             Helpz::Network::Protocol_Sender helper = proto->send_answer(Cmd::GET_SCHEME, msg_id);
             helper << uint8_t(struct_type | ST_ITEM_FLAG);
 //            helper.timeout(nullptr, std::chrono::minutes(5), std::chrono::seconds(90)); // Пока нет возможности отправлять ответ на ответ
-            proto->structure_sync().add_structure_items_data(struct_type, id_vect, helper, *db, Database::Schemed_Model::default_scheme_id());
+            proto->structure_sync().add_structure_items_data(struct_type, id_vect, helper, *db, DB::Schemed_Model::default_scheme_id());
         }
     });
 }
@@ -102,14 +102,14 @@ void Structure_Synchronizer::send_structure_items(const QVector<uint32_t>& id_ve
 void Structure_Synchronizer::send_structure_hash(uint8_t struct_type, uint8_t msg_id)
 {
     Worker* worker = protocol_->worker();
-    db_thread()->add_query([worker, msg_id, struct_type](Helpz::Database::Base *db)
+    db_thread()->add_query([worker, msg_id, struct_type](Helpz::DB::Base *db)
     {
         auto proto = worker->net_protocol();
         if (proto)
         {
             proto->send_answer(Cmd::GET_SCHEME, msg_id)
                     << uint8_t(struct_type | ST_HASH_FLAG)
-                    << proto->structure_sync().get_structure_hash(struct_type, *db, Database::Schemed_Model::default_scheme_id());
+                    << proto->structure_sync().get_structure_hash(struct_type, *db, DB::Schemed_Model::default_scheme_id());
         }
     });
 }
@@ -117,14 +117,14 @@ void Structure_Synchronizer::send_structure_hash(uint8_t struct_type, uint8_t ms
 void Structure_Synchronizer::send_structure_hash_for_all(uint8_t msg_id)
 {
     Worker* worker = protocol_->worker();
-    db_thread()->add_query([worker, msg_id](Helpz::Database::Base *db)
+    db_thread()->add_query([worker, msg_id](Helpz::DB::Base *db)
     {
         auto proto = worker->net_protocol();
         if (proto)
         {
             proto->send_answer(Cmd::GET_SCHEME, msg_id)
                     << uint8_t(ST_HASH_FLAG)
-                    << proto->structure_sync().get_structure_hash_for_all(*db, Database::Schemed_Model::default_scheme_id());
+                    << proto->structure_sync().get_structure_hash_for_all(*db, DB::Schemed_Model::default_scheme_id());
         }
     });
 }
@@ -132,7 +132,7 @@ void Structure_Synchronizer::send_structure_hash_for_all(uint8_t msg_id)
 void Structure_Synchronizer::send_structure(uint8_t struct_type, uint8_t msg_id)
 {
     Worker* worker = protocol_->worker();
-    db_thread()->add_query([worker, msg_id, struct_type](Helpz::Database::Base *db)
+    db_thread()->add_query([worker, msg_id, struct_type](Helpz::DB::Base *db)
     {
         auto proto = worker->net_protocol();
         if (proto)
@@ -140,7 +140,7 @@ void Structure_Synchronizer::send_structure(uint8_t struct_type, uint8_t msg_id)
             Helpz::Network::Protocol_Sender sender = proto->send_answer(Cmd::GET_SCHEME, msg_id);
             sender << struct_type;
 //        sender.timeout(nullptr, std::chrono::minutes(5), std::chrono::seconds(90)); // Пока нет возможности отправлять ответ на ответ
-            proto->structure_sync().add_structure_data(struct_type, sender, *db, Database::Schemed_Model::default_scheme_id());
+            proto->structure_sync().add_structure_data(struct_type, sender, *db, DB::Schemed_Model::default_scheme_id());
         }
     });
 }
@@ -161,5 +161,5 @@ void Structure_Synchronizer::send_modify_response(uint8_t struct_type, const QBy
 }
 
 } // namespace Client
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das

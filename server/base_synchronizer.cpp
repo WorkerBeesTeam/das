@@ -24,7 +24,7 @@ QString Base_Synchronizer::title() const
     return protocol_->title();
 }
 
-std::shared_ptr<Database::global> Base_Synchronizer::db()
+std::shared_ptr<DB::global> Base_Synchronizer::db()
 {
     return protocol_->db();
 }

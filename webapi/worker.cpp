@@ -93,10 +93,10 @@ void Worker::init_database(QSettings* s)
                 Helpz::Param{"Prefix", "das_"},
                 Helpz::Param{"Driver", "QMYSQL"}, // QPSQL
                 Helpz::Param{"ConnectOptions", QString()}
-                ).ptr<Helpz::Database::Connection_Info>();
+                ).ptr<Helpz::DB::Connection_Info>();
 
-    Helpz::Database::Connection_Info::set_common(*db_conn_info_);
-    db_pending_thread_ = new Helpz::Database::Thread{Helpz::Database::Connection_Info(*db_conn_info_)};
+    Helpz::DB::Connection_Info::set_common(*db_conn_info_);
+    db_pending_thread_ = new Helpz::DB::Thread{Helpz::DB::Connection_Info(*db_conn_info_)};
 }
 
 void Worker::init_dbus_interface(QSettings* s)

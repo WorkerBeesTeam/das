@@ -1,7 +1,7 @@
 #include "plugin_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 Plugin_Type::Plugin_Type(uint32_t id, const QString& name, const QStringList& param_names_device, const QStringList& param_names_device_item) :
     Base_Type(id, name),
@@ -64,5 +64,5 @@ QDataStream &operator>>(QDataStream &ds, Plugin_Type &item)
     return ds >> static_cast<Base_Type&>(item) >> item.param_names_device_ >> item.param_names_device_item_;
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

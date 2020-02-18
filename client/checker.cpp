@@ -338,9 +338,22 @@ void Checker::write_items(Plugin_Type* plugin, std::vector<Write_Cache_Item>& it
     }
     else
     {
+        std::map<Device_Item*, Device::Data_Item> device_items_values;
+        const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
+
         for (const Write_Cache_Item& item: items)
         {
-            QMetaObject::invokeMethod(item.dev_item_, "set_raw_value", Qt::QueuedConnection, Q_ARG(const QVariant&, item.raw_data_), Q_ARG(bool, false), Q_ARG(uint32_t, item.user_id_));
+            Device::Data_Item data_item{item.user_id_, timestamp_msecs, item.raw_data_};
+            device_items_values.emplace(item.dev_item_, std::move(data_item));
+        }
+
+        if (!device_items_values.empty())
+        {
+            Device* dev = device_items_values.begin()->first->device();
+            QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
+                                      QArgument<std::map<Device_Item*, Device::Data_Item>>
+                                      ("std::map<Device_Item*, Device::Data_Item>", device_items_values),
+                                      Q_ARG(bool, true));
         }
     }
 }

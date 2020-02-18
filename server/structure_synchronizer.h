@@ -12,7 +12,7 @@
 #include "base_synchronizer.h"
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Server {
 
 using namespace Das::Server;
@@ -35,15 +35,14 @@ public:
     std::set<DIG_Status> get_statuses();
 
     void change_devitem_value(const Device_Item_Value& value);
-    void add_status(const DIG_Status& item);
-    void del_status(const DIG_Status& item);
+    void change_status(const QVector<Log_Status_Item> &pack);
     QVector<DIG_Status> insert_statuses(const QVector<DIG_Status> &statuses);
 private:
     void change_devitem_value_no_block(const Device_Item_Value& value);
     static bool devitem_value_compare(const Device_Item_Value& value1, const Device_Item_Value& value2);
     void insert_devitem_values(QVector<Device_Item_Value> &&value_vect);
     bool clear_devitem_values_with_save();
-    static void save_devitem_values(Helpz::Database::Base* db, const QVector<Device_Item_Value>& value_vect, uint32_t scheme_id);
+    static void save_devitem_values(Helpz::DB::Base* db, const QVector<Device_Item_Value>& value_vect, uint32_t scheme_id);
     void clear_devitem_values();
     void clear_statuses();
 
@@ -57,7 +56,7 @@ private:
     void process_scheme_items_hash(QMap<uint32_t, uint16_t> &&client_hash_map_arg, uint8_t struct_type);
     void process_scheme_hash(const QByteArray& client_hash, uint8_t struct_type);
     void process_scheme_data(uint8_t struct_type, QIODevice* data_dev, bool delete_if_not_exist);
-    bool remove_scheme_rows(Helpz::Database::Base& db, uint8_t struct_type, const QVector<uint32_t>& delete_vect);
+    bool remove_scheme_rows(Helpz::DB::Base& db, uint8_t struct_type, const QVector<uint32_t>& delete_vect);
 
     QString get_auth_user_suffix(const QString& user_id_str) const;
     void fill_suffix(uint8_t struct_type, QString& where_str) override;
@@ -76,7 +75,7 @@ private:
 };
 
 } // namespace Server
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das
 
 #endif // DAS_SERVER_STRUCTURE_SYNCHRONIZER_H

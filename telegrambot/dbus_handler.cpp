@@ -54,14 +54,9 @@ void Dbus_Handler::event_message_available(const Scheme_Info &scheme, const QVec
     worker_->informer_->send_event_messages(scheme, event_pack);
 }
 
-void Dbus_Handler::status_inserted(const Scheme_Info& scheme, quint32 group_id, quint32 info_id, const QStringList& args)
+void Dbus_Handler::status_changed(const Scheme_Info& scheme, const QVector<DIG_Status> &pack)
 {
-    worker_->informer_->add_status(scheme, {0, group_id, info_id, args});
-}
-
-void Dbus_Handler::status_removed(const Scheme_Info& scheme, quint32 group_id, quint32 info_id)
-{
-    worker_->informer_->remove_status(scheme, {0, group_id, info_id});
+    worker_->informer_->change_status(scheme, pack);
 }
 
 } // namespace Das

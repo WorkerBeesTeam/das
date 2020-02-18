@@ -40,9 +40,9 @@ private:
     void process_scheme_items_hash(QVector<QPair<uint32_t, uint16_t> >&& client_hash_vect_arg, uint8_t struct_type);
     void process_scheme_hash(const QByteArray& client_hash, uint8_t struct_type);
     void process_scheme_data(uint8_t struct_type, QIODevice* data_dev, bool delete_if_not_exist);
-    bool remove_scheme_rows(Helpz::Database::Base& db, uint8_t struct_type, const QVector<uint32_t>& delete_vect);
+    bool remove_scheme_rows(Helpz::DB::Base& db, uint8_t struct_type, const QVector<uint32_t>& delete_vect);
 
-    bool remove_statuses(Helpz::Database::Base& db, const QVector<uint32_t>& delete_vect);
+    bool remove_statuses(Helpz::DB::Base& db, const QVector<uint32_t>& delete_vect);
 
     QString get_auth_user_suffix(const QString& user_id_str) const;
     QString get_suffix(uint8_t struct_type) override;

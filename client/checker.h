@@ -17,10 +17,10 @@ namespace Das {
 
 Q_DECLARE_LOGGING_CATEGORY(CheckerLog)
 
-namespace Database {
+namespace DB {
 class Plugin_Type;
 class Plugin_Type_Manager;
-} // namespace Database
+} // namespace DB
 
 class Scripted_Scheme;
 class Worker;
@@ -44,16 +44,16 @@ private slots:
     void write_data(Device_Item* item, const QVariant& raw_data, uint32_t user_id = 0);
     void write_cache();
 private:
-    void write_items(Database::Plugin_Type* plugin, std::vector<Write_Cache_Item>& items);
+    void write_items(DB::Plugin_Type* plugin, std::vector<Write_Cache_Item>& items);
 
     QTimer check_timer_, write_timer_;
 
     Scripted_Scheme* prj_;
-    std::map<Database::Plugin_Type*, std::vector<Write_Cache_Item>> write_cache_;
+    std::map<DB::Plugin_Type*, std::vector<Write_Cache_Item>> write_cache_;
 
     bool b_break, first_check_;
 
-    std::shared_ptr<Database::Plugin_Type_Manager> plugin_type_mng_;
+    std::shared_ptr<DB::Plugin_Type_Manager> plugin_type_mng_;
 
     struct Check_Info
     {

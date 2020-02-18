@@ -9,7 +9,7 @@
 #include <Das/daslib_global.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT User
 {
@@ -113,10 +113,10 @@ private:
 QDataStream& operator<<(QDataStream& ds, const User_Groups& item);
 QDataStream& operator>>(QDataStream& ds, User_Groups& item);
 
-} // namespace Database
+} // namespace DB
 
-using User = Database::User;
-using User_Groups = Database::User_Groups;
+using User = DB::User;
+using User_Groups = DB::User_Groups;
 
 } // namespace Das
 

@@ -9,7 +9,7 @@
 #include "base_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Plugin_Type : public Base_Type
 {
@@ -51,10 +51,10 @@ QDataStream& operator>>(QDataStream& ds, Plugin_Type& item);
 
 struct DAS_LIBRARY_SHARED_EXPORT Plugin_Type_Manager : public Base_Type_Manager<Plugin_Type> {};
 
-} // namespace Database
+} // namespace DB
 
-using Plugin_Type = Database::Plugin_Type;
-using Plugin_Type_Manager = Database::Plugin_Type_Manager;
+using Plugin_Type = DB::Plugin_Type;
+using Plugin_Type_Manager = DB::Plugin_Type_Manager;
 
 } // namespace Das
 

@@ -12,36 +12,36 @@
 namespace Das {
 
 Device_item_Group::Device_item_Group(uint32_t id, const QString& title, uint32_t section_id, uint32_t type_id, uint32_t mode_id) :
-    QObject(), Database::Device_Item_Group(id, title, section_id, type_id),
-    mode_id_(mode_id), sct_(nullptr), type_(nullptr), param_group_(std::make_shared<Param>(this))
+    QObject(), DB::Device_Item_Group(id, title, section_id, type_id),
+    mode_(0, 0, id, mode_id), sct_(nullptr), type_(nullptr), param_group_(std::make_shared<Param>(this))
 {
-    qRegisterMetaType<std::map<uint32_t, QStringList>>("std::map<uint32_t, QStringList>");
+    qRegisterMetaType<std::set<DIG_Status>>("std::set<DIG_Status>");
     qRegisterMetaType<Das::Param*>("Das::Param*");
 }
 
-Device_item_Group::Device_item_Group(Database::Device_Item_Group &&o, uint32_t mode_id) :
-    QObject(), Database::Device_Item_Group(std::move(o)),
-    mode_id_(mode_id), sct_(nullptr), type_(nullptr), param_group_(std::make_shared<Param>(this))
+Device_item_Group::Device_item_Group(DB::Device_Item_Group &&o, uint32_t mode_id) :
+    QObject(), DB::Device_Item_Group(std::move(o)),
+    mode_(0, 0, id(), mode_id), sct_(nullptr), type_(nullptr), param_group_(std::make_shared<Param>(this))
 {
 }
 
 Device_item_Group::Device_item_Group(Device_item_Group &&o) :
-    QObject(), Database::Device_Item_Group(std::move(o)),
-    mode_id_(std::move(o.mode_id_)), sct_(std::move(o.sct_)),
+    QObject(), DB::Device_Item_Group(std::move(o)),
+    mode_(std::move(o.mode_)), sct_(std::move(o.sct_)),
     type_(std::move(o.type_)), param_group_(std::move(o.param_group_))
 {
 }
 
 Device_item_Group::Device_item_Group(const Device_item_Group &o) :
-    QObject(), Database::Device_Item_Group(o),
-    mode_id_(o.mode_id_), sct_(o.sct_), type_(o.type_), param_group_(o.param_group_)
+    QObject(), DB::Device_Item_Group(o),
+    mode_(o.mode_), sct_(o.sct_), type_(o.type_), param_group_(o.param_group_)
 {
 }
 
 Device_item_Group &Device_item_Group::operator =(Device_item_Group &&o)
 {
-    Database::Device_Item_Group::operator =(std::move(o));
-    mode_id_ = std::move(o.mode_id_);
+    DB::Device_Item_Group::operator =(std::move(o));
+    mode_ = std::move(o.mode_);
     sct_ = std::move(o.sct_);
     type_ = std::move(o.type_);
     param_group_ = std::move(o.param_group_);
@@ -50,8 +50,8 @@ Device_item_Group &Device_item_Group::operator =(Device_item_Group &&o)
 
 Device_item_Group &Device_item_Group::operator =(const Device_item_Group &o)
 {
-    Database::Device_Item_Group::operator =(o);
-    mode_id_ = o.mode_id_;
+    DB::Device_Item_Group::operator =(o);
+    mode_ = o.mode_;
     sct_ = o.sct_;
     type_ = o.type_;
     param_group_ = o.param_group_;
@@ -68,8 +68,8 @@ QString Device_item_Group::name() const
     return title();
 }
 
-uint32_t Device_item_Group::mode_id() const { return mode_id_; }
-void Device_item_Group::set_mode_id(uint32_t mode_id) { mode_id_ = mode_id; }
+uint32_t Device_item_Group::mode_id() const { return mode_.mode_id(); }
+const DIG_Mode &Device_item_Group::mode_data() const { return mode_; }
 
 const Device_Items &Device_item_Group::items() const { return items_; }
 Param *Device_item_Group::params() { return param_group_.get(); }
@@ -120,24 +120,30 @@ void Device_item_Group::finalize()
         emit sct_->group_initialized(this);
 }
 
-const std::map<uint32_t, QStringList> &Device_item_Group::get_statuses() const { return statuses_; }
-void Device_item_Group::set_statuses(const std::map<uint32_t, QStringList> &statuses) { statuses_ = statuses; }
+const std::set<DIG_Status> &Device_item_Group::get_statuses() const { return statuses_; }
+void Device_item_Group::set_statuses(const std::set<DIG_Status> &statuses) { statuses_ = statuses; }
 
 QString Device_item_Group::toString() const
 {
     return sct_->name() + ' ' + name();
 }
 
-void Device_item_Group::set_mode(uint32_t mode_id, uint32_t user_id)
+void Device_item_Group::set_mode(uint32_t mode_id, uint32_t user_id, qint64 timestamp_msec)
 {
-    if (mode_id_ == mode_id)
+    if (mode_.mode_id() == mode_id)
         return;
 
-    mode_id_ = mode_id;
-    emit mode_changed(user_id, mode_id_, id());
+    mode_.set_mode_id(mode_id);
+    mode_.set_user_id(user_id);
+    mode_.set_timestamp_msecs(timestamp_msec);
+
+    if (mode_.group_id() != id())
+        mode_.set_group_id(id());
+
+    emit mode_changed(user_id, mode_id, id());
 }
 
-const std::map<uint32_t, QStringList> &Device_item_Group::statuses() const
+const std::set<DIG_Status> &Device_item_Group::statuses() const
 {
     return statuses_;
 }
@@ -156,25 +162,40 @@ void Device_item_Group::add_status(uint32_t info_id, const QStringList &args, ui
         qCWarning(SchemeDetailLog).noquote().nospace() << user_id << '|' << tr("Attempt to set zero status to group:") << ' ' << toString();
         return;
     }
-    statuses_.emplace(info_id, args);
-    emit status_added(id(), info_id, args, user_id);
+
+    const DIG_Status status(DB::Log_Base_Item::current_timestamp(), user_id, id(), info_id, args);
+
+    statuses_.emplace(status);
+    emit status_changed(status);
 }
 
 void Device_item_Group::remove_status(uint32_t info_id, uint32_t user_id)
 {
-    auto it = statuses_.find(info_id);
-    if (it == statuses_.cend())
-        return;
-    statuses_.erase(it);
-    emit status_removed(id(), info_id, user_id);
+    for (auto it = statuses_.begin(); it != statuses_.end(); ++it)
+    {
+        if (it->status_id() == info_id)
+        {
+            DIG_Status status = *it;
+            status.set_direction(DIG_Status::SD_DEL);
+            status.set_user_id(user_id);
+
+            statuses_.erase(it);
+            emit status_changed(status);
+            break;
+        }
+    }
 }
 
 void Device_item_Group::clear_status(uint32_t user_id)
 {
     while (statuses_.size())
     {
-        emit status_removed(id(), statuses_.begin()->first, user_id);
+        DIG_Status status = *statuses_.begin();
+        status.set_direction(DIG_Status::SD_DEL);
+        status.set_user_id(user_id);
+
         statuses_.erase(statuses_.begin());
+        emit status_changed(status);
     }
 }
 

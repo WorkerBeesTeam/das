@@ -8,11 +8,11 @@
 
 class Device_ItemTableItem : public DevicesTableItem
 {
-    Das::Database::Device_Item_Type_Manager* device_item_type_manager_;
+    Das::DB::Device_Item_Type_Manager* device_item_type_manager_;
     QModbusServer* modbus_server_;
     Das::Device_Item* dev_item_;
 public:
-    Device_ItemTableItem(Das::Database::Device_Item_Type_Manager *mng, QModbusServer* modbus_server, Das::Device_Item* item, DevicesTableItem* parent = nullptr);
+    Device_ItemTableItem(Das::DB::Device_Item_Type_Manager *mng, QModbusServer* modbus_server, Das::Device_Item* item, DevicesTableItem* parent = nullptr);
     ~Device_ItemTableItem() override = default;
 
     Qt::ItemFlags flags(const QModelIndex& index) const override;

@@ -9,8 +9,11 @@ QString log_table_name(uint8_t log_type, const QString& db_name)
 {
     switch (static_cast<Log_Type>(log_type))
     {
-    case LOG_VALUE: return Helpz::Database::db_table_name<Log_Value_Item>(db_name);
-    case LOG_EVENT: return Helpz::Database::db_table_name<Log_Event_Item>(db_name);
+    case LOG_VALUE:  return Helpz::DB::db_table_name<Log_Value_Item>(db_name);
+    case LOG_EVENT:  return Helpz::DB::db_table_name<Log_Event_Item>(db_name);
+    case LOG_PARAM:  return Helpz::DB::db_table_name<Log_Param_Item>(db_name);
+    case LOG_STATUS: return Helpz::DB::db_table_name<Log_Status_Item>(db_name);
+    case LOG_MODE:   return Helpz::DB::db_table_name<Log_Mode_Item>(db_name);
     default: break;
     }
     return {};
@@ -23,7 +26,7 @@ Log_Type_Wrapper::Log_Type_Wrapper(uint8_t log_type) :
 
 bool Log_Type_Wrapper::is_valid() const
 {
-    return log_type_ == LOG_VALUE || log_type_ == LOG_EVENT;
+    return log_type_ > LOG_UNKNOWN && log_type_ < LOG_COUNT;
 }
 
 Log_Type_Wrapper::operator uint8_t() const
@@ -45,8 +48,11 @@ QString Log_Type_Wrapper::to_string() const
 {
     switch (static_cast<Log_Type>(log_type_))
     {
-    case LOG_VALUE: return "[Value]";
-    case LOG_EVENT: return "[Event]";
+    case LOG_VALUE:  return "[Value]";
+    case LOG_EVENT:  return "[Event]";
+    case LOG_PARAM:  return "[Param]";
+    case LOG_STATUS: return "[Status]";
+    case LOG_MODE:   return "[Mode]";
     default: break;
     }
     return {};

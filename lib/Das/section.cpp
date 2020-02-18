@@ -10,27 +10,27 @@ namespace Das
 {
 
 Section::Section(uint32_t id, const QString& name, uint32_t day_start_secs, uint32_t day_end_secs) :
-    QObject(), Database::Base_Type(id, name),
+    QObject(), DB::Base_Type(id, name),
     day_(day_start_secs, day_end_secs), type_mng_(nullptr)
 {
     qRegisterMetaType<Device_Item*>("Device_Item*");
 }
 
 Section::Section(Section &&o) :
-    QObject(), Database::Base_Type(std::move(o)),
+    QObject(), DB::Base_Type(std::move(o)),
     day_(std::move(o.day_)), type_mng_(std::move(o.type_mng_))
 {
 }
 
 Section::Section(const Section &o) :
-    QObject(), Database::Base_Type(o),
+    QObject(), DB::Base_Type(o),
     day_(o.day_), type_mng_(o.type_mng_)
 {
 }
 
 Section &Section::operator =(Section &&o)
 {
-    Database::Base_Type::operator =(std::move(o));
+    DB::Base_Type::operator =(std::move(o));
     day_ = std::move(o.day_);
     type_mng_ = std::move(o.type_mng_);
     return *this;
@@ -38,7 +38,7 @@ Section &Section::operator =(Section &&o)
 
 Section &Section::operator =(const Section &o)
 {
-    Database::Base_Type::operator =(o);
+    DB::Base_Type::operator =(o);
     day_ = o.day_;
     type_mng_ = o.type_mng_;
     return *this;
@@ -58,7 +58,7 @@ Section::~Section()
 TimeRange* Section::day_time() { return &day_; }
 const TimeRange *Section::day_time() const { return &day_; }
 
-Device_item_Group *Section::add_group(Database::Device_Item_Group&& grp, uint32_t mode_id)
+Device_item_Group *Section::add_group(DB::Device_Item_Group&& grp, uint32_t mode_id)
 {
     Device_item_Group* group = new Device_item_Group( std::move(grp), mode_id );
     group->set_section(this);
@@ -172,12 +172,12 @@ Device_Item *Section::item_by_type(uint device_item_type_id, uint32_t group_type
 
 QDataStream &operator>>(QDataStream &ds, Section &sct)
 {
-    return ds >> static_cast<Database::Base_Type&>(sct) >> sct.day_;
+    return ds >> static_cast<DB::Base_Type&>(sct) >> sct.day_;
 }
 
 QDataStream &operator<<(QDataStream &ds, const Section &sct)
 {
-    return ds << static_cast<const Database::Base_Type&>(sct) << *sct.day_time();
+    return ds << static_cast<const DB::Base_Type&>(sct) << *sct.day_time();
 }
 
 QDataStream &operator<<(QDataStream &ds, Section *sct)

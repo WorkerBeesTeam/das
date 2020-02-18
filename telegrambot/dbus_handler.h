@@ -29,8 +29,7 @@ public slots:
 //    void group_param_values_changed(const Scheme_Info& scheme, const QVector<Group_Param_Value> &pack) {}
 //    void group_mode_changed(const Scheme_Info& scheme, quint32 mode_id, quint32 group_id) {}
 
-    void status_inserted(const Scheme_Info& scheme, quint32 group_id, quint32 info_id, const QStringList& args);
-    void status_removed(const Scheme_Info& scheme, quint32 group_id, quint32 info_id);
+    void status_changed(const Scheme_Info& scheme, const QVector<DIG_Status> &pack);
 private:
     Worker* worker_;
 };

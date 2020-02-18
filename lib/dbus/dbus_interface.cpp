@@ -96,12 +96,10 @@ void Interface::connect_to_interface()
                 handler_, SLOT(structure_changed(Scheme_Info, QByteArray)));
         connect(iface_, SIGNAL(dig_param_values_changed(Scheme_Info, QVector<DIG_Param_Value>)),
                 handler_, SLOT(dig_param_values_changed(Scheme_Info, QVector<DIG_Param_Value>)));
-        connect(iface_, SIGNAL(dig_mode_item_changed(Scheme_Info, uint32_t, uint32_t)),
-                handler_, SLOT(dig_mode_item_changed(Scheme_Info, uint32_t, uint32_t)));
-        connect(iface_, SIGNAL(status_inserted(Scheme_Info, uint32_t, uint32_t, QStringList)),
-                handler_, SLOT(status_inserted(Scheme_Info, uint32_t, uint32_t, QStringList)));
-        connect(iface_, SIGNAL(status_removed(Scheme_Info, uint32_t, uint32_t)),
-                handler_, SLOT(status_removed(Scheme_Info, uint32_t, uint32_t)));
+        connect(iface_, SIGNAL(dig_mode_changed(Scheme_Info, QVector<DIG_Mode>)),
+                handler_, SLOT(dig_mode_changed(Scheme_Info, QVector<DIG_Mode>)));
+        connect(iface_, SIGNAL(status_changed(Scheme_Info, QVector<DIG_Status>)),
+                handler_, SLOT(status_changed(Scheme_Info, QVector<DIG_Status>)));
     }
     else
     {

@@ -70,7 +70,7 @@ void Structure_Synchronizer::process_modify(uint32_t user_id, uint8_t struct_typ
             if (!del_id_vect.isEmpty())
             {
                 auto db = protocol_->db();
-                del_vect = Helpz::Database::db_build_list<Ver_2_1_DIG_Status>(*db, del_id_vect, Database::scheme::db_name(name()));
+                del_vect = Helpz::DB::db_build_list<Ver_2_1_DIG_Status>(*db, del_id_vect, Database::scheme::db_name(name()));
             }
             process_statuses(std::move(upd_vect), std::move(del_vect));
         }
@@ -241,7 +241,7 @@ void Structure_Synchronizer::process_scheme_items_hash(QVector<QPair<uint32_t,ui
     }
     else
     {
-        db_thread()->add([node, client_hash_vect, struct_type, is_child, db_name](Helpz::Database::Base* db) mutable
+        db_thread()->add([node, client_hash_vect, struct_type, is_child, db_name](Helpz::DB::Base* db) mutable
         {
             auto start_point = std::chrono::system_clock::now();
 
@@ -348,7 +348,7 @@ void Structure_Synchronizer::process_scheme_hash(const QByteArray& client_hash, 
     }
     else
     {
-        db_thread()->add([node, client_hash, struct_type, db_name](Helpz::Database::Base* db)
+        db_thread()->add([node, client_hash, struct_type, db_name](Helpz::DB::Base* db)
         {
             auto start_point = std::chrono::system_clock::now();
 
@@ -426,7 +426,7 @@ void Structure_Synchronizer::process_scheme_data(uint8_t struct_type, QIODevice*
     }
 }
 
-bool Structure_Synchronizer::remove_scheme_rows(Helpz::Database::Base& db, uint8_t struct_type, const QVector<uint32_t>& delete_vect)
+bool Structure_Synchronizer::remove_scheme_rows(Helpz::DB::Base& db, uint8_t struct_type, const QVector<uint32_t>& delete_vect)
 {
     switch (struct_type)
     {
@@ -464,9 +464,9 @@ bool Structure_Synchronizer::remove_scheme_rows(Helpz::Database::Base& db, uint8
     return false;
 }
 
-bool Structure_Synchronizer::remove_statuses(Helpz::Database::Base& db, const QVector<uint32_t>& delete_vect)
+bool Structure_Synchronizer::remove_statuses(Helpz::DB::Base& db, const QVector<uint32_t>& delete_vect)
 {
-    QVector<Ver_2_1_DIG_Status> items = Helpz::Database::db_build_list<Ver_2_1_DIG_Status>(db, delete_vect, Database::scheme::db_name(name()));
+    QVector<Ver_2_1_DIG_Status> items = Helpz::DB::db_build_list<Ver_2_1_DIG_Status>(db, delete_vect, Database::scheme::db_name(name()));
     if (!items.isEmpty())
     {
         process_statuses({}, std::move(items));
@@ -583,7 +583,7 @@ public:
 
     void remove(QSqlQuery& query)
     {
-        Ver_2_1_DIG_Status item = Helpz::Database::db_build<Ver_2_1_DIG_Status>(query);
+        Ver_2_1_DIG_Status item = Helpz::DB::db_build<Ver_2_1_DIG_Status>(query);
         del_vect_.push_back(std::move(item));
     }
 
@@ -630,7 +630,7 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, const QString& db_na
     std::vector<UpdateInfo> update_list;
     QVector<PK_Type> delete_vect;
 
-    Helpz::Database::Table table = Helpz::Database::db_table<T>(db_name);
+    Helpz::DB::Table table = Helpz::DB::db_table<T>(db_name);
 
     std::shared_ptr<Database::global> db_ptr = db();
     {
@@ -683,9 +683,9 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, const QString& db_na
 
     struct UncheckForeign
     {
-        UncheckForeign(Helpz::Database::Base* p) : p_(p) { p->exec("SET foreign_key_checks=0;"); }
+        UncheckForeign(Helpz::DB::Base* p) : p_(p) { p->exec("SET foreign_key_checks=0;"); }
         ~UncheckForeign() { p_->exec("SET foreign_key_checks=1;"); }
-        Helpz::Database::Base* p_;
+        Helpz::DB::Base* p_;
     } uncheck_foreign(db_ptr.get());
 
     if (delete_if_not_exist && !delete_vect.isEmpty())

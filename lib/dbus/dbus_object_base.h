@@ -2,6 +2,7 @@
 #define DBUS_OBJECT_BASE_H
 
 #include <QDBusContext>
+#include <QLoggingCategory>
 
 #include <Das/db/dig_status.h>
 #include <Das/db/dig_param_value.h>
@@ -12,6 +13,9 @@
 #include <dbus/dbus_common.h>
 
 namespace Das {
+
+Q_DECLARE_LOGGING_CATEGORY(DBusLog)
+
 namespace DBus {
 
 /*
@@ -26,9 +30,8 @@ namespace DBus {
     void time_info(const Scheme_Info& scheme, const QTimeZone& tz, qint64 time_offset); \
     void structure_changed(const Scheme_Info& scheme, const QByteArray& data); \
     void dig_param_values_changed(const Scheme_Info& scheme, const QVector<DIG_Param_Value> &pack); \
-    void dig_mode_item_changed(const Scheme_Info& scheme, uint32_t mode_id, uint32_t group_id); \
-    void status_inserted(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id, const QStringList& args); \
-    void status_removed(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id);
+    void status_changed(const Scheme_Info& scheme, const QVector<DIG_Status>& pack); \
+    void dig_mode_changed(const Scheme_Info& scheme, const QVector<DIG_Mode> &pack);
 
 class Object_Base : public QObject, protected QDBusContext
 {

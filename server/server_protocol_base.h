@@ -12,7 +12,7 @@
 
 namespace Das {
 
-namespace Database {
+namespace DB {
 class global;
 class Thread_Manager;
 }
@@ -52,8 +52,8 @@ public:
 
     QDateTime get_value_time(qint64 time_msecs) const;
 
-    std::shared_ptr<Database::global> db();
-    Helpz::Database::Thread* db_thread();
+    std::shared_ptr<DB::global> db();
+    Helpz::DB::Thread* db_thread();
 
     Work_Object* work_object();
 protected:

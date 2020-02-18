@@ -13,7 +13,7 @@
 #include "server_protocol.h"
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Server {
 
 Protocol::Protocol(Work_Object* work_object) :
@@ -114,32 +114,12 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
     case Cmd::LOG_DATA_REQUEST:
         Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Synchronizer::process_data, &log_sync_, &data_dev, msg_id);
         break;
-    case Cmd::LOG_PACK_VALUES:
-        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Sync_Values::process_pack, &log_sync_.values_, msg_id);
-        break;
-    case Cmd::LOG_PACK_EVENTS:
-        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Sync_Events::process_pack, &log_sync_.events_, msg_id);
+    case Cmd::LOG_PACK:
+        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Synchronizer::process_pack, &log_sync_, &data_dev, msg_id);
         break;
 
     case Cmd::GROUP_STATUSES:
         Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Structure_Synchronizer::insert_statuses, &structure_sync_);
-        break;
-
-    case Cmd::SET_MODE:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::mode_changed);
-        break;
-    case Cmd::ADD_STATUS:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::status_added);
-        break;
-    case Cmd::REMOVE_STATUS:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::status_removed);
-        break;
-    case Cmd::SET_DIG_PARAM_VALUES:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::dig_param_values_changed);
         break;
 
     case Cmd::MODIFY_SCHEME:
@@ -250,34 +230,6 @@ void Protocol::set_time_offset(const QDateTime& scheme_time, const QTimeZone& ti
 
     qDebug().noquote() << title() << "setTimeOffset" << time().offset
               << (time().zone.isValid() ? time().zone.id().constData()/*displayName(QTimeZone::GenericTime).toStdString()*/ : "invalid");
-}
-
-void Protocol::mode_changed(uint32_t /*user_id*/, uint32_t mode_id, uint32_t group_id)
-{
-    db()->deffered_set_mode(id(), mode_id, group_id);
-    QMetaObject::invokeMethod(work_object()->dbus_, "dig_mode_item_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, mode_id), Q_ARG(uint32_t, group_id));
-}
-
-void Protocol::status_added(const DIG_Status &item)
-{
-    structure_sync()->add_status(item);
-    QMetaObject::invokeMethod(work_object()->dbus_, "status_inserted", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, item.group_id()), Q_ARG(uint32_t, item.status_id()), Q_ARG(QStringList, item.args()));
-}
-
-void Protocol::status_removed(uint32_t group_id, uint32_t status_id)
-{
-    structure_sync()->del_status(DIG_Status{0, group_id, status_id});
-    QMetaObject::invokeMethod(work_object()->dbus_, "status_removed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, group_id), Q_ARG(uint32_t, status_id));
-}
-
-void Protocol::dig_param_values_changed(uint32_t /*user_id*/, const QVector<DIG_Param_Value>& pack)
-{
-    db()->deffered_save_dig_param_value(id(), pack);
-    QMetaObject::invokeMethod(work_object()->dbus_, "dig_param_values_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(QVector<DIG_Param_Value>, pack));
 }
 
 #if 0
@@ -397,5 +349,5 @@ private:
 #endif
 
 } // namespace Server
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das

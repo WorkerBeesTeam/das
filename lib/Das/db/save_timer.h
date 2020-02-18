@@ -9,7 +9,7 @@
 #include <Das/db/schemed_model.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Save_Timer : public Schemed_Model
 {
@@ -36,9 +36,9 @@ private:
 QDataStream &operator>>(QDataStream &ds, Save_Timer& item);
 QDataStream &operator<<(QDataStream &ds, const Save_Timer& item);
 
-} // namespace Database
+} // namespace DB
 
-using Save_Timer = Database::Save_Timer;
+using Save_Timer = DB::Save_Timer;
 
 } // namespace Das
 

@@ -11,10 +11,9 @@ int unit(const Das::Device_Item *a)
     return val.isValid() ? val.toInt() : -1;
 }
 
-Device_ItemTableItem::Device_ItemTableItem(Das::Database::Device_Item_Type_Manager *mng, QModbusServer* modbus_server, Das::Device_Item *item, DevicesTableItem *parent)
+Device_ItemTableItem::Device_ItemTableItem(Das::DB::Device_Item_Type_Manager *mng, QModbusServer* modbus_server, Das::Device_Item *item, DevicesTableItem *parent)
     : DevicesTableItem(item, parent), device_item_type_manager_(mng), modbus_server_(modbus_server), dev_item_(item)
 {
-
 }
 
 QVariant Device_ItemTableItem::data(const QModelIndex &index, int role) const {

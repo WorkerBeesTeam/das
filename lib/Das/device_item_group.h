@@ -4,16 +4,18 @@
 #include <QMutex>
 
 #include <memory>
-#include <map>
+#include <set>
 
 #include <Das/db/device_item_group.h>
+#include <Das/db/dig_status.h>
+#include <Das/db/dig_mode.h>
 #include <Das/param/paramgroup.h>
 #include <Das/device_item.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 class DIG_Type;
-} // namespace Database
+} // namespace DB
 class Section;
 
 class DAS_LIBRARY_SHARED_EXPORT Device_item_GroupStatus : public QObject
@@ -24,7 +26,7 @@ public:
     QStringList args_;
 };
 
-class DAS_LIBRARY_SHARED_EXPORT Device_item_Group : public QObject, public Database::Device_Item_Group
+class DAS_LIBRARY_SHARED_EXPORT Device_item_Group : public QObject, public DB::Device_Item_Group
 {
     Q_OBJECT
     Q_PROPERTY(uint32_t id READ id)
@@ -38,7 +40,7 @@ class DAS_LIBRARY_SHARED_EXPORT Device_item_Group : public QObject, public Datab
     Q_PROPERTY(Section* section READ section)
 public:
     Device_item_Group(uint32_t id = 0, const QString& title = {}, uint32_t section_id = 0, uint32_t type_id = 0, uint32_t mode_id = 0);
-    Device_item_Group(Database::Device_Item_Group&& o, uint32_t mode_id);
+    Device_item_Group(DB::Device_Item_Group&& o, uint32_t mode_id);
     Device_item_Group(Device_item_Group&& o);
     Device_item_Group(const Device_item_Group& o);
     Device_item_Group& operator =(Device_item_Group&& o);
@@ -47,7 +49,7 @@ public:
     QString name() const;
 
     uint32_t mode_id() const;
-    void set_mode_id(uint32_t mode_id);
+    const DIG_Mode& mode_data() const;
 
     Section* section() const;
     void set_section(Section* section);
@@ -60,8 +62,8 @@ public:
     void remove_item(Device_Item* item);
     void finalize();
 
-    const std::map<uint32_t, QStringList>& get_statuses() const;
-    void set_statuses(const std::map<uint32_t, QStringList>& statuses);
+    const std::set<DIG_Status> &get_statuses() const;
+    void set_statuses(const std::set<DIG_Status>& statuses);
 signals:
 
     void item_changed(Device_Item*, uint32_t user_id = 0, const QVariant& old_raw_value = QVariant());
@@ -72,17 +74,16 @@ signals:
 
     void param_changed(Das::Param* param, uint32_t user_id = 0);
     void mode_changed(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
+    void status_changed(const DIG_Status& status);
 
-    void status_added(uint32_t group_id, uint32_t info_id, const QStringList& args, uint32_t user_id);
-    void status_removed(uint32_t group_id, uint32_t info_id, uint32_t user_id);
     void connection_state_change(Device_Item*, bool value);
 
 public slots:
     QString toString() const;
 
-    void set_mode(uint32_t mode_id, uint32_t user_id = 0);
+    void set_mode(uint32_t mode_id, uint32_t user_id = 0, qint64 timestamp_msec = DB::Log_Base_Item::current_timestamp());
 
-    const std::map<uint32_t, QStringList>& statuses() const;
+    const std::set<DIG_Status>& statuses() const;
 
     bool check_status(uint32_t info_id);
     void add_status(uint32_t info_id, const QStringList& args = QStringList(), uint32_t user_id = 0);
@@ -99,15 +100,16 @@ private slots:
     void value_changed(uint32_t user_id, const QVariant& old_raw_value);
     void connection_state_changed(bool value);
 private:
-    uint32_t mode_id_;
+
+    DIG_Mode mode_;
 
     Section* sct_;
-    Database::DIG_Type* type_;
+    DB::DIG_Type* type_;
 
     Device_Items items_;
     std::shared_ptr<Param> param_group_;
 
-    std::map<uint32_t, QStringList> statuses_;
+    std::set<DIG_Status> statuses_;
 };
 
 QDataStream &operator<<(QDataStream& ds, Device_item_Group* group);

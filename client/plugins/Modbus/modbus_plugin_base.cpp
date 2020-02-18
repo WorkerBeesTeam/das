@@ -214,11 +214,13 @@ public:
     Modbus_Pack_Read_Manager(std::vector<Modbus_Pack<Device_Item*>>&& packs) :
         is_connected_(true), position_(-1), packs_(std::move(packs))
     {
+        qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
+
         for (Modbus_Pack<Device_Item*> &item_pack : packs_)
         {
             for (Device_Item* device_item : item_pack.items_)
             {
-                new_values_.emplace(device_item, QVariant());
+                new_values_.emplace(device_item, Device::Data_Item{0, timestamp_msecs, {}});
             }
         }
     }
@@ -244,7 +246,7 @@ public:
         else if (packs_.size())
         {
             QMetaObject::invokeMethod(packs_.front().items_.front()->device(), "set_device_items_values",
-                                      QArgument<std::map<Device_Item*, QVariant>>("std::map<Device_Item*, QVariant>", new_values_), Q_ARG(bool, true));
+                                      QArgument<std::map<Device_Item*, Device::Data_Item>>("std::map<Device_Item*, Device::Data_Item>", new_values_), Q_ARG(bool, true));
         }
         while (packs_.size())
         {
@@ -257,7 +259,7 @@ public:
     bool is_connected_;
     int position_; // int becose -1 is default
     std::vector<Modbus_Pack<Device_Item*>> packs_;
-    std::map<Device_Item*, QVariant> new_values_;
+    std::map<Device_Item*, Device::Data_Item> new_values_;
 };
 
 
@@ -789,7 +791,7 @@ void Modbus_Plugin_Base::read_finished(QModbusReply* reply)
                     }
                 }
 
-                modbus_pack_read_manager.new_values_.at(pack.items_.at(i)) = raw_data;
+                modbus_pack_read_manager.new_values_.at(pack.items_.at(i)).raw_data_ = raw_data;
     //                QMetaObject::invokeMethod(pack.items_.at(i), "set_raw_value", Qt::QueuedConnection, Q_ARG(const QVariant&, raw_data));
             }
 

@@ -1,5 +1,5 @@
-#ifndef DAS_BASE_TYPE_H
-#define DAS_BASE_TYPE_H
+#ifndef DAS_DB_BASE_TYPE_H
+#define DAS_DB_BASE_TYPE_H
 
 #include <QVector>
 #include <QString>
@@ -9,7 +9,7 @@
 #include <Das/db/schemed_model.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 struct DAS_LIBRARY_SHARED_EXPORT Base_Type : public Schemed_Model
 {
@@ -169,7 +169,7 @@ inline QDataStream &operator<<(QDataStream &ds, const Base_Type_Manager<T> &type
 //    return ds >> type.types_;
 //}
 
-} // namespace Database
+} // namespace DB
 } // namespace Das
 
-#endif // DAS_BASE_TYPE_H
+#endif // DAS_DB_BASE_TYPE_H
