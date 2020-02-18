@@ -44,6 +44,7 @@ bool Uart_Thread::check(Device *dev)
     {
         if (read_set_.find(item) == read_set_.end())
         {
+            read_set_.insert(item);
             read_queue_.push(item);
         }
     }
@@ -66,6 +67,7 @@ void Uart_Thread::write(std::vector<Write_Cache_Item> &items)
     {
         if (write_set_.find(item.dev_item_) == write_set_.end())
         {
+            read_set_.insert(item.dev_item_);
             write_queue_.push(std::move(item));
         }
     }
@@ -201,9 +203,21 @@ void Uart_Thread::read_item(QSerialPort &port, Device_Item *item)
 
     port.readAll();
     port.write(data);
-    port.waitForBytesWritten();
-    port.waitForReadyRead();
-    data = port.readAll();
+
+    if (port.waitForBytesWritten(3000))
+    {
+        if (port.waitForReadyRead(3000))
+        {
+            data = port.readAll();
+        }
+    }
+
+    if (port.error() != QSerialPort::NoError)
+    {
+        port.close();
+        device_items_disconected_[item->device()].push_back(item);
+        return;
+    }
 
     const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
     Device::Data_Item data_item{0, timestamp_msecs, data};
