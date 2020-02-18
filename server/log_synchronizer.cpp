@@ -130,6 +130,8 @@ template<> void after_process_pack<Log_Mode_Item>(Base& db, uint32_t scheme_id, 
     }
 }
 
+// После вызова этой функции нельзя использовать pack_ptr в вызывающей функции
+// т.к pack_ptr уже начнёт использоваться в другом потоке
 template<typename T>
 void process_pack_impl(Server::Protocol_Base* proto, std::shared_ptr<QVector<T>> pack_ptr, uint8_t msg_id)
 {
@@ -288,11 +290,11 @@ void Log_Sync_Values::process_pack(QVector<Log_Value_Item> &&pack, uint8_t msg_i
     for (Log_Value_Item& item: *pack_ptr)
         static_cast<Protocol*>(protocol())->structure_sync()->change_devitem_value(item);
 
-    process_pack_impl(protocol(), pack_ptr, msg_id);
-
     if (!pack_ptr->empty())
         QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "device_item_values_available", Qt::QueuedConnection,
                               Q_ARG(Scheme_Info, *protocol_), Q_ARG(QVector<Log_Value_Item>, *pack_ptr));
+
+    process_pack_impl(protocol(), pack_ptr, msg_id);
 }
 
 QString Log_Sync_Values::get_param_name() const
@@ -315,11 +317,12 @@ Log_Sync_Events::Log_Sync_Events(Protocol_Base *protocol) :
 void Log_Sync_Events::process_pack(QVector<Log_Event_Item>&& pack, uint8_t msg_id)
 {
     auto pack_ptr = std::make_shared<QVector<Log_Event_Item>>(std::move(pack));
-    process_pack_impl(protocol(), pack_ptr, msg_id);
 
     if (!pack_ptr->empty())
         QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "event_message_available", Qt::QueuedConnection,
                                   Q_ARG(Scheme_Info, *protocol_), Q_ARG(QVector<Log_Event_Item>, *pack_ptr));
+
+    process_pack_impl(protocol(), pack_ptr, msg_id);
 }
 
 QString Log_Sync_Events::get_param_name() const
@@ -342,7 +345,6 @@ Log_Sync_Params::Log_Sync_Params(Protocol_Base *protocol) :
 void Log_Sync_Params::process_pack(QVector<Log_Param_Item> &&pack, uint8_t msg_id)
 {
     auto pack_ptr = std::make_shared<QVector<Log_Param_Item>>(std::move(pack));
-    process_pack_impl(protocol(), pack_ptr, msg_id);
 
     if (!pack_ptr->empty())
     {
@@ -351,6 +353,8 @@ void Log_Sync_Params::process_pack(QVector<Log_Param_Item> &&pack, uint8_t msg_i
         QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "dig_param_values_changed", Qt::QueuedConnection,
                                   Q_ARG(Scheme_Info, *protocol()), Q_ARG(QVector<DIG_Param_Value>, param_pack));
     }
+
+    process_pack_impl(protocol(), pack_ptr, msg_id);
 }
 
 void Log_Sync_Params::fill_log_data(QIODevice &data_dev, QString &sql, QVariantList &values_pack, int &row_count)
@@ -371,7 +375,6 @@ void Log_Sync_Statuses::process_pack(QVector<Log_Status_Item> &&pack, uint8_t ms
 
     static_cast<Ver::Server::Protocol*>(protocol())->structure_sync()->change_status(*pack_ptr);
 
-    process_pack_impl(protocol(), pack_ptr, msg_id);
 
     if (!pack_ptr->empty())
     {
@@ -379,6 +382,8 @@ void Log_Sync_Statuses::process_pack(QVector<Log_Status_Item> &&pack, uint8_t ms
         QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "status_changed", Qt::QueuedConnection,
                               Q_ARG(Scheme_Info, *protocol()), Q_ARG(QVector<DIG_Status>, status_pack));
     }
+
+    process_pack_impl(protocol(), pack_ptr, msg_id);
 }
 
 void Log_Sync_Statuses::fill_log_data(QIODevice &data_dev, QString &sql, QVariantList &values_pack, int &row_count)
@@ -396,7 +401,6 @@ Log_Sync_Modes::Log_Sync_Modes(Protocol_Base *protocol) :
 void Log_Sync_Modes::process_pack(QVector<Log_Mode_Item> &&pack, uint8_t msg_id)
 {
     auto pack_ptr = std::make_shared<QVector<Log_Mode_Item>>(std::move(pack));
-    process_pack_impl(protocol(), pack_ptr, msg_id);
 
     if (!pack_ptr->empty())
     {
@@ -404,6 +408,8 @@ void Log_Sync_Modes::process_pack(QVector<Log_Mode_Item> &&pack, uint8_t msg_id)
         QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "dig_mode_changed", Qt::QueuedConnection,
                                   Q_ARG(Scheme_Info, *protocol()), Q_ARG(QVector<DIG_Mode>, mode_pack));
     }
+
+    process_pack_impl(protocol(), pack_ptr, msg_id);
 }
 
 void Log_Sync_Modes::fill_log_data(QIODevice &data_dev, QString &sql, QVariantList &values_pack, int &row_count)
