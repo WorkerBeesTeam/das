@@ -584,7 +584,8 @@ void Worker::update_plugin_param_names(const QVector<Plugin_Type>& plugins)
 
 void Worker::connection_state_changed(Device_Item *item, bool value)
 {
-    Log_Value_Item log_value_item{ QDateTime::currentDateTimeUtc().toMSecsSinceEpoch(), 0, false, item->id()};
+    Log_Value_Item log_value_item{QDateTime::currentDateTimeUtc().toMSecsSinceEpoch(), 0,
+                                  item->id(), QVariant(), QVariant(), false};
 
     if (value)
     {

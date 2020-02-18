@@ -17,6 +17,7 @@ Q_LOGGING_CATEGORY(SchemeDetailLog, "scheme.detail", QtInfoMsg)
 Scheme::Scheme(/*Database *db, */QObject *parent) :
     QObject(parent)/*, db_(db)*/
 {
+    qRegisterMetaType<QVector<DB::DIG_Param_Value_Base>>("QVector<DB::DIG_Param_Value_Base>");
     qRegisterMetaType<QVector<DIG_Param_Value>>("QVector<DIG_Param_Value>");
 
     plugin_type_mng_ = std::make_shared<Plugin_Type_Manager>();
@@ -96,7 +97,7 @@ void Scheme::set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id)
         }
 }
 
-void Scheme::set_dig_param_values(uint32_t user_id, QVector<DIG_Param_Value> params)
+void Scheme::set_dig_param_values(uint32_t user_id, QVector<DB::DIG_Param_Value_Base> params)
 {
     Param* p;
 
@@ -104,7 +105,7 @@ void Scheme::set_dig_param_values(uint32_t user_id, QVector<DIG_Param_Value> par
     {
         for (Device_item_Group* group: sct->groups())
         {
-            params.erase(std::remove_if(params.begin(), params.end(), [&](const DIG_Param_Value& param)
+            params.erase(std::remove_if(params.begin(), params.end(), [&](const DB::DIG_Param_Value_Base& param)
             {
                 if (p = group->params()->get_by_id(param.group_param_id()), p)
                 {

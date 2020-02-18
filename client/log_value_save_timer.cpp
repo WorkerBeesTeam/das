@@ -304,7 +304,8 @@ void Log_Value_Save_Timer::process_items(uint32_t timer_id)
     //    if (timer_.interval() != (period_ * 1000))
 //        timer_.setInterval(period_ * 1000);
 
-    Log_Value_Item pack_item{QDateTime::currentDateTimeUtc().toMSecsSinceEpoch(), 0, true};
+    Log_Value_Item pack_item{QDateTime::currentDateTimeUtc().toMSecsSinceEpoch()};
+    pack_item.set_need_to_save(true);
 
     Device_Item_Type_Manager* typeMng = &prj_->device_item_type_mng_;
 

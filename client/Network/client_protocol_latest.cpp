@@ -92,11 +92,12 @@ void Protocol::write_to_item(uint32_t user_id, uint32_t item_id, const QVariant&
                               Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, item_id), Q_ARG(QVariant, raw_data));
 }
 
-void Protocol::set_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack)
+void Protocol::set_dig_param_values(uint32_t user_id, const QVector<DB::DIG_Param_Value_Base>& pack)
 {
     if (!pack.empty())
     {
-        QMetaObject::invokeMethod(worker()->prj(), "set_dig_param_values", Qt::QueuedConnection, Q_ARG(uint32_t, user_id), Q_ARG(QVector<DIG_Param_Value>, pack));
+        QMetaObject::invokeMethod(worker()->prj(), "set_dig_param_values", Qt::QueuedConnection,
+                                  Q_ARG(uint32_t, user_id), Q_ARG(QVector<DB::DIG_Param_Value_Base>, pack));
     }
 }
 

@@ -2,6 +2,7 @@
 #define DBUS_OBJECT_BASE_H
 
 #include <QDBusContext>
+#include <QLoggingCategory>
 
 #include <Das/db/dig_status.h>
 #include <Das/db/dig_param_value.h>
@@ -12,6 +13,9 @@
 #include <dbus/dbus_common.h>
 
 namespace Das {
+
+Q_DECLARE_LOGGING_CATEGORY(DBusLog)
+
 namespace DBus {
 
 /*

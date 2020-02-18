@@ -1,7 +1,7 @@
 {
     "type": "uart",
     "param": {
-        "device": [],
+        "device": ["is_number", "is_little_endian"],
         "device_item": ["data"]
     }
 }

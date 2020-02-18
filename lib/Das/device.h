@@ -64,7 +64,7 @@ signals:
 public:
     QString toString() const;
 public slots:
-    void set_device_items_values(const std::map<Das::Device_Item*, Device::Data_Item>& device_items_values, bool is_connection_force = false);
+    void set_device_items_values(const std::map<Device_Item*, Device::Data_Item>& device_items_values, bool is_connection_force = false);
     void set_device_items_disconnect(const std::vector<Device_Item*>& device_items);
 private:
     uint32_t plugin_id_, check_interval_;

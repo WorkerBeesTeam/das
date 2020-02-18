@@ -38,7 +38,7 @@ private:
 
     void restart(uint32_t user_id);
     void write_to_item(uint32_t user_id, uint32_t item_id, const QVariant& raw_data);
-    void set_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack);
+    void set_dig_param_values(uint32_t user_id, const QVector<DB::DIG_Param_Value_Base> &pack);
     void exec_script_command(uint32_t user_id, const QString& script, bool is_function, const QVariantList& arguments);
 
     void send_scheme_structure(uint8_t struct_type, uint8_t msg_id, QIODevice* data_dev, Helpz::Network::Protocol* protocol);

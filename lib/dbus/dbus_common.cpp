@@ -8,6 +8,7 @@
 //#include <Das/db/dig_status.h>
 #include <Das/db/dig_param_value.h>
 #include <Das/db/dig_status.h>
+#include <Das/db/dig_mode.h>
 #include <Das/db/device_item_value.h>
 #include <Das/log/log_pack.h>
 #include <plus/das/scheme_info.h>
@@ -16,16 +17,19 @@
 
 using DIG_Param_Value = Das::DIG_Param_Value;
 using DIG_Status = Das::DIG_Status;
+using DIG_Mode = Das::DIG_Mode;
 using Scheme_Status = Das::Scheme_Status;
 using Device_Item_Value = Das::Device_Item_Value;
 
 Q_DECLARE_METATYPE(QTimeZone)
 Q_DECLARE_METATYPE(DIG_Param_Value)
 Q_DECLARE_METATYPE(DIG_Status)
+Q_DECLARE_METATYPE(DIG_Mode)
 Q_DECLARE_METATYPE(QVector<Log_Value_Item>)
 Q_DECLARE_METATYPE(QVector<Log_Event_Item>)
 Q_DECLARE_METATYPE(QVector<DIG_Param_Value>)
 Q_DECLARE_METATYPE(QVector<DIG_Status>)
+Q_DECLARE_METATYPE(QVector<DIG_Mode>)
 Q_DECLARE_METATYPE(QVector<Device_Item_Value>)
 
 QDBusArgument &operator<<(QDBusArgument &arg, const QTimeZone &item)
@@ -160,7 +164,7 @@ const QDBusArgument &operator>>(const QDBusArgument &arg, Das::DB::Log_Event_Ite
 QDBusArgument &operator<<(QDBusArgument &arg, const Das::DIG_Param_Value &item)
 {
     arg.beginStructure();
-    arg << item.group_param_id() << item.value();
+    arg << static_cast<const Das::DB::Log_Base_Item&>(item) << item.group_param_id() << item.value();
     arg.endStructure();
     return arg;
 }
@@ -168,6 +172,7 @@ QDBusArgument &operator<<(QDBusArgument &arg, const Das::DIG_Param_Value &item)
 const QDBusArgument &operator>>(const QDBusArgument &arg, Das::DIG_Param_Value &item)
 {
     arg.beginStructure();
+    arg >> static_cast<Das::DB::Log_Base_Item&>(item);
     load_to_setter(arg, item, &Das::DIG_Param_Value::set_group_param_id);
     load_to_setter(arg, item, &Das::DIG_Param_Value::set_value);
     arg.endStructure();
@@ -177,7 +182,7 @@ const QDBusArgument &operator>>(const QDBusArgument &arg, Das::DIG_Param_Value &
 QDBusArgument &operator<<(QDBusArgument &arg, const Das::DIG_Status &item)
 {
     arg.beginStructure();
-    arg << item.id() << item.group_id() << item.status_id() << item.args();
+    arg << static_cast<const Das::DB::Log_Base_Item&>(item) << item.group_id() << item.status_id() << item.args();
     arg.endStructure();
     return arg;
 }
@@ -185,10 +190,28 @@ QDBusArgument &operator<<(QDBusArgument &arg, const Das::DIG_Status &item)
 const QDBusArgument &operator>>(const QDBusArgument &arg, Das::DIG_Status &item)
 {
     arg.beginStructure();
-    load_to_setter(arg, item, &Das::DIG_Status::set_id);
+    arg >> static_cast<Das::DB::Log_Base_Item&>(item);
     load_to_setter(arg, item, &Das::DIG_Status::set_group_id);
     load_to_setter(arg, item, &Das::DIG_Status::set_status_id);
     load_to_setter(arg, item, &Das::DIG_Status::set_args);
+    arg.endStructure();
+    return arg;
+}
+
+QDBusArgument &operator<<(QDBusArgument &arg, const Das::DIG_Mode &item)
+{
+    arg.beginStructure();
+    arg << static_cast<const Das::DB::Log_Base_Item&>(item) << item.group_id() << item.mode_id();
+    arg.endStructure();
+    return arg;
+}
+
+const QDBusArgument &operator>>(const QDBusArgument &arg, Das::DIG_Mode &item)
+{
+    arg.beginStructure();
+    arg >> static_cast<Das::DB::Log_Base_Item&>(item);
+    load_to_setter(arg, item, &Das::DIG_Mode::set_group_id);
+    load_to_setter(arg, item, &Das::DIG_Mode::set_mode_id);
     arg.endStructure();
     return arg;
 }
@@ -200,7 +223,7 @@ QDBusArgument &operator<<(QDBusArgument &arg, const Das::Device_Item_Value &item
     ds << item.raw_value() << item.value();
 
     arg.beginStructure();
-    arg << item.item_id() << data;
+    arg << static_cast<const Das::DB::Log_Base_Item&>(item) << item.item_id() << data;
     arg.endStructure();
     return arg;
 }
@@ -210,6 +233,7 @@ const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Device_Item_Value
     QByteArray data;
 
     arg.beginStructure();
+    arg >> static_cast<Das::DB::Log_Base_Item&>(item);
     load_to_setter(arg, item, &Das::Device_Item_Value::set_item_id);
     arg >> data;
     arg.endStructure();
@@ -260,11 +284,13 @@ void register_dbus_types()
     REGISTER_PARAM(Log_Event_Item);
     REGISTER_PARAM(DIG_Param_Value);
     REGISTER_PARAM(DIG_Status);
+    REGISTER_PARAM(DIG_Mode);
     REGISTER_PARAM(Device_Item_Value);
     REGISTER_PARAM(QVector<Log_Value_Item>);
     REGISTER_PARAM(QVector<Log_Event_Item>);
     REGISTER_PARAM(QVector<DIG_Param_Value>);
     REGISTER_PARAM(QVector<DIG_Status>);
+    REGISTER_PARAM(QVector<DIG_Mode>);
     REGISTER_PARAM(QVector<Device_Item_Value>);
     REGISTER_PARAM(Scheme_Status);
 }

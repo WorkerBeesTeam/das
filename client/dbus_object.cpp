@@ -84,17 +84,17 @@ void Dbus_Object::send_message_to_scheme(uint32_t /*scheme_id*/, uint8_t ws_cmd,
             break;
 
         default:
-            qWarning() << "Dbus_Object::send_message_to_scheme Unknown Message:" << (WebSockCmd)ws_cmd;
+            qCWarning(DBusLog) << "Dbus_Object::send_message_to_scheme Unknown Message:" << (WebSockCmd)ws_cmd;
             break;
         }
     }
     catch(const std::exception& e)
     {
-        qCritical() << "Dbus_Object::send_message_to_scheme:" << e.what();
+        qCCritical(DBusLog) << "Dbus_Object::send_message_to_scheme:" << e.what();
     }
     catch(...)
     {
-        qCritical() << "Dbus_Object::send_message_to_scheme unknown exception";
+        qCCritical(DBusLog) << "Dbus_Object::send_message_to_scheme unknown exception";
     }
 }
 
@@ -105,18 +105,18 @@ QString Dbus_Object::get_ip_address(uint32_t /*scheme_id*/) const
 
 void Dbus_Object::write_item_file(uint32_t /*scheme_id*/, uint32_t user_id, uint32_t dev_item_id, const QString &file_name, const QString &file_path)
 {
-    qInfo().nospace() << user_id << "|Dbus_Object::write_item_file item_id " << dev_item_id << " file_name " << file_name << " file_path " << file_path;
+    qCInfo(DBusLog).nospace() << user_id << "|Dbus_Object::write_item_file item_id " << dev_item_id << " file_name " << file_name << " file_path " << file_path;
     QFile file(file_path);
     if (!file.open(QIODevice::ReadOnly))
     {
-        qWarning().noquote() << "Can't open file:" << file.errorString();
+        qCWarning(DBusLog).noquote() << "Can't open file:" << file.errorString();
         return;
     }
 
     QCryptographicHash hash(QCryptographicHash::Sha1);
     if (!hash.addData(&file))
     {
-        qWarning().noquote() << "Can't get file hash";
+        qCWarning(DBusLog).noquote() << "Can't get file hash";
         return;
     }
 

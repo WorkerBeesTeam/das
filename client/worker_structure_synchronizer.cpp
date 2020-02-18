@@ -25,7 +25,7 @@ void Worker_Structure_Synchronizer::send_modify_response(uint8_t struct_type, co
         proto->send(Ver::Cmd::MODIFY_SCHEME).writeRawData(buffer.constData(), buffer.size());
     }
 
-    worker_->restart_service_object(user_id);
+    QMetaObject::invokeMethod(worker_, "restart_service_object", Qt::QueuedConnection, Q_ARG(uint32_t, user_id));
 }
 
 } // namespace Das

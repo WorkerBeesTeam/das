@@ -60,7 +60,7 @@ signals:
 public slots:
     void set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
 
-    void set_dig_param_values(uint32_t user_id, QVector<DIG_Param_Value> params);
+    void set_dig_param_values(uint32_t user_id, QVector<DB::DIG_Param_Value_Base> params);
 private:
     template<class T>
     T* by_id(uint32_t id, const QVector< T* >& items) const;

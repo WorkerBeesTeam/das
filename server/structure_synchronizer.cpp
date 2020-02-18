@@ -36,12 +36,11 @@ Structure_Synchronizer::~Structure_Synchronizer()
 
     db_thread()->add([devitem_value_vect, status_set, s_id](Base* db)
     {
-        QVariantList values;
-
         auto table = db_table<DIG_Status>();
         db->del(table.name(), "scheme_id=" + QString::number(s_id));
         if (!status_set.empty())
         {
+            QVariantList values;
             table.field_names().removeFirst();
 
             const QString sql = "INSERT INTO " + table.name() + '(' + table.field_names().join(',') + ") VALUES "
@@ -49,6 +48,8 @@ Structure_Synchronizer::~Structure_Synchronizer()
 
             for (const DIG_Status& status: status_set)
             {
+                values.push_back(status.timestamp_msecs());
+                values.push_back(status.user_id());
                 values.push_back(status.group_id());
                 values.push_back(status.status_id());
                 values.push_back(status.args_to_db());

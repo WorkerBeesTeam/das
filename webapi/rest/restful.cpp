@@ -302,7 +302,8 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
             }
             else
             {
-                sql = "SELECT gs.id, gs.group_id, gs.status_id, gs.args, s.name, g.title, gt.title "
+                sql = "SELECT gs.id, gs.timestamp_msecs, gs.user_id, gs.group_id, gs.status_id, gs.args, "
+                      "s.name, g.title, gt.title "
                       "FROM das_dig_status gs "
                       "LEFT JOIN das_device_item_group g ON g.id = gs.group_id "
                       "LEFT JOIN das_section s ON s.id = g.section_id "
