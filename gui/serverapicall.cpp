@@ -498,7 +498,7 @@ void ServerApiCall::proc_scheme_detail(QNetworkReply *reply)
         Device device(json.value(id_str).toInt(),
                       json.value(name_str).toString(),
                       json.value("extra").toObject().toVariantMap(),
-                      json.value("checker_id").toInt());
+                      json.value("plugin_id").toInt());
         dev = prj_.add_device( std::move(device) );
         item_arr = json.value("items").toArray();
         for (const QJsonValue& item_val: item_arr)

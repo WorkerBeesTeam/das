@@ -153,7 +153,7 @@ template<>
 inline Delete_Info_List db_delete_info<Plugin_Type>(const QString& db_name)
 {
     return {
-        { Helpz::DB::db_table_name<Device>(db_name), "checker_id", {}, true }
+        { Helpz::DB::db_table_name<Device>(db_name), "plugin_id", {}, true }
     };
 }
 
