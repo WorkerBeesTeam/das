@@ -27,6 +27,7 @@ void Uart_Thread::start(Uart::Config config)
 
     qCDebug(UartLog).noquote() << "Used as serial port:" << config_.name_ << "available:" << config_.available_ports().join(", ");
 
+    ok_open_ = true;
     break_ = false;
 
     QThread::start();
@@ -163,10 +164,15 @@ void Uart_Thread::reconnect(QSerialPort &port)
     set_config(port);
     if (!port.open(QIODevice::ReadWrite))
     {
-        qCCritical(UartLog) << port.errorString();
+        if (ok_open_)
+        {
+            qCCritical(UartLog) << port.errorString();
+            ok_open_ = false;
+        }
         return;
     }
 
+    ok_open_ = true;
     set_config(port);
 }
 

@@ -40,7 +40,7 @@ private:
     void read_item(QSerialPort& port, Device_Item* item);
     void write_item(QSerialPort& port, const Write_Cache_Item& item);
 
-    bool break_, is_port_name_in_config_;
+    bool break_, is_port_name_in_config_, ok_open_;
     Uart::Config config_;
 
 //    std::thread thread_;
