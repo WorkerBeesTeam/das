@@ -122,7 +122,7 @@ void Helper::fill_devices(Scheme* scheme, std::map<uint32_t, Device_item_Group*>
                 }
 
                 Device_Item_Value value = device_item_values.takeAt(j);
-                device_item.set_data(value.raw_value(), value.value());
+                device_item.set_data(value);
             }
 
             dev_item = dev->create_item(std::move(device_item));

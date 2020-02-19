@@ -134,6 +134,11 @@ void Device_Item::set_display_value(const QVariant &val)
     }
 }
 
+bool Device_Item::set_data(const DB::Device_Item_Value &data)
+{
+    return set_data(data.raw_value(), data.value(), data.user_id(), data.timestamp_msecs());
+}
+
 bool Device_Item::set_data(const QVariant &raw, const QVariant &val, uint32_t user_id, qint64 value_time)
 {
     std::lock_guard lock(mutex_);
