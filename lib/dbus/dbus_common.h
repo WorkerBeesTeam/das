@@ -1,6 +1,8 @@
 #ifndef DAS_DBUS_COMMON_H
 #define DAS_DBUS_COMMON_H
 
+#include <QLoggingCategory>
+
 #include <set>
 
 #include <Das/db/dig_status.h>
@@ -12,6 +14,8 @@
 #define DAS_DBUS_DEFAULT_INTERFACE DAS_DBUS_DEFAULT_SERVICE".iface"
 
 namespace Das {
+
+Q_DECLARE_LOGGING_CATEGORY(DBus_log)
 
 struct Scheme_Status
 {

@@ -12,8 +12,6 @@
 
 namespace Das {
 
-Q_LOGGING_CATEGORY(DBus_log, "DBus")
-
 Dbus_Handler::Dbus_Handler(Worker* worker) :
     worker_(worker)
 {
