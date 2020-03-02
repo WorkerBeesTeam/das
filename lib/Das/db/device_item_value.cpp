@@ -65,7 +65,7 @@ void Device_Item_Value::set_value_from_db(const QVariant& value)
 
 /*static*/ QVariant Device_Item_Value::variant_from_string(const QVariant &var)
 {
-    if (!var.isValid() || var.type() != QVariant::String)
+    if (!var.isValid() || (var.type() != QVariant::String && var.type() != QVariant::ByteArray))
         return var;
 
     QString text = var.toString();

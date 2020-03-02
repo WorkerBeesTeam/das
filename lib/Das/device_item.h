@@ -92,6 +92,7 @@ public slots:
 
     bool write(const QVariant& display_value, uint32_t mode_id = 0, uint32_t user_id = 0);
     bool set_raw_value(const QVariant &raw_data, bool force = false, uint32_t user_id = 0, bool silent = false, qint64 value_time = DB::Log_Base_Item::current_timestamp());
+    bool set_data(const DB::Device_Item_Value& data);
     bool set_data(const QVariant& raw, const QVariant& val, uint32_t user_id = 0, qint64 value_time = DB::Log_Base_Item::current_timestamp());
     Device_Item* child(int index) const;
 

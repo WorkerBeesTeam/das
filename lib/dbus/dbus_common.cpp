@@ -264,6 +264,9 @@ const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Scheme_Status &it
 }
 
 namespace Das {
+
+Q_LOGGING_CATEGORY(DBus_log, "DBus")
+
 namespace DBus {
 
 #define REGISTER_PARAM(x) \

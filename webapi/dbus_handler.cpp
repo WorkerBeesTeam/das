@@ -13,8 +13,6 @@ namespace Das {
 namespace Server {
 namespace WebApi {
 
-Q_LOGGING_CATEGORY(DBus_log, "DBus")
-
 Dbus_Handler::Dbus_Handler(Worker* worker) :
     worker_(worker)
 {
