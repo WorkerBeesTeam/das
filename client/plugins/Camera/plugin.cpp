@@ -127,7 +127,7 @@ void Camera_Thread::run()
                 }
                 catch (const std::exception& e)
                 {
-                    qCCritical(CameraLog).nospace() << data.user_id_ << "|Start stream " << data.item_->toString() << " failed: " << e.what();
+                    qCCritical(CameraLog).nospace() << data.user_id_ << "|Start stream " << data.item_->display_name() << " failed: " << e.what();
                     iface_->manager()->send_stream_toggled(data.user_id_, data.item_, false);
                 }
                 break;
@@ -154,7 +154,7 @@ void Camera_Thread::run()
                 }
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(60));
+            std::this_thread::sleep_for(std::chrono::milliseconds(config().frame_delay_));
         }
     }
 }
@@ -192,7 +192,7 @@ void Camera_Thread::read_item(Device_Item *item)
         }
         catch (const std::exception& e)
         {
-            qCCritical(CameraLog) << "Save frame failed:" << e.what() << ". item:" << item->toString();
+            qCCritical(CameraLog) << "Save frame failed:" << e.what() << ". item:" << item->display_name();
             return;
         }
     }
@@ -223,7 +223,8 @@ void Camera_Plugin::configure(QSettings *settings)
         #endif
             (
                 settings, "Camera",
-                Param<QString>{"DevicePrefix", "/dev/video"}
+                Param<QString>{"DevicePrefix", "/dev/video"},
+                Param<uint32_t>{"FrameDelayMs", 60}
     ).obj<Camera::Config>();
 
     thread_.start(std::move(config), this);
@@ -281,7 +282,7 @@ void Camera_Plugin::write(std::vector<Write_Cache_Item>& /*items*/) {}
 
 void Camera_Plugin::toggle_stream(uint32_t user_id, Das::Device_Item *item, bool state)
 {
-    qCDebug(CameraLog).nospace() << user_id << "|Toggle stream " << item->toString() << " to: " << state;
+    qCDebug(CameraLog).nospace() << user_id << "|Toggle stream " << item->display_name() << " to: " << state;
     thread_.toggle_stream(user_id, item, state);
 }
 

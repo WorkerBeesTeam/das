@@ -14,6 +14,7 @@ struct Config {
     Config() = default;
 
     QString device_prefix_;
+    uint32_t frame_delay_;
 };
 
 } // namespace Camera

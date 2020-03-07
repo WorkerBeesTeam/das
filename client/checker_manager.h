@@ -33,9 +33,9 @@ class Manager : public QObject, public Manager_Interface
 {
     Q_OBJECT
 public:
-    explicit Manager(Worker* worker, const QStringList& plugins = {}, QObject *parent = 0);
+    explicit Manager(Worker* worker, QObject *parent = 0);
     ~Manager();
-    void loadPlugins(const QStringList& allowed_plugins, Worker* worker);
+    void loadPlugins(Worker* worker);
 
     void break_checking();
 public slots:

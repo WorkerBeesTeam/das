@@ -19,14 +19,14 @@ Q_LOGGING_CATEGORY(Log, "checker")
 
 #define MINIMAL_WRITE_INTERVAL    50
 
-Manager::Manager(Worker *worker, const QStringList &plugins, QObject *parent) :
+Manager::Manager(Worker *worker, QObject *parent) :
     QObject(parent),
     b_break(false), first_check_(true),
     worker_(worker),
     scheme_(worker->prj())
 {
     plugin_type_mng_ = scheme_->plugin_type_mng_;
-    loadPlugins(plugins, worker);
+    loadPlugins(worker);
 
     connect(scheme_, &Scheme::control_state_changed, this, &Manager::write_data, Qt::QueuedConnection);
 
@@ -66,7 +66,7 @@ Manager::~Manager()
             qCWarning(Log) << "Unload fail" << plugin.loader->fileName() << plugin.loader->errorString();
 }
 
-void Manager::loadPlugins(const QStringList &allowed_plugins, Worker *worker)
+void Manager::loadPlugins(Worker *worker)
 {
     //    pluginLoader.emplace("modbus", nullptr);
     QString type;
@@ -82,14 +82,6 @@ void Manager::loadPlugins(const QStringList &allowed_plugins, Worker *worker)
 
     std::unique_ptr<QSettings> settings;
 
-    auto check_is_allowed = [&allowed_plugins](const QString& fileName) -> bool
-    {
-        for (const QString& plugin_name: allowed_plugins)
-            if (fileName.startsWith("lib" + plugin_name.trimmed()))
-                return true;
-        return false;
-    };
-
     auto qJsonArray_to_qStringList = [](const QJsonArray& arr) -> QStringList
     {
         QStringList names;
@@ -100,9 +92,6 @@ void Manager::loadPlugins(const QStringList &allowed_plugins, Worker *worker)
 
     for (const QString& fileName: pluginsDir.entryList(QDir::Files))
     {
-        if (!check_is_allowed(fileName))
-            continue;
-
         std::shared_ptr<QPluginLoader> loader = std::make_shared<QPluginLoader>(pluginsDir.absoluteFilePath(fileName));
         if (loader->load() || loader->isLoaded())
         {

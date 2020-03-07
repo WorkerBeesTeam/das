@@ -104,7 +104,7 @@ private:
     Scripted_Scheme* prj_;
 
     friend class Checker::Manager;
-    using Checker_Thread = Helpz::SettingsThreadHelper<Checker::Manager, Worker*, QStringList>;
+    using Checker_Thread = Helpz::SettingsThreadHelper<Checker::Manager, Worker*/*, QStringList*/>;
     Checker_Thread::Type* checker_th_;
 
     using Log_Value_Save_Timer_Thread = Helpz::ParamThread<Log_Value_Save_Timer, Worker*>;

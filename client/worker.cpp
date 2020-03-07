@@ -251,7 +251,7 @@ void Worker::init_checker(QSettings* s)
 {
     qRegisterMetaType<Device*>("Device*");
 
-    checker_th_ = Checker_Thread()(s, "Checker", this, Z::Param<QStringList>{"Plugins", QStringList{"ModbusPlugin","WiringPiPlugin"}} );
+    checker_th_ = Checker_Thread()(s, "Checker", this/*, Z::Param<QStringList>{"Plugins", QStringList{"ModbusPlugin","WiringPiPlugin"}}*/ );
     checker_th_->start();
 }
 
@@ -269,13 +269,11 @@ void Worker::init_network_client(QSettings* s)
                 Z::Param<QString>{"Login",              QString()},
                 Z::Param<QString>{"Password",           QString()},
                 Z::Param<QString>{"SchemeName",        QString()},
-                Z::Param<QUuid>{"Device",               QUuid()},
+                Z::Param<QUuid>{"Device",               QUuid()}
             }.obj<Authentication_Info>();
 
     if (!auth_info)
-    {
         return;
-    }
 
 #define DAS_PROTOCOL_LATEST "das/2.4"
 #define DAS_PROTOCOL_SUPORTED DAS_PROTOCOL_LATEST",das/2.3"
@@ -288,12 +286,17 @@ void Worker::init_network_client(QSettings* s)
                 Z::Param<QString>{"Host",               "deviceaccess.ru"},
                 Z::Param<QString>{"Port",               "25588"},
                 DAS_PROTOCOL_SUPORTED, // Z::Param<QString>{"Protocols",          "das/2.0,das/1.1"},
-                Z::Param<uint32_t>{"ReconnectSeconds",       15}
+                Z::Param<uint32_t>{"ReconnectSeconds",  15}
             }();
 
-    Helpz::DTLS::Create_Client_Protocol_Func_T func = [this, auth_info](const std::string& app_protocol) -> std::shared_ptr<Helpz::Network::Protocol>
+    const Ver::Client::Config config = Helpz::SettingsHelper{
+                s, "RemoteServer",
+                Z::Param<uint32_t>{"StreamTimeoutMs", 1500},
+            }.obj<Ver::Client::Config>();
+
+    Helpz::DTLS::Create_Client_Protocol_Func_T func = [this, auth_info, config](const std::string& app_protocol) -> std::shared_ptr<Helpz::Network::Protocol>
     {
-        std::shared_ptr<Ver::Client::Protocol> ptr = std::make_shared<Ver::Client::Protocol>(this, auth_info);
+        std::shared_ptr<Ver::Client::Protocol> ptr = std::make_shared<Ver::Client::Protocol>(this, auth_info, config);
 
         if (app_protocol != DAS_PROTOCOL_LATEST)
         {

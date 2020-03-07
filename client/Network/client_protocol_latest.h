@@ -17,10 +17,15 @@ namespace Client {
 
 using namespace Das::Client;
 
+struct Config
+{
+    uint32_t stream_timeout_;
+};
+
 class Protocol : public Protocol_Base
 {
 public:
-    Protocol(Worker* worker, const Authentication_Info &auth_info);
+    Protocol(Worker* worker, const Authentication_Info &auth_info, const Config& config);
     virtual ~Protocol();
 
     Log_Sender& log_sender();
@@ -59,6 +64,8 @@ private:
     void send_time_info(uint8_t msg_id);
 
     Scripted_Scheme* prj_;
+
+    const Config conf_;
 
     Log_Sender log_sender_;
     Structure_Synchronizer structure_sync_;

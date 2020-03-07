@@ -16,9 +16,10 @@ namespace Das {
 namespace Ver {
 namespace Client {
 
-Protocol::Protocol(Worker *worker, const Authentication_Info &auth_info) :
+Protocol::Protocol(Worker *worker, const Authentication_Info &auth_info, const Config &config) :
     Protocol_Base{worker, auth_info},
     prj_(worker->prj()),
+    conf_(config),
     log_sender_(this),
     structure_sync_(worker->db_pending(), this)
 {
@@ -61,8 +62,10 @@ void Protocol::send_stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool 
 
 void Protocol::send_stream_data(uint32_t dev_item_id, const QByteArray &data)
 {
+    std::chrono::milliseconds timeout{conf_.stream_timeout_};
+
     Helpz::Network::Protocol_Sender sender = send(Cmd::STREAM_DATA);
-    sender.timeout(nullptr, std::chrono::milliseconds(1500), std::chrono::milliseconds(1500));
+    sender.timeout(nullptr, timeout, timeout);
     sender << dev_item_id << data;
     sender.set_fragment_size(HELPZ_MAX_PACKET_DATA_SIZE);
 }
