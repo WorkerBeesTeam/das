@@ -30,7 +30,7 @@ WiringPiPlugin::~WiringPiPlugin()
 {
 }
 
-void WiringPiPlugin::configure(QSettings *settings, Checker::Manager_Interface */*mng*/, Scheme *scheme)
+void WiringPiPlugin::configure(QSettings *settings)
 {
     /*
     using Helpz::Param;

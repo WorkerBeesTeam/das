@@ -1,15 +1,15 @@
 TARGET = Camera
 
 SOURCES += \
-    encoder.cpp \
-    recorder.cpp \
+#    encoder.cpp \
+#    recorder.cpp \
     v4l2-api.cpp \
     config.cpp \
     video_stream.cpp
 
 HEADERS += \
-    encoder.h \
-    recorder.h \
+#    encoder.h \
+#    recorder.h \
     v4l2-api.h \
     config.h \
     video_stream.h

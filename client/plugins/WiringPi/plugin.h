@@ -25,7 +25,7 @@ public:
 
     // CheckerInterface interface
 public:
-    void configure(QSettings* settings, Checker::Manager_Interface* mng, Scheme*) override;
+    void configure(QSettings* settings) override;
     bool check(Device *dev) override;
     void stop() override;
     void write(std::vector<Write_Cache_Item>& items) override;
