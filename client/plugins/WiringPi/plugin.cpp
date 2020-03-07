@@ -52,7 +52,7 @@ void WiringPiPlugin::configure(QSettings *settings)
     int pin;
     bool ok;
 
-    for (auto * device : scheme->devices())
+    for (auto * device : scheme()->devices())
     {
         for (Device_Item * item: device->items())
         {
