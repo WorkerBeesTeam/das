@@ -30,7 +30,7 @@ bool User::is_superuser() const
 
 void User::set_is_superuser(bool val)
 {
-    flags_ ^= (-(unsigned long)val ^ flags_) & IS_SUPERUSER;
+    flags_ ^= static_cast<uint8_t>((-(unsigned long)val ^ flags_) & IS_SUPERUSER);
 }
 
 bool User::is_active() const
@@ -40,7 +40,7 @@ bool User::is_active() const
 
 void User::set_is_active(bool val)
 {
-    flags_ ^= (-(unsigned long)val ^ flags_) & IS_ACTIVE;
+    flags_ ^= static_cast<uint8_t>((-(unsigned long)val ^ flags_) & IS_ACTIVE);
 }
 
 bool User::is_staff() const
@@ -50,7 +50,7 @@ bool User::is_staff() const
 
 void User::set_is_staff(bool val)
 {
-    flags_ ^= (-(unsigned long)val ^ flags_) & IS_STAFF;
+    flags_ ^= static_cast<uint8_t>((-(unsigned long)val ^ flags_) & IS_STAFF);
 }
 
 bool User::need_to_change_password() const
@@ -60,7 +60,7 @@ bool User::need_to_change_password() const
 
 void User::set_need_to_change_password(bool val)
 {
-    flags_ ^= (-(unsigned long)val ^ flags_) & NEED_TO_CHANGE_PASSWORD;
+    flags_ ^= static_cast<uint8_t>((-(unsigned long)val ^ flags_) & NEED_TO_CHANGE_PASSWORD);
 }
 
 QDateTime User::date_joined() const { return date_joined_; }

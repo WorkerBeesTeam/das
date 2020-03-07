@@ -133,7 +133,7 @@ template<> void after_process_pack<Log_Mode_Item>(Base& db, uint32_t scheme_id, 
 // После вызова этой функции нельзя использовать pack_ptr в вызывающей функции
 // т.к pack_ptr уже начнёт использоваться в другом потоке
 template<typename T>
-void process_pack_impl(Server::Protocol_Base* proto, std::shared_ptr<QVector<T>> pack_ptr, uint8_t msg_id)
+void process_pack_impl(Server::Protocol_Base* proto, std::shared_ptr<QVector<T>> pack_ptr, uint32_t msg_id)
 {
     if (pack_ptr->empty())
     {

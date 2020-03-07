@@ -4,8 +4,9 @@
 #include <QLoggingCategory>
 
 #include <Das/db/dig_param_value.h>
-#include "type_managers.h"
-#include "section.h"
+#include <Das/log/log_value_item.h>
+#include <Das/type_managers.h>
+#include <Das/section.h>
 
 namespace Das
 {
@@ -55,6 +56,7 @@ public:
     Device_Item *item_by_id(uint32_t id) const;
 //    Device_item_Group* group_by_id(uint32_t id) const;
 signals:
+    void log_item_available(const Log_Value_Item& log_value_item);
     void control_state_changed(Device_Item* item, const QVariant& raw_data, uint32_t user_id = 0);
     void mode_changed(uint32_t user_id, uint mode_id, uint32_t group_id);
 public slots:

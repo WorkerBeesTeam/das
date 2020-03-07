@@ -80,7 +80,7 @@ void Worker::init_database(QSettings* s)
                 Helpz::Param{"Port", 3306},
                 Helpz::Param{"Prefix", "das_"},
                 Helpz::Param{"Driver", "QMYSQL"}, // QPSQL
-                Helpz::Param{"ConnectOptions", QString()}
+                Helpz::Param{"ConnectOptions", "CLIENT_FOUND_ROWS=1;MYSQL_OPT_RECONNECT=1"}
                 ).ptr<Helpz::DB::Connection_Info>();
 
     Helpz::DB::Connection_Info::set_common(*db_conn_info_);

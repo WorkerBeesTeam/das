@@ -33,6 +33,9 @@ public:
 //    virtual void dig_param_values_changed(const Scheme_Info& scheme, const QVector<DIG_Param_Value> &pack) {}
 //    virtual void dig_mode_changed(const Scheme_Info& scheme, const QVector<DIG_Mode> &pack) {}
 //    virtual void status_changed(const Scheme_Info& scheme, const QVector<DIG_Status>& pack) {}
+//    virtual void stream_toggled(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, bool state);
+//    virtual void stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
+    virtual void connect_to(QDBusInterface* iface) { Q_UNUSED(iface); }
 };
 
 class Interface : public QObject
@@ -43,7 +46,7 @@ public:
                    const QString& service_name = DAS_DBUS_DEFAULT_SERVICE_SERVER,
                    const QString& object_path = DAS_DBUS_DEFAULT_OBJECT,
                    const QString& interface_name = DAS_DBUS_DEFAULT_INTERFACE);
-    ~Interface();
+    virtual ~Interface();
 private:
     void service_registered(const QString &service);
     void service_unregistered(const QString &service);

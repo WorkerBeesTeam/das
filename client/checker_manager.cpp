@@ -10,60 +10,63 @@
 #include <Das/device.h>
 
 #include "worker.h"
-#include "checker.h"
+#include "checker_manager.h"
 
 namespace Das {
+namespace Checker {
 
-Q_LOGGING_CATEGORY(CheckerLog, "checker")
+Q_LOGGING_CATEGORY(Log, "checker")
 
 #define MINIMAL_WRITE_INTERVAL    50
 
-Checker::Checker(Worker *worker, const QStringList &plugins, QObject *parent) :
+Manager::Manager(Worker *worker, const QStringList &plugins, QObject *parent) :
     QObject(parent),
-    b_break(false), first_check_(true)
+    b_break(false), first_check_(true),
+    worker_(worker),
+    scheme_(worker->prj())
 {
-    prj_ = worker->prj();
-
-    plugin_type_mng_ = prj_->plugin_type_mng_;
+    plugin_type_mng_ = scheme_->plugin_type_mng_;
     loadPlugins(plugins, worker);
 
-    connect(prj_, &Scheme::control_state_changed, this, &Checker::write_data, Qt::QueuedConnection);
+    connect(scheme_, &Scheme::control_state_changed, this, &Manager::write_data, Qt::QueuedConnection);
 
-    connect(prj_, &Scripted_Scheme::checker_stop, this, &Checker::stop, Qt::QueuedConnection);
-    connect(prj_, &Scripted_Scheme::checker_start, this, &Checker::start, Qt::QueuedConnection);
+    connect(scheme_, &Scripted_Scheme::checker_stop, this, &Manager::stop, Qt::QueuedConnection);
+    connect(scheme_, &Scripted_Scheme::checker_start, this, &Manager::start, Qt::QueuedConnection);
+
+    connect(scheme_, &Scripted_Scheme::change_stream_state, this, &Manager::toggle_stream, Qt::QueuedConnection);
 //    connect(prj, SIGNAL(modbusRead(int,uchar,int,quint16)),
 //            SLOT(read2(int,uchar,int,quint16)), Qt::BlockingQueuedConnection);
 //    connect(prj, SIGNAL(modbusWrite(int,uchar,int,quint16)), SLOT(write(int,uchar,int,quint16)), Qt::QueuedConnection);
 
-    connect(&check_timer_, &QTimer::timeout, this, &Checker::check_devices);
+    connect(&check_timer_, &QTimer::timeout, this, &Manager::check_devices);
     //check_timer_.setInterval(interval);
     check_timer_.setSingleShot(true);
 
-    connect(&write_timer_, &QTimer::timeout, this, &Checker::write_cache);
+    connect(&write_timer_, &QTimer::timeout, this, &Manager::write_cache);
     write_timer_.setInterval(MINIMAL_WRITE_INTERVAL);
     write_timer_.setSingleShot(true);
     // --------------------------------------------------------------------------------
 
-    for (Device* dev: prj_->devices())
+    for (Device* dev: scheme_->devices())
     {
         last_check_time_map_.insert(dev->id(), { true, 0 });
     }
     check_devices(); // Первый опрос контроллеров
     first_check_ = false;
 
-    QMetaObject::invokeMethod(prj_, "after_all_initialization", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(scheme_, "after_all_initialization", Qt::QueuedConnection);
 }
 
-Checker::~Checker()
+Manager::~Manager()
 {
     stop();
 
     for (const Plugin_Type& plugin: plugin_type_mng_->types())
         if (plugin.loader && !plugin.loader->unload())
-            qCWarning(CheckerLog) << "Unload fail" << plugin.loader->fileName() << plugin.loader->errorString();
+            qCWarning(Log) << "Unload fail" << plugin.loader->fileName() << plugin.loader->errorString();
 }
 
-void Checker::loadPlugins(const QStringList &allowed_plugins, Worker *worker)
+void Manager::loadPlugins(const QStringList &allowed_plugins, Worker *worker)
 {
     //    pluginLoader.emplace("modbus", nullptr);
     QString type;
@@ -71,7 +74,7 @@ void Checker::loadPlugins(const QStringList &allowed_plugins, Worker *worker)
     Plugin_Type* pl_type;
     QVector<Plugin_Type> plugins_update_vect;
     bool plugin_updated;
-    Checker_Interface *checker_interface;
+    Checker::Interface *checker_interface;
     QJsonObject meta_data;
 
     QDir pluginsDir(qApp->applicationDirPath());
@@ -111,10 +114,10 @@ void Checker::loadPlugins(const QStringList &allowed_plugins, Worker *worker)
                 pl_type = plugin_type_mng_->get_type(type);
                 if (pl_type->id() && pl_type->need_it && !pl_type->loader)
                 {
-                    qCDebug(CheckerLog) << "Load plugin:" << fileName << type;
+                    qCDebug(Log) << "Load plugin:" << fileName << type;
 
                     plugin = loader->instance();
-                    checker_interface = qobject_cast<Checker_Interface *>(plugin);
+                    checker_interface = qobject_cast<Checker::Interface *>(plugin);
                     if (checker_interface)
                     {
                         pl_type->loader = loader;
@@ -128,7 +131,7 @@ void Checker::loadPlugins(const QStringList &allowed_plugins, Worker *worker)
                             QStringList dev_names = qJsonArray_to_qStringList(param["device"].toArray());
                             if (pl_type->param_names_device() != dev_names)
                             {
-                                qCDebug(CheckerLog) << "Plugin" << pl_type->name() << "dev_names" << pl_type->param_names_device() << dev_names;
+                                qCDebug(Log) << "Plugin" << pl_type->name() << "dev_names" << pl_type->param_names_device() << dev_names;
                                 pl_type->set_param_names_device(dev_names);
                                 plugin_updated = true;
                             }
@@ -136,7 +139,7 @@ void Checker::loadPlugins(const QStringList &allowed_plugins, Worker *worker)
                             QStringList dev_item_names = qJsonArray_to_qStringList(param["device_item"].toArray());
                             if (pl_type->param_names_device_item() != dev_item_names)
                             {
-                                qCDebug(CheckerLog) << "Plugin" << pl_type->name() << "dev_item_names" << pl_type->param_names_device_item() << dev_item_names;
+                                qCDebug(Log) << "Plugin" << pl_type->name() << "dev_item_names" << pl_type->param_names_device_item() << dev_item_names;
                                 pl_type->set_param_names_device_item(dev_item_names);
                                 if (!plugin_updated) plugin_updated = true;
                             }
@@ -147,20 +150,21 @@ void Checker::loadPlugins(const QStringList &allowed_plugins, Worker *worker)
 
                         if (!settings)
                             settings = Worker::settings();
-                        pl_type->checker->configure(settings.get(), prj_);
+                        init_checker(pl_type->checker, scheme_);
+                        pl_type->checker->configure(settings.get());
                         continue;
                     }
                     else
-                        qCWarning(CheckerLog) << "Bad plugin" << plugin << loader->errorString();
+                        qCWarning(Log) << "Bad plugin" << plugin << loader->errorString();
                 }
             }
             else
-                qCWarning(CheckerLog) << "Bad type in plugin" << fileName << type;
+                qCWarning(Log) << "Bad type in plugin" << fileName << type;
 
             loader->unload();
         }
         else
-            qCWarning(CheckerLog) << "Fail to load plugin" << fileName << loader->errorString();
+            qCWarning(Log) << "Fail to load plugin" << fileName << loader->errorString();
     }
 
     if (plugins_update_vect.size())
@@ -169,7 +173,7 @@ void Checker::loadPlugins(const QStringList &allowed_plugins, Worker *worker)
     }
 }
 
-void Checker::break_checking()
+void Manager::break_checking()
 {
     b_break = true;
 
@@ -178,9 +182,9 @@ void Checker::break_checking()
             plugin.checker->stop();
 }
 
-void Checker::stop()
+void Manager::stop()
 {
-    qCDebug(CheckerLog) << "Check stoped";
+    qCDebug(Log) << "Check stoped";
 
     if (check_timer_.isActive())
         check_timer_.stop();
@@ -188,18 +192,18 @@ void Checker::stop()
     break_checking();
 }
 
-void Checker::start()
+void Manager::start()
 {
-    qCDebug(CheckerLog) << "Start check";
+    qCDebug(Log) << "Start check";
     check_devices();
 }
 
-void Checker::check_devices()
+void Manager::check_devices()
 {
     b_break = false;   
 
     qint64 next_shot, min_shot = QDateTime::currentMSecsSinceEpoch() + 60000, now_ms;
-    for (Device* dev: prj_->devices())
+    for (Device* dev: scheme_->devices())
     {
         if (dev->check_interval() <= 0)
         {
@@ -228,7 +232,7 @@ void Checker::check_devices()
                     else if (check_info.status_)
                     {
                         check_info.status_ = false;
-                        qCDebug(CheckerLog) << "Fail check" << dev->checker_type()->name() << dev->toString();
+                        qCDebug(Log) << "Fail check" << dev->checker_type()->name() << dev->toString();
                     }
                 }
                 else
@@ -291,7 +295,17 @@ void Checker::check_devices()
         write_cache();
 }
 
-void Checker::write_data(Device_Item *item, const QVariant &raw_data, uint32_t user_id)
+void Manager::toggle_stream(uint32_t user_id, Device_Item *item, bool state)
+{
+    if (!item->device())
+        return;
+
+    Plugin_Type* plugin = item->device()->checker_type();
+    if (plugin && plugin->checker)
+        plugin->checker->toggle_stream(user_id, item, state);
+}
+
+void Manager::write_data(Device_Item *item, const QVariant &raw_data, uint32_t user_id)
 {
     if (!item || !item->device())
         return;
@@ -312,7 +326,7 @@ void Checker::write_data(Device_Item *item, const QVariant &raw_data, uint32_t u
         write_timer_.start();
 }
 
-void Checker::write_cache()
+void Manager::write_cache()
 {
     std::map<Plugin_Type*, std::vector<Write_Cache_Item>> cache(std::move(write_cache_));
     write_cache_.clear();
@@ -324,7 +338,7 @@ void Checker::write_cache()
     }
 }
 
-void Checker::write_items(Plugin_Type* plugin, std::vector<Write_Cache_Item>& items)
+void Manager::write_items(Plugin_Type* plugin, std::vector<Write_Cache_Item>& items)
 {
     if (items.size() == 0)
     {
@@ -358,4 +372,21 @@ void Checker::write_items(Plugin_Type* plugin, std::vector<Write_Cache_Item>& it
     }
 }
 
+void Manager::send_stream_toggled(uint32_t user_id, Device_Item *item, bool state)
+{
+    std::shared_ptr<Ver::Client::Protocol> proto = worker_->net_protocol();
+    if (proto)
+        proto->send_stream_toggled(user_id, item->id(), state);
+}
+
+void Manager::send_stream_data(Device_Item *item, const QByteArray &data)
+{
+    std::shared_ptr<Ver::Client::Protocol> proto = worker_->net_protocol();
+    if (proto)
+        proto->send_stream_data(item->id(), data);
+    else
+        toggle_stream(0, item, false);
+}
+
+} // namespace Checker
 } // namespace Das

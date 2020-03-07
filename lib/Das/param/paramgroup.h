@@ -33,7 +33,7 @@ public:
     Q_INVOKABLE void set_value_from_string(const QString& raw_value, uint32_t user_id = 0);
     Q_INVOKABLE QString value_to_string() const;
 
-    Q_INVOKABLE uint32_t count() const;
+    Q_INVOKABLE std::size_t count() const;
 
     uint id() const;
     DIG_Param_Type* type() const;

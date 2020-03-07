@@ -39,7 +39,7 @@ HTU21Plugin::~HTU21Plugin()
 {
 }
 
-void HTU21Plugin::configure(QSettings *settings, Scheme *scheme)
+void HTU21Plugin::configure(QSettings *settings, Checker::Manager_Interface */*mng*/, Scheme *scheme)
 {
     /*
     using Helpz::Param;

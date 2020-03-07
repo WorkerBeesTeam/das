@@ -84,22 +84,20 @@ void Interface::connect_to_interface()
     iface_ = new QDBusInterface(service_name_, object_path_, interface_name_, *bus_);
     if (iface_->isValid())
     {
-        connect(iface_, SIGNAL(connection_state_changed(Scheme_Info, uint8_t)),
-                handler_, SLOT(connection_state_changed(Scheme_Info, uint8_t)));
-        connect(iface_, SIGNAL(device_item_values_available(Scheme_Info, QVector<Log_Value_Item>)),
-                handler_, SLOT(device_item_values_available(Scheme_Info, QVector<Log_Value_Item>)));
-        connect(iface_, SIGNAL(event_message_available(Scheme_Info, QVector<Log_Event_Item>)),
-                handler_, SLOT(event_message_available(Scheme_Info, QVector<Log_Event_Item>)));
-        connect(iface_, SIGNAL(time_info(Scheme_Info, QTimeZone, qint64)),
-                handler_, SLOT(time_info(Scheme_Info, QTimeZone, qint64)));
-        connect(iface_, SIGNAL(structure_changed(Scheme_Info, QByteArray)),
-                handler_, SLOT(structure_changed(Scheme_Info, QByteArray)));
-        connect(iface_, SIGNAL(dig_param_values_changed(Scheme_Info, QVector<DIG_Param_Value>)),
-                handler_, SLOT(dig_param_values_changed(Scheme_Info, QVector<DIG_Param_Value>)));
-        connect(iface_, SIGNAL(dig_mode_changed(Scheme_Info, QVector<DIG_Mode>)),
-                handler_, SLOT(dig_mode_changed(Scheme_Info, QVector<DIG_Mode>)));
-        connect(iface_, SIGNAL(status_changed(Scheme_Info, QVector<DIG_Status>)),
-                handler_, SLOT(status_changed(Scheme_Info, QVector<DIG_Status>)));
+        handler_->connect_to(iface_);
+
+#define CONNECT_TO_HANDLER(name, ...) \
+    connect(iface_, SIGNAL(name(Scheme_Info, __VA_ARGS__)), \
+        handler_, SLOT(name(Scheme_Info, __VA_ARGS__)))
+
+        CONNECT_TO_HANDLER(connection_state_changed, uint8_t);
+        CONNECT_TO_HANDLER(device_item_values_available, QVector<Log_Value_Item>);
+        CONNECT_TO_HANDLER(event_message_available, QVector<Log_Event_Item>);
+        CONNECT_TO_HANDLER(time_info, QTimeZone, qint64);
+        CONNECT_TO_HANDLER(structure_changed, QByteArray);
+        CONNECT_TO_HANDLER(dig_param_values_changed, QVector<DIG_Param_Value>);
+        CONNECT_TO_HANDLER(dig_mode_changed, QVector<DIG_Mode>);
+        CONNECT_TO_HANDLER(status_changed, QVector<DIG_Status>);
     }
     else
     {

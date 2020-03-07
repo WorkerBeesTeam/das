@@ -24,8 +24,10 @@ public:
 
     void send_scheme_structure(uint8_t struct_type, uint8_t msg_id, QIODevice* data_dev);
 private:
+    static Helpz::Network::Protocol_Sender send_answer(Ver::Client::Protocol& proto, uint8_t struct_type, uint8_t msg_id);
+
     void send_structure_items_hash(uint8_t struct_type, uint8_t msg_id);
-    void add_structure_items_hash(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db);
+    void add_structure_items_hash(uint8_t struct_type, uint8_t msg_id, Helpz::DB::Base& db);
 
     void send_structure_items(const QVector<uint32_t>& id_vect, uint8_t struct_type, uint8_t msg_id);
 

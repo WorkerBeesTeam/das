@@ -10,7 +10,7 @@ class DAS_PLUGIN_SHARED_EXPORT Modbus_Plugin : public Modbus_Plugin_Base
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID DasCheckerInterface_iid FILE "checkerinfo.json")
-    Q_INTERFACES(Das::Checker_Interface)
+    Q_INTERFACES(Das::Checker::Interface)
 };
 
 } // namespace Modbus

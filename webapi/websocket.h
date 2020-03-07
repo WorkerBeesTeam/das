@@ -72,6 +72,9 @@ public slots:
     void send_time_info(const Scheme_Info& scheme, const QTimeZone& tz, qint64 time_offset);
     void send_ip_address(const Scheme_Info& scheme, const QString& ip_address);
 
+    void send_stream_toggled(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, bool state);
+    void send_stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
+
     void send(const Scheme_Info &scheme, const QByteArray& data) const;
     void send_to_client(std::shared_ptr<Network::Websocket_Client> client, const QByteArray& data) const;
 private slots:
@@ -86,8 +89,20 @@ private slots:
 private:
     bool auth(const QByteArray& token, Websocket_Client& client);
 
+    bool stream_toggle(uint32_t dev_item_id, bool state, QWebSocket *socket, uint32_t scheme_id);
+    void stream_stop(uint32_t scheme_id, uint32_t dev_item_id, uint32_t user_id = 0);
+
     QWebSocketServer *server_;
 
+    struct Stream_Item
+    {
+        uint32_t scheme_id_;
+        uint32_t dev_item_id_;
+
+        bool operator<(const Stream_Item& o) const;
+    };
+
+    std::map<Stream_Item, std::set<QWebSocket*>> client_uses_stream_;
     QMap<QWebSocket*, std::shared_ptr<Websocket_Client>> client_map_;
     mutable QMutex clients_mutex_;
 

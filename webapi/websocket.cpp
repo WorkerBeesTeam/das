@@ -98,6 +98,14 @@ Websocket_Client::Websocket_Client() :
 
 // --------------------------------------------------------------------------------
 
+bool WebSocket::Stream_Item::operator<(const WebSocket::Stream_Item &o) const
+{
+    return scheme_id_ < o.scheme_id_
+            || (scheme_id_ == o.scheme_id_ && dev_item_id_ < o.dev_item_id_);
+}
+
+// --------------------------------------------------------------------------------
+
 WebSocket::WebSocket(std::shared_ptr<JWT_Helper> jwt_helper, quint16 port, const QString& certFilePath, const QString& keyFilePath, QObject *parent) :
     QObject(parent),
     server_(new QWebSocketServer(QStringLiteral("Device Access Control"),
@@ -256,6 +264,22 @@ void WebSocket::processBinaryMessage(const QByteArray& message)
     else if (cmd < WEB_SOCK_CMD_COUNT)
     {
 //        qint64 pos = ds.device()->pos();
+
+        if (cmd == WS_STREAM_TOGGLE)
+        {
+            qint64 pos = ds.device()->pos();
+            try
+            {
+                if (!Helpz::apply_parse(ds, &WebSocket::stream_toggle, this, socket, scheme_id))
+                    return;
+            }
+            catch(...)
+            {
+                return;
+            }
+            ds.device()->seek(pos);
+        }
+
         if (ds.device()->bytesAvailable() < 200000000) // 200mb
         {
             emit through_command(it.value(), scheme_id, cmd, ds.device()->readAll());
@@ -319,7 +343,25 @@ void WebSocket::socketDisconnected()
 //    qCDebug(WebSockLog) << "socketDisconnected:" << pClient->peerAddress().toString() << pClient->peerPort();
 
         QMutexLocker lock(&clients_mutex_);
-        client_map_.remove(socket);
+
+        auto it = client_map_.find(socket);
+        uint32_t user_id = it != client_map_.end() && *it ? it->get()->id_ : 0;
+
+        for (auto cl_it = client_uses_stream_.begin(); cl_it != client_uses_stream_.end();)
+        {
+            std::set<QWebSocket*>& clients = cl_it->second;
+
+            clients.erase(socket);
+            if (clients.empty())
+            {
+                stream_stop(cl_it->first.scheme_id_, cl_it->first.dev_item_id_, user_id);
+                cl_it = client_uses_stream_.erase(cl_it);
+            }
+            else
+                ++cl_it;
+        }
+
+        client_map_.erase(it);
         socket->deleteLater();
     }
 }
@@ -369,6 +411,40 @@ bool WebSocket::auth(const QByteArray& token, Websocket_Client& client)
     }
 
     return false;
+}
+
+bool WebSocket::stream_toggle(uint32_t dev_item_id, bool state, QWebSocket *socket, uint32_t scheme_id)
+{
+    const Stream_Item stream_item{scheme_id, dev_item_id};
+    std::set<QWebSocket*>& clients = client_uses_stream_[stream_item];
+
+    if (state)
+    {
+        clients.insert(socket);
+        return clients.size() == 1;
+    }
+    else
+    {
+        clients.erase(socket);
+        if (!clients.empty())
+            return false;
+
+        client_uses_stream_.erase(stream_item);
+    }
+    return true;
+}
+
+void WebSocket::stream_stop(uint32_t scheme_id, uint32_t dev_item_id, uint32_t user_id)
+{
+    QByteArray message;
+    QDataStream ds(&message, QIODevice::WriteOnly);
+    ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+    ds << dev_item_id << false;
+
+    std::shared_ptr<Websocket_Client> client = std::make_shared<Websocket_Client>();
+    client->id_ = user_id;
+
+    emit through_command(client, scheme_id, WS_STREAM_TOGGLE, message);
 }
 
 void WebSocket::sendDevice_ItemValues(const Scheme_Info &scheme, const QVector<Log_Value_Item> &pack)
@@ -481,6 +557,49 @@ void WebSocket::send_ip_address(const Scheme_Info& scheme, const QString& ip_add
     ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
     ds << (quint8)WS_IP_ADDRESS << scheme.id() << ip_address;
     send(scheme, message);
+}
+
+void WebSocket::send_stream_toggled(const Scheme_Info &scheme, uint32_t user_id, uint32_t dev_item_id, bool state)
+{
+    const Stream_Item stream_item{scheme.id(), dev_item_id};
+    auto it = client_uses_stream_.find(stream_item);
+    if (it == client_uses_stream_.cend())
+    {
+        if (state)
+            stream_stop(scheme.id(), dev_item_id, user_id);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream ds(&message, QIODevice::WriteOnly);
+    ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+    ds << (quint8)WS_STREAM_TOGGLE << scheme.id() << user_id << dev_item_id << state;
+
+    for (QWebSocket* sock: it->second)
+        sock->sendBinaryMessage(message);
+
+    if (!state)
+        client_uses_stream_.erase(it);
+}
+
+void WebSocket::send_stream_data(const Scheme_Info &scheme, uint32_t dev_item_id, const QByteArray &data)
+{
+    const Stream_Item stream_item{scheme.id(), dev_item_id};
+    auto it = client_uses_stream_.find(stream_item);
+    if (it == client_uses_stream_.cend())
+    {
+        stream_stop(scheme.id(), dev_item_id);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream ds(&message, QIODevice::WriteOnly);
+    ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+    ds << (quint8)WS_STREAM_DATA << scheme.id() << dev_item_id;
+    ds.writeRawData(data.constData(), data.size());
+
+    for (QWebSocket* sock: it->second)
+        sock->sendBinaryMessage(message);
 }
 
 QByteArray WebSocket::prepare_connection_state_message(uint32_t scheme_id, uint8_t connection_state) const

@@ -35,9 +35,9 @@ Worker::Worker(QObject *parent) :
 
     init_logging(&s);
     init_database(&s);
-    init_dbus_interface(&s);
     init_jwt_helper(&s);
     init_websocket_manager(&s);
+    init_dbus_interface(&s);
     init_web_command(&s);
     init_restful(&s);
 }
@@ -86,13 +86,13 @@ void Worker::init_database(QSettings* s)
     db_conn_info_ = Helpz::SettingsHelper(
                 s, "Database",
                 Helpz::Param{"Name", "das"},
-                Helpz::Param{"User", "DasUser"},
+                Helpz::Param{"User", "das"},
                 Helpz::Param{"Password", QString()},
                 Helpz::Param{"Host", "localhost"},
                 Helpz::Param{"Port", 3306},
                 Helpz::Param{"Prefix", "das_"},
                 Helpz::Param{"Driver", "QMYSQL"}, // QPSQL
-                Helpz::Param{"ConnectOptions", QString()}
+                Helpz::Param{"ConnectOptions", "CLIENT_FOUND_ROWS=1;MYSQL_OPT_RECONNECT=1"}
                 ).ptr<Helpz::DB::Connection_Info>();
 
     Helpz::DB::Connection_Info::set_common(*db_conn_info_);
@@ -139,6 +139,7 @@ void Worker::init_web_command(QSettings* /*s*/)
     web_command_th_ = new WebCommandThread(websock_th_->ptr());
     web_command_th_->start();
     connect(web_command_th_->ptr(), &Network::WebCommand::get_scheme_connection_state, dbus_, &DBus::Interface::get_scheme_connection_state, Qt::BlockingQueuedConnection);
+    connect(web_command_th_->ptr(), &Network::WebCommand::get_scheme_connection_state2, dbus_, &DBus::Interface::get_scheme_connection_state2, Qt::BlockingQueuedConnection);
     connect(web_command_th_->ptr(), &Network::WebCommand::send_message_to_scheme, dbus_, &DBus::Interface::send_message_to_scheme, Qt::QueuedConnection);
 }
 

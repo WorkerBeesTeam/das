@@ -1,4 +1,5 @@
 #include <QCryptographicHash>
+#include <QMetaEnum>
 
 #include <Helpz/net_protocol.h>
 #include <Helpz/db_builder.h>
@@ -31,6 +32,21 @@ Structure_Synchronizer_Base::~Structure_Synchronizer_Base()
 {
 }
 
+/*static*/ QString Structure_Synchronizer_Base::type_name(uint8_t struct_type)
+{
+    static QMetaEnum meta_enum = QMetaEnum::fromType<Structure_Type>();
+
+    uint8_t flags = struct_type & ST_FLAGS;
+    struct_type &= ~ST_FLAGS;
+
+    QString text = QString::number(struct_type) /*+ " flags " + QString::number(flags)*/ + ' ' + meta_enum.valueToKey(struct_type);
+    if (flags & ST_ITEM_FLAG)
+        text += " is_items";
+    if (flags & ST_HASH_FLAG)
+        text += " is_hash";
+    return text;
+}
+
 bool Structure_Synchronizer_Base::modified() const
 {
     return modified_;
@@ -45,7 +61,7 @@ void Structure_Synchronizer_Base::process_modify_message(uint32_t user_id, uint8
 {
     if (!is_can_modify(struct_type))
     {
-        qCWarning(Struct_Log) << "Attempt to modify" << int(struct_type) << "user" << user_id << "scheme" << scheme_id;
+        qCWarning(Struct_Log).noquote().nospace() << user_id << "|[" << type_name(struct_type) << "] Attempt to modify. scheme" << scheme_id;
         return;
     }
 
@@ -341,7 +357,7 @@ void Structure_Synchronizer_Base::modify(QVector<T>&& upd_vect, QVector<T>&& ins
                     self->modified_ = true;
                 }
 
-                qCInfo(Struct_Log).nospace() << user_id << "|modify " << static_cast<Structure_Type>(struct_type) << ' '
+                qCInfo(Struct_Log).noquote().nospace() << user_id << "|[" << type_name(struct_type) << "] modify "
                                              << upd_vect.size() << " update, " << insrt_vect.size() << " insert, " << del_vect.size() << " del";
 
                 QByteArray buffer;

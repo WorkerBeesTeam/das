@@ -19,6 +19,7 @@ Scheme::Scheme(/*Database *db, */QObject *parent) :
 {
     qRegisterMetaType<QVector<DB::DIG_Param_Value_Base>>("QVector<DB::DIG_Param_Value_Base>");
     qRegisterMetaType<QVector<DIG_Param_Value>>("QVector<DIG_Param_Value>");
+    qRegisterMetaType<Log_Value_Item>("Log_Value_Item");
 
     plugin_type_mng_ = std::make_shared<Plugin_Type_Manager>();
 }

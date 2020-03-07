@@ -14,7 +14,7 @@
 #include <QLoggingCategory>
 
 #include "../plugin_global.h"
-#include <Das/checkerinterface.h>
+#include <Das/checker_interface.h>
 #include <Das/device.h>
 
 #include "config.h"
@@ -55,18 +55,18 @@ private:
     std::map<Device*, std::vector<Device_Item*>> device_items_disconected_;
 };
 
-class DAS_PLUGIN_SHARED_EXPORT Uart_Plugin : public QObject, public Checker_Interface
+class DAS_PLUGIN_SHARED_EXPORT Uart_Plugin : public QObject, public Checker::Interface
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID DasCheckerInterface_iid FILE "checkerinfo.json")
-    Q_INTERFACES(Das::Checker_Interface)
+    Q_INTERFACES(Das::Checker::Interface)
 public:
     Uart_Plugin();
     ~Uart_Plugin();
 
     // CheckerInterface interface
 public:
-    void configure(QSettings* settings, Scheme* scheme) override;
+    void configure(QSettings* settings) override;
     bool check(Device *dev) override;
     void stop() override;
     void write(std::vector<Write_Cache_Item>& items) override;

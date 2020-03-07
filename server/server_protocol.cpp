@@ -92,7 +92,13 @@ void Protocol::before_remove_copy()
 void Protocol::lost_msg_detected(uint8_t /*msg_id*/, uint8_t /*expected*/)
 {
     set_connection_state(connection_state() | CS_CONNECTED_WITH_LOSSES);
-    log_sync_.check();
+
+    const auto now = std::chrono::system_clock::now();
+    if (now - last_sync_time_ > std::chrono::seconds(7))
+    {
+        last_sync_time_ = now;
+        log_sync_.check();
+    }
 }
 
 void Protocol::ready_write()
@@ -132,6 +138,14 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
         }
         break;
 
+    case Cmd::STREAM_TOGGLE:
+        send_answer(cmd, msg_id);
+        apply_parse(data_dev, &Protocol::stream_toggled);
+        break;
+    case Cmd::STREAM_DATA:
+        apply_parse(data_dev, &Protocol::stream_data);
+        break;
+
     default:
         break;
     }
@@ -139,7 +153,7 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
 
 void Protocol::process_answer_message(uint8_t msg_id, uint8_t cmd, QIODevice& /*data_dev*/)
 {
-    qDebug().noquote() << title() << "unprocess answer" << int(msg_id) << int(cmd) << static_cast<Cmd::Command_Type>(cmd) << QDateTime::currentMSecsSinceEpoch();
+    qDebug().noquote() << title() << "unprocess answer" << msg_id << int(cmd) << static_cast<Cmd::Command_Type>(cmd) << QDateTime::currentMSecsSinceEpoch();
 }
 
 void Protocol::process_unauthorized_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
@@ -229,7 +243,19 @@ void Protocol::set_time_offset(const QDateTime& scheme_time, const QTimeZone& ti
                               Q_ARG(Scheme_Info, *this), Q_ARG(QTimeZone, timeZone), Q_ARG(qint64, offset));
 
     qDebug().noquote() << title() << "setTimeOffset" << time().offset
-              << (time().zone.isValid() ? time().zone.id().constData()/*displayName(QTimeZone::GenericTime).toStdString()*/ : "invalid");
+                       << (time().zone.isValid() ? time().zone.id().constData()/*displayName(QTimeZone::GenericTime).toStdString()*/ : "invalid");
+}
+
+void Protocol::stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state)
+{
+    QMetaObject::invokeMethod(work_object()->dbus_, "stream_toggled", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, dev_item_id), Q_ARG(bool, state));
+}
+
+void Protocol::stream_data(uint32_t dev_item_id, const QByteArray &data)
+{
+    QMetaObject::invokeMethod(work_object()->dbus_, "stream_data", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, dev_item_id), Q_ARG(QByteArray, data));
 }
 
 #if 0

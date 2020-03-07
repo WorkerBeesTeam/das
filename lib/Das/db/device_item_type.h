@@ -21,6 +21,7 @@ public:
         RT_HOLDING_REGISTERS,
         RT_FILE,
         RT_SIMPLE_BUTTON,
+        RT_VIDEO_STREAM,
     };
 
     enum Save_Algorithm {

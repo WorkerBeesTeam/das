@@ -41,7 +41,6 @@ SOURCES += \
     section.cpp \
     timerange.cpp \
     param/paramgroup.cpp \
-    checkerinterface.cpp \
     log/log_type.cpp \
     lib.cpp \
     device.cpp \
@@ -55,7 +54,8 @@ SOURCES += \
     db/device_item_value.cpp \
     db/device_item.cpp \
     db/device_extra_params.cpp \
-    db/save_timer.cpp
+    db/save_timer.cpp \
+    checker_interface.cpp
 
 HEADERS +=\
     db/auth_group.h \
@@ -85,7 +85,6 @@ HEADERS +=\
     section.h \
     timerange.h \
     param/paramgroup.h \
-    checkerinterface.h \
     commands.h \
     log/log_pack.h \
     log/log_type.h \
@@ -102,7 +101,8 @@ HEADERS +=\
     db/device_item_value.h \
     db/device_item.h \
     db/device_extra_params.h \
-    db/save_timer.h
+    db/save_timer.h \
+    checker_interface.h
 
 DESTDIR = $${OUT_PWD}/../..
 

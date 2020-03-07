@@ -19,7 +19,7 @@ typedef QGuiApplication App_Type;
 #include <plus/das/database.h>
 #include <plus/das/scheme_info.h>
 
-#include "checker.h"
+#include "checker_manager.h"
 #include "Network/client_protocol_latest.h"
 #include "Scripts/scripted_scheme.h"
 
@@ -103,8 +103,8 @@ private:
     Scripts_Thread::Type* scheme_thread_;
     Scripted_Scheme* prj_;
 
-    friend class Checker;
-    using Checker_Thread = Helpz::SettingsThreadHelper<Checker, Worker*, QStringList>;
+    friend class Checker::Manager;
+    using Checker_Thread = Helpz::SettingsThreadHelper<Checker::Manager, Worker*, QStringList>;
     Checker_Thread::Type* checker_th_;
 
     using Log_Value_Save_Timer_Thread = Helpz::ParamThread<Log_Value_Save_Timer, Worker*>;

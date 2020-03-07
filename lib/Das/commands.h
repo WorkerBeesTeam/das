@@ -42,6 +42,9 @@ namespace Cmd {
         DEVICE_ITEM_VALUES,
         GROUP_STATUSES,
 
+        STREAM_TOGGLE,
+        STREAM_DATA,
+
         /*
             cmdCreateDevice,
             cmdSetInform,
@@ -117,6 +120,9 @@ enum WebSockCmd : uint8_t {
     WS_GROUP_STATUS_REMOVED,
     WS_TIME_INFO,
     WS_IP_ADDRESS,
+
+    WS_STREAM_TOGGLE,
+    WS_STREAM_DATA,
 
     WEB_SOCK_CMD_COUNT
 };

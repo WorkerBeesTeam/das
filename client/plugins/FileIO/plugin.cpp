@@ -53,7 +53,7 @@ void FileIO_Plugin::initialize(Device *dev)
     }
 }
 
-void FileIO_Plugin::configure(QSettings *settings, Scheme *scheme)
+void FileIO_Plugin::configure(QSettings *settings)
 {
     using Helpz::Param;
     auto [initializer, prefix] = Helpz::SettingsHelper(
@@ -65,7 +65,7 @@ void FileIO_Plugin::configure(QSettings *settings, Scheme *scheme)
     prefix_ = prefix;
     set_initializer(initializer);
 
-    for (Device* dev: scheme->devices())
+    for (Device* dev: scheme()->devices())
     {
         if (dev->checker_type()->checker == this)
         {

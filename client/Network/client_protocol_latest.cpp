@@ -54,6 +54,19 @@ void Protocol::send_statuses()
     send(Cmd::GROUP_STATUSES) << get_group_statuses();
 }
 
+void Protocol::send_stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state)
+{
+    send(Cmd::STREAM_TOGGLE).timeout(nullptr, std::chrono::seconds(6)) << user_id << dev_item_id << state;
+}
+
+void Protocol::send_stream_data(uint32_t dev_item_id, const QByteArray &data)
+{
+    Helpz::Network::Protocol_Sender sender = send(Cmd::STREAM_DATA);
+    sender.timeout(nullptr, std::chrono::milliseconds(1500), std::chrono::milliseconds(1500));
+    sender << dev_item_id << data;
+    sender.set_fragment_size(HELPZ_MAX_PACKET_DATA_SIZE);
+}
+
 //void Protocol::send_mode(const DIG_Mode& mode)
 //{
 //    send(Cmd::SET_MODE).timeout(nullptr, std::chrono::seconds(16), std::chrono::seconds(5)) << mode;
@@ -145,8 +158,12 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
     case Cmd::WRITE_TO_ITEM:            apply_parse(data_dev, &Protocol::write_to_item);                    break;
     case Cmd::WRITE_TO_ITEM_FILE:       process_item_file(data_dev);                                        break;
     case Cmd::SET_MODE:                 Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Worker::set_mode, worker()); break;
-    case Cmd::SET_DIG_PARAM_VALUES:     apply_parse(data_dev, &Protocol::set_dig_param_values);           break;
+    case Cmd::SET_DIG_PARAM_VALUES:     apply_parse(data_dev, &Protocol::set_dig_param_values);             break;
     case Cmd::EXEC_SCRIPT_COMMAND:      apply_parse(data_dev, &Protocol::parse_script_command, &data_dev);  break;
+    case Cmd::STREAM_TOGGLE:
+        send_answer(Cmd::STREAM_TOGGLE, msg_id);
+        apply_parse(data_dev, &Protocol::toggle_stream);
+        break;
 
     case Cmd::GET_SCHEME:               Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Structure_Synchronizer::send_scheme_structure, &structure_sync_, msg_id, &data_dev); break;
     case Cmd::MODIFY_SCHEME:
@@ -185,7 +202,10 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
     default:
         if (cmd >= Helpz::Network::Cmd::USER_COMMAND)
         {
-            qCCritical(NetClientLog) << "UNKNOWN MESSAGE" << int(cmd);
+            if (!data_dev.isOpen())
+                data_dev.open(QIODevice::ReadOnly);
+            qCCritical(NetClientLog) << "UNKNOWN MESSAGE" << int(cmd) << "id:" << msg_id << "size:" << data_dev.size() << data_dev.bytesAvailable()
+                                     << "hex:" << data_dev.pos() << data_dev.readAll().toHex();
         }
         break;
     }
@@ -193,7 +213,7 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
 
 void Protocol::process_answer_message(uint8_t msg_id, uint8_t cmd, QIODevice& /*data_dev*/)
 {
-    qCWarning(NetClientLog) << "unprocess answer" << int(msg_id) << int(cmd);
+    qCWarning(NetClientLog) << "unprocess answer" << msg_id << int(cmd);
 }
 
 void Protocol::parse_script_command(uint32_t user_id, const QString& script, QIODevice* data_dev)
@@ -205,6 +225,12 @@ void Protocol::parse_script_command(uint32_t user_id, const QString& script, QIO
         parse_out(*data_dev, arguments);
     }
     exec_script_command(user_id, script, is_function, arguments);
+}
+
+void Protocol::toggle_stream(uint32_t user_id, uint32_t dev_item_id, bool state)
+{
+    QMetaObject::invokeMethod(worker()->prj(), "toggle_stream", Qt::QueuedConnection,
+                              Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, dev_item_id), Q_ARG(bool, state));
 }
 
 void Protocol::process_item_file(QIODevice& data_dev)
