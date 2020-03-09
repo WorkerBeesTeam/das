@@ -29,7 +29,10 @@ Stream_Client_Thread::~Stream_Client_Thread()
 
 void Stream_Client_Thread::send(uint32_t dev_item_id, const QByteArray& param, const QByteArray &buffer)
 {
+    std::chrono::milliseconds timeout{1500};
+
     auto sender = socket_->client_->send(Helpz::Net::Cmd::USER_COMMAND);
+    sender.timeout(nullptr, timeout, timeout);
     sender.set_fragment_size(HELPZ_MAX_PACKET_DATA_SIZE);
     sender.writeRawData(param.constData(), param.size());
     sender << dev_item_id << buffer;
