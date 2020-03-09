@@ -23,10 +23,6 @@ namespace DB {
 class Thread_Manager;
 }
 
-namespace Network {
-class WebSocket;
-}
-
 namespace Server {
 
 class Informer;

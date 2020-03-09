@@ -1,4 +1,7 @@
-﻿#include <QDebug>
+﻿#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/udp.hpp>
+
+#include <QDebug>
 #include <QSettings>
 #include <QFile>
 #include <QElapsedTimer>
@@ -16,6 +19,33 @@ namespace Das {
 Q_LOGGING_CATEGORY(CameraLog, "camera")
 
 // ----------------------------------------------------------
+
+class Stream_Socket
+{
+public:
+    Stream_Socket(const std::string &host, const std::string &port) :
+        io_context_(),
+        socket_(io_context_)
+    {
+        using boost::asio::ip::udp;
+
+        udp::resolver resolver(io_context_);
+        udp::resolver::query query(udp::v4(), host, port);
+        receiver_endpoint_ = *resolver.resolve(query);
+
+        socket_.open(udp::v4());
+    }
+
+    void send(const QByteArray& buffer)
+    {
+        socket_.send_to(boost::asio::buffer(buffer.constData(), buffer.size()), receiver_endpoint_);
+    }
+
+private:
+    boost::asio::io_context io_context_;
+    boost::asio::ip::udp::socket socket_;
+    boost::asio::ip::udp::endpoint receiver_endpoint_;
+};
 
 void Camera_Thread::start(Camera::Config config, Checker::Interface *iface)
 {
@@ -118,6 +148,9 @@ void Camera_Thread::run()
                     if (streams_.find(data.item_) != streams_.end())
                         throw std::runtime_error("Already started");
 
+                    if (!socket_)
+                        socket_.reset(new Stream_Socket(config().stream_server_.toStdString(), config().stream_server_port_.toStdString()));
+
                     std::unique_ptr<Video_Stream> stream(new Video_Stream(path));
                     auto it = streams_.emplace(data.item_, std::move(stream));
                     if (!it.second)
@@ -135,6 +168,7 @@ void Camera_Thread::run()
             case DT_STREAM_STOP:
                 streams_.erase(data.item_);
                 iface_->manager()->send_stream_toggled(data.user_id_, data.item_, false);
+                socket_.reset();
                 break;
 
             default:
@@ -163,10 +197,17 @@ bool Camera_Thread::send_stream_data(Device_Item *item, Video_Stream *stream)
 {
     try
     {
-        iface_->manager()->send_stream_data(item, stream->get_frame());
+        if (!socket_)
+        {
+            socket_.reset(new Stream_Socket(config().stream_server_.toStdString(), config().stream_server_port_.toStdString()));
+        }
+
+        socket_->send(stream->get_frame());
+//        iface_->manager()->send_stream_data(item, stream->get_frame());
     }
     catch (const std::exception& e)
     {
+        socket_.reset();
         qCCritical(CameraLog) << "get_frame failed:" << e.what();
         return false;
     }
@@ -224,6 +265,8 @@ void Camera_Plugin::configure(QSettings *settings)
             (
                 settings, "Camera",
                 Param<QString>{"DevicePrefix", "/dev/video"},
+                Param<QString>{"StreamServer", "deviceaccess.ru"},
+                Param<QString>{"StreamServerPort", "6731"},
                 Param<uint32_t>{"FrameDelayMs", 60}
     ).obj<Camera::Config>();
 

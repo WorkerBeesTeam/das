@@ -25,7 +25,9 @@ SOURCES += main.cpp \
     worker.cpp \
     websocket.cpp \
     webcommand.cpp \
-    dbus_handler.cpp
+    dbus_handler.cpp \
+    stream/stream_server.cpp \
+    stream/stream_server_thread.cpp
 
 HEADERS += \
     rest/restful.h \
@@ -34,7 +36,9 @@ HEADERS += \
     worker.h \
     websocket.h \
     webcommand.h \
-    dbus_handler.h
+    dbus_handler.h \
+    stream/stream_server.h \
+    stream/stream_server_thread.h
 
 unix {
     target.path = /opt/das

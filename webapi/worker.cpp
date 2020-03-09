@@ -44,6 +44,7 @@ Worker::Worker(QObject *parent) :
 
 Worker::~Worker()
 {
+    delete stream_server_;
     delete restful_;
 
     web_command_th_->quit();
@@ -138,9 +139,9 @@ void Worker::init_web_command(QSettings* /*s*/)
     assert(websock_th_);
     web_command_th_ = new WebCommandThread(websock_th_->ptr());
     web_command_th_->start();
-    connect(web_command_th_->ptr(), &Network::WebCommand::get_scheme_connection_state, dbus_, &DBus::Interface::get_scheme_connection_state, Qt::BlockingQueuedConnection);
-    connect(web_command_th_->ptr(), &Network::WebCommand::get_scheme_connection_state2, dbus_, &DBus::Interface::get_scheme_connection_state2, Qt::BlockingQueuedConnection);
-    connect(web_command_th_->ptr(), &Network::WebCommand::send_message_to_scheme, dbus_, &DBus::Interface::send_message_to_scheme, Qt::QueuedConnection);
+    connect(web_command_th_->ptr(), &Net::WebCommand::get_scheme_connection_state, dbus_, &DBus::Interface::get_scheme_connection_state, Qt::BlockingQueuedConnection);
+    connect(web_command_th_->ptr(), &Net::WebCommand::get_scheme_connection_state2, dbus_, &DBus::Interface::get_scheme_connection_state2, Qt::BlockingQueuedConnection);
+    connect(web_command_th_->ptr(), &Net::WebCommand::send_message_to_scheme, dbus_, &DBus::Interface::send_message_to_scheme, Qt::QueuedConnection);
 }
 
 void Worker::init_restful(QSettings* s)
@@ -153,6 +154,14 @@ void Worker::init_restful(QSettings* s)
     ).obj<Rest::Config>();
 
     restful_ = new Rest::Restful{dbus_, jwt_helper_, rest_config};
+}
+
+void Worker::init_stream_server(QSettings *s)
+{
+    stream_server_ = Helpz::SettingsHelper(
+        s, "Stream", websock_th_->ptr(),
+        Helpz::Param<uint16_t>{"Port", 6731}
+    ).ptr<Stream_Server_Thread>();
 }
 
 } // namespace WebApi

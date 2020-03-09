@@ -21,9 +21,6 @@ namespace Das {
 namespace DB {
 class global;
 }
-namespace Network {
-class WebSocket;
-}
 
 //typedef std::shared_ptr<das::database::global> (*DatabaseOpenFunc)(const std::string&);
 

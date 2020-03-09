@@ -3,7 +3,7 @@
 #include "webcommand.h"
 
 namespace Das {
-namespace Network {
+namespace Net {
 
 WebCommand::WebCommand(WebSocket *webSock) :
     websock_(webSock)
@@ -12,7 +12,7 @@ WebCommand::WebCommand(WebSocket *webSock) :
     connect(this, &WebCommand::send, webSock, &WebSocket::send_to_client, Qt::QueuedConnection);
 }
 
-void WebCommand::write_command(std::shared_ptr<Network::Websocket_Client> client, uint32_t scheme_id, quint8 cmd, const QByteArray &data)
+void WebCommand::write_command(std::shared_ptr<Net::Websocket_Client> client, uint32_t scheme_id, quint8 cmd, const QByteArray &data)
 {
 //    qDebug() << "writeCommand scheme_group" << user_scheme_group_id << "scheme" << scheme_id << "cmd" << int(cmd);
     uint8_t scheme_connection_state;
@@ -48,5 +48,5 @@ void WebCommand::write_command(std::shared_ptr<Network::Websocket_Client> client
     }
 }
 
-} // namespace Network
+} // namespace Net
 } // namespace Das

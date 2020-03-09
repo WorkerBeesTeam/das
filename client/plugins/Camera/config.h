@@ -14,6 +14,8 @@ struct Config {
     Config() = default;
 
     QString device_prefix_;
+    QString stream_server_;
+    QString stream_server_port_;
     uint32_t frame_delay_;
 };
 

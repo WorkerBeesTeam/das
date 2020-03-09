@@ -89,7 +89,7 @@ namespace Das {
 
 Q_LOGGING_CATEGORY(WebSockLog, "net.web")
 
-namespace Network {
+namespace Net {
 
 Websocket_Client::Websocket_Client() :
     id_(0), auth_sended_time_(QDateTime::currentMSecsSinceEpoch())
@@ -133,7 +133,7 @@ WebSocket::WebSocket(std::shared_ptr<JWT_Helper> jwt_helper, quint16 port, const
     qRegisterMetaType<Scheme_Info>("Scheme_Info");
     qRegisterMetaType<QTimeZone>("QTimeZone");
     qRegisterMetaType<QVector<DIG_Param_Value>>("QVector<DIG_Param_Value>");
-    qRegisterMetaType<std::shared_ptr<Network::Websocket_Client>>("std::shared_ptr<Network::Websocket_Client>");
+    qRegisterMetaType<std::shared_ptr<Net::Websocket_Client>>("std::shared_ptr<Net::Websocket_Client>");
 
     connect(server_, &QWebSocketServer::originAuthenticationRequired, this, &WebSocket::originAuthentication);
     connect(server_, &QWebSocketServer::newConnection, this, &WebSocket::onNewConnection);
@@ -648,5 +648,5 @@ void WebSocket::send_to_client(std::shared_ptr<Websocket_Client> client, const Q
     }
 }
 
-} // namespace Network
+} // namespace Net
 } // namespace Das

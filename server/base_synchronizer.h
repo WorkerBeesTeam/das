@@ -9,10 +9,6 @@ namespace Server {
 class Protocol_Base;
 } // namespace Server
 
-namespace Network {
-class WebSocket;
-} // namespace Network
-
 namespace DB {
 class global;
 } // namespace DB

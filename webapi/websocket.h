@@ -25,7 +25,7 @@ class JWT_Helper;
 
 Q_DECLARE_LOGGING_CATEGORY(WebSockLog)
 
-namespace Network {
+namespace Net {
 
 struct Websocket_Client
 {
@@ -56,7 +56,7 @@ public:
 signals:
     void closed();
 
-    void through_command(std::shared_ptr<Network::Websocket_Client> client, uint32_t scheme_id, quint8 cmd, const QByteArray& data);
+    void through_command(std::shared_ptr<Net::Websocket_Client> client, uint32_t scheme_id, quint8 cmd, const QByteArray& data);
 
 public slots:
     void sendDevice_ItemValues(const Scheme_Info& scheme, const QVector<Log_Value_Item>& pack);
@@ -76,7 +76,7 @@ public slots:
     void send_stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
 
     void send(const Scheme_Info &scheme, const QByteArray& data) const;
-    void send_to_client(std::shared_ptr<Network::Websocket_Client> client, const QByteArray& data) const;
+    void send_to_client(std::shared_ptr<Net::Websocket_Client> client, const QByteArray& data) const;
 private slots:
     void originAuthentication(QWebSocketCorsAuthenticator *pAuthenticator);
     void acceptError(QAbstractSocket::SocketError socketError);
@@ -109,7 +109,7 @@ private:
     std::shared_ptr<JWT_Helper> jwt_helper_;
 };
 
-} // namespace Network
+} // namespace Net
 } // namespace Das
 
 #endif // DAS_NETWORK_WEBSOCKET_H
