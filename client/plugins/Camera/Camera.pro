@@ -6,7 +6,6 @@ SOURCES += \
     v4l2-api.cpp \
     config.cpp \
     video_stream.cpp \
-    stream/stream_client.cpp \
     stream/stream_client_thread.cpp \
     stream/stream_controller.cpp
 
@@ -16,7 +15,6 @@ HEADERS += \
     v4l2-api.h \
     config.h \
     video_stream.h \
-    stream/stream_client.h \
     stream/stream_client_thread.h \
     stream/stream_controller.h
 

@@ -5,10 +5,23 @@
 #include <boost/asio/ip/udp.hpp>
 
 #include <Helpz/net_protocol_timer.h>
+#include <Helpz/net_protocol.h>
 
 namespace Das {
 
-class Stream_Client;
+class Stream_Controller;
+class Stream_Client : public Helpz::Net::Protocol
+{
+public:
+    Stream_Client(Stream_Controller* controller);
+
+private:
+    void process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev) override;
+    void process_answer_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev) override;
+
+    Stream_Controller* controller_;
+};
+
 class Stream_Controller : public Helpz::Net::Protocol_Writer, public Helpz::Net::Protocol_Timer_Emiter
 {
 public:

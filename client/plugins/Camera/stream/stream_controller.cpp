@@ -1,32 +1,27 @@
-#include <Helpz/net_protocol.h>
 
 #include "stream_controller.h"
 
 namespace Das {
 
-class Stream_Client : public Helpz::Net::Protocol
+Stream_Client::Stream_Client(Stream_Controller *controller) :
+    controller_(controller)
 {
-public:
-    Stream_Client(Stream_Controller* controller) :
-        controller_(controller)
-    {
-    }
+}
 
-private:
-    void process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev) override
-    {
-        if (cmd == Helpz::Net::Cmd::CLOSE)
-            controller_->close();
-        else
-            qDebug() << "Stream_Client::process_message unknown" << cmd << data_dev.size();
-    }
-    void process_answer_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev) override
-    {
-        qDebug() << "Stream_Client::process_answer_message unknown" << cmd;
-    }
+void Stream_Client::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
+{
+    if (cmd == Helpz::Net::Cmd::CLOSE)
+        controller_->close();
+    else
+        qDebug() << "Stream_Client::process_message unknown" << cmd << data_dev.size();
+}
 
-    Stream_Controller* controller_;
-};
+void Stream_Client::process_answer_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
+{
+    qDebug() << "Stream_Client::process_answer_message unknown" << cmd;
+}
+
+// ------------------------------------------------------------------------
 
 Stream_Controller::Stream_Controller(boost::asio::io_context &io_context, boost::asio::ip::udp::resolver::query query) :
     timer_(this),
@@ -41,7 +36,7 @@ Stream_Controller::Stream_Controller(boost::asio::io_context &io_context, boost:
 
     socket_.open(udp::v4());
 
-    client_.reset(new Stream_Client);
+    client_.reset(new Stream_Client(this));
 
     start_receive();
 }

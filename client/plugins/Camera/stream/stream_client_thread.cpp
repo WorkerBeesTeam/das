@@ -13,8 +13,6 @@ Stream_Client_Thread::Stream_Client_Thread(const std::string &host, const std::s
 
     socket_ = std::make_shared<Stream_Controller>(io_context_, query);
     socket_->client_->set_writer(socket_);
-//    client_->set_writer();
-
 
     std::thread th(&Stream_Client_Thread::run, this);
     thread_.swap(th);
