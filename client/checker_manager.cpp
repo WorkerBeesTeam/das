@@ -368,6 +368,13 @@ void Manager::send_stream_toggled(uint32_t user_id, Device_Item *item, bool stat
         proto->send_stream_toggled(user_id, item->id(), state);
 }
 
+void Manager::send_stream_param(Device_Item *item, const QByteArray &data)
+{
+    std::shared_ptr<Ver::Client::Protocol> proto = worker_->net_protocol();
+    if (proto)
+        proto->send_stream_param(item->id(), data);
+}
+
 void Manager::send_stream_data(Device_Item *item, const QByteArray &data)
 {
     std::shared_ptr<Ver::Client::Protocol> proto = worker_->net_protocol();

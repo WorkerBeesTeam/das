@@ -26,6 +26,7 @@ public:
     Video_Stream(const QString& device_path);
     ~Video_Stream();
 
+    const QByteArray& param();
     const QByteArray& get_frame();
 
 private:
@@ -39,7 +40,7 @@ private:
     void cap_frame();
     bool must_convert_;
 
-    QByteArray data_;
+    QByteArray data_, param_;
     v4l2* v4l2_;
     v4lconvert_data* convert_data_;
 

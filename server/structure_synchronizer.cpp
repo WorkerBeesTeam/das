@@ -380,14 +380,14 @@ void Structure_Synchronizer::send_modify_response(uint8_t /*struct_type*/, const
                               Q_ARG(Scheme_Info, *protocol_), Q_ARG(QByteArray, buffer));
 }
 
-Helpz::Network::Protocol_Sender Structure_Synchronizer::send_scheme_request(uint8_t struct_type)
+Helpz::Net::Protocol_Sender Structure_Synchronizer::send_scheme_request(uint8_t struct_type)
 {
     if (!struct_sync_timeout_)
     {
         struct_wait_set_.insert(struct_type);
     }
 
-    Helpz::Network::Protocol_Sender sender = protocol_->send(Cmd::GET_SCHEME);
+    Helpz::Net::Protocol_Sender sender = protocol_->send(Cmd::GET_SCHEME);
 
     sender.answer([this](QIODevice& data_dev)
     {
@@ -526,7 +526,7 @@ void Structure_Synchronizer::process_scheme_items_hash(QMap<uint32_t,uint16_t>&&
             // del_id_vect      - send data from db_name to client for insert
             if (!insert_id_vect.isEmpty() || !update_id_vect.isEmpty() || !del_id_vect.isEmpty())
             {
-                Helpz::Network::Protocol_Sender sender = scheme->send(Cmd::MODIFY_SCHEME);
+                Helpz::Net::Protocol_Sender sender = scheme->send(Cmd::MODIFY_SCHEME);
                 sender.timeout(nullptr, std::chrono::seconds(13));
                 sender << uint32_t(0) << struct_type;
                 self->add_structure_items_data(struct_type, update_id_vect, sender, *db, s_id);

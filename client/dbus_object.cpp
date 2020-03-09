@@ -65,7 +65,7 @@ void Dbus_Object::send_message_to_scheme(uint32_t /*scheme_id*/, uint8_t ws_cmd,
     QByteArray data(4, Qt::Uninitialized);
     data += raw_data;
     QDataStream ds(&data, QIODevice::ReadWrite);
-    ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+    ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
     ds << user_id;
     ds.device()->seek(0);
 

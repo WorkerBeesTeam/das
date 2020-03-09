@@ -66,7 +66,7 @@ void Structure_Synchronizer_Base::process_modify_message(uint32_t user_id, uint8
     }
 
     using T = Structure_Synchronizer_Base;
-    auto v = Helpz::Network::Protocol::DATASTREAM_VERSION;
+    auto v = Helpz::Net::Protocol::DATASTREAM_VERSION;
 
     switch (struct_type)
     {
@@ -107,7 +107,7 @@ QByteArray Structure_Synchronizer_Base::get_structure_hash(uint8_t struct_type, 
     QBuffer buffer;
     buffer.open(QIODevice::ReadWrite);
     QDataStream ds(&buffer);
-    ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+    ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
     add_structure_data(struct_type, ds, db, scheme_id);
 
     return QCryptographicHash::hash(buffer.buffer(), QCryptographicHash::Sha1);
@@ -119,7 +119,7 @@ QByteArray Structure_Synchronizer_Base::get_structure_hash_for_all(Helpz::DB::Ba
     QBuffer buffer;
     buffer.open(QIODevice::ReadWrite);
     QDataStream ds(&buffer);
-    ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+    ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
     for (const uint8_t struct_type: struct_type_array)
         add_structure_data(struct_type, ds, db, scheme_id);
 
@@ -362,7 +362,7 @@ void Structure_Synchronizer_Base::modify(QVector<T>&& upd_vect, QVector<T>&& ins
 
                 QByteArray buffer;
                 QDataStream data_stream(&buffer, QIODevice::WriteOnly);
-                data_stream.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+                data_stream.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
                 data_stream << user_id << struct_type << upd_vect << insrt_vect << del_vect;
                 self->send_modify_response(struct_type, buffer, user_id);
             }

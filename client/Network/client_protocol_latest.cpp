@@ -60,11 +60,16 @@ void Protocol::send_stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool 
     send(Cmd::STREAM_TOGGLE).timeout(nullptr, std::chrono::seconds(6)) << user_id << dev_item_id << state;
 }
 
+void Protocol::send_stream_param(uint32_t dev_item_id, const QByteArray &data)
+{
+    send(Cmd::STREAM_PARAM).timeout(nullptr, std::chrono::seconds(6)) << dev_item_id << data;
+}
+
 void Protocol::send_stream_data(uint32_t dev_item_id, const QByteArray &data)
 {
     std::chrono::milliseconds timeout{conf_.stream_timeout_};
 
-    Helpz::Network::Protocol_Sender sender = send(Cmd::STREAM_DATA);
+    Helpz::Net::Protocol_Sender sender = send(Cmd::STREAM_DATA);
     sender.timeout(nullptr, timeout, timeout);
     sender << dev_item_id << data;
     sender.set_fragment_size(HELPZ_MAX_PACKET_DATA_SIZE);
@@ -203,7 +208,7 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
         break;
 
     default:
-        if (cmd >= Helpz::Network::Cmd::USER_COMMAND)
+        if (cmd >= Helpz::Net::Cmd::USER_COMMAND)
         {
             if (!data_dev.isOpen())
                 data_dev.open(QIODevice::ReadOnly);
@@ -305,7 +310,7 @@ void Protocol::send_version(uint8_t msg_id)
 {
     send_answer(Cmd::VERSION, msg_id)
             << Helpz::DTLS::ver_major() << Helpz::DTLS::ver_minor() << Helpz::DTLS::ver_build()
-            << Helpz::Network::ver_major() << Helpz::Network::ver_minor() << Helpz::Network::ver_build()
+            << Helpz::Net::ver_major() << Helpz::Net::ver_minor() << Helpz::Net::ver_build()
             << Helpz::DB::ver_major() << Helpz::DB::ver_minor() << Helpz::DB::ver_build()
             << Helpz::Service::ver_major() << Helpz::Service::ver_minor() << Helpz::Service::ver_build()
             << Lib::ver_major() << Lib::ver_minor() << Lib::ver_build()
@@ -323,7 +328,7 @@ void Protocol::send_time_info(uint8_t msg_id)
 #if 0
 #include <botan-2/botan/parsing.h>
 
-class Client : public QObject, public Helpz::Network::Protocol
+class Client : public QObject, public Helpz::Net::Protocol
 {
     Q_OBJECT
 public:
@@ -372,7 +377,7 @@ public slots:
      *   3. Импортировать полученные данные
      **/
 
-        Helpz::Network::Waiter w(cmdGetServerInfo, wait_map);
+        Helpz::Net::Waiter w(cmdGetServerInfo, wait_map);
         if (!w) return;
 
         send(cmdGetServerInfo) << m_login << m_password << devive_uuid;
@@ -383,7 +388,7 @@ public slots:
         if (name.isEmpty() || latin.isEmpty())
             return {};
 
-        Helpz::Network::Waiter w(cmdCreateDevice, wait_map);
+        Helpz::Net::Waiter w(cmdCreateDevice, wait_map);
         if (w)
         {
             send(cmdCreateDevice) << m_login << m_password << name << latin << description;
@@ -396,7 +401,7 @@ public slots:
 
     QVector<QPair<QUuid, QString>> getUserDevices()
     {
-        Helpz::Network::Waiter w(cmdAuth, wait_map);
+        Helpz::Net::Waiter w(cmdAuth, wait_map);
         if (!w)
             return lastUserDevices;
 
@@ -463,7 +468,7 @@ protected:
 private:
     bool m_import_config;
 
-    Helpz::Network::WaiterMap wait_map;
+    Helpz::Net::WaiterMap wait_map;
     QVector<QPair<QUuid, QString>> lastUserDevices;
 };
 #endif

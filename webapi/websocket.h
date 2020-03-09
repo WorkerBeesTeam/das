@@ -58,6 +58,8 @@ signals:
 
     void through_command(std::shared_ptr<Net::Websocket_Client> client, uint32_t scheme_id, quint8 cmd, const QByteArray& data);
 
+    void stream_stoped(uint32_t scheme_id, uint32_t dev_item_id);
+
 public slots:
     void sendDevice_ItemValues(const Scheme_Info& scheme, const QVector<Log_Value_Item>& pack);
     void send_dig_mode_pack(const Scheme_Info& scheme, const QVector<DIG_Mode>& pack);
@@ -74,6 +76,7 @@ public slots:
 
     void send_stream_toggled(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, bool state);
     void send_stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
+    void send_stream_id_data(uint32_t scheme_id, uint32_t dev_item_id, const QByteArray& data);
 
     void send(const Scheme_Info &scheme, const QByteArray& data) const;
     void send_to_client(std::shared_ptr<Net::Websocket_Client> client, const QByteArray& data) const;

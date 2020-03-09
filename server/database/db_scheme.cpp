@@ -224,7 +224,7 @@ void global::check_auth(const Authentication_Info &auth_info, Server::Protocol_B
             info_out->set_name(query.value(1).toString());
 //            info_out->set_scheme_title(query.value(2).toString());
 
-            std::shared_ptr<Helpz::Network::Protocol_Writer> writer = info_out->writer();
+            std::shared_ptr<Helpz::Net::Protocol_Writer> writer = info_out->writer();
             if (writer)
                 writer->set_title(info_out->title() + " (" + info_out->name() + ')');
 

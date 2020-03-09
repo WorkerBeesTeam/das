@@ -24,12 +24,22 @@ Video_Stream::Video_Stream(const QString &device_path) :
 
         throw std::runtime_error(error);
     }
+
+    qsrand(time(nullptr));
+
+    QDataStream ds(&param_, QIODevice::WriteOnly);
+    ds << uint32_t(qrand()) << uint32_t(qrand());
 }
 
 Video_Stream::~Video_Stream()
 {
     stop();
     close_device();
+}
+
+const QByteArray &Video_Stream::param()
+{
+    return param_;
 }
 
 const QByteArray &Video_Stream::get_frame()

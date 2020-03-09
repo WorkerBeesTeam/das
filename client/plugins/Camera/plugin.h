@@ -23,7 +23,7 @@
 namespace Das {
 Q_DECLARE_LOGGING_CATEGORY(CameraLog)
 
-class Stream_Socket;
+class Stream_Client_Thread;
 class Camera_Thread
 {
 public:
@@ -67,7 +67,7 @@ private:
 
     std::map<Device_Item*, std::unique_ptr<Video_Stream>> streams_;
 
-    std::unique_ptr<Stream_Socket> socket_;
+    std::unique_ptr<Stream_Client_Thread> socket_;
 };
 
 class DAS_PLUGIN_SHARED_EXPORT Camera_Plugin : public QObject, public Checker::Interface

@@ -19,7 +19,7 @@ namespace Cmd {
 #endif
 
     enum Command_Type {
-        AUTH = 16, // Helpz::Network::Cmd::USER_COMMAND,
+        AUTH = 16, // Helpz::Net::Cmd::USER_COMMAND,
         NO_AUTH,
 
         VERSION,
@@ -43,6 +43,7 @@ namespace Cmd {
         GROUP_STATUSES,
 
         STREAM_TOGGLE,
+        STREAM_PARAM,
         STREAM_DATA,
 
         /*

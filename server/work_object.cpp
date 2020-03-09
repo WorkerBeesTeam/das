@@ -73,7 +73,7 @@ void Work_Object::init_database(QSettings* s)
 
 void Work_Object::init_server(QSettings* s)
 {
-    Helpz::DTLS::Create_Server_Protocol_Func_T create_protocol = [this](const std::vector<std::string> &client_protos, std::string* choose_out) -> std::shared_ptr<Helpz::Network::Protocol>
+    Helpz::DTLS::Create_Server_Protocol_Func_T create_protocol = [this](const std::vector<std::string> &client_protos, std::string* choose_out) -> std::shared_ptr<Helpz::Net::Protocol>
     {
         for (const std::string& proto: client_protos)
         {

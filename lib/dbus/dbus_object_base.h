@@ -33,6 +33,7 @@ namespace DBus {
     void status_changed(const Scheme_Info& scheme, const QVector<DIG_Status>& pack); \
     void dig_mode_changed(const Scheme_Info& scheme, const QVector<DIG_Mode> &pack); \
     void stream_toggled(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, bool state); \
+    void stream_param(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data); \
     void stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
 
 class Object_Base : public QObject, protected QDBusContext

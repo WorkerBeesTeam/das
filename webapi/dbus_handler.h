@@ -22,6 +22,8 @@ class Dbus_Handler : public DBus::Handler_Object
 public:
     Dbus_Handler(Worker* worker);
 public slots:
+private slots:
+    void set_stream_param(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
 private:
     void connect_to(QDBusInterface* iface) override;
 

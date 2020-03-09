@@ -50,7 +50,7 @@ private:
 
     void send_modify_response(uint8_t struct_type, const QByteArray &buffer, uint32_t user_id) override;
 
-    Helpz::Network::Protocol_Sender send_scheme_request(uint8_t struct_type);
+    Helpz::Net::Protocol_Sender send_scheme_request(uint8_t struct_type);
     void process_scheme(uint8_t struct_type, QIODevice* data_dev);
 
     void process_scheme_items_hash(QMap<uint32_t, uint16_t> &&client_hash_map_arg, uint8_t struct_type);

@@ -21,6 +21,7 @@ public:
     virtual ~Manager_Interface() = default;
 
     virtual void send_stream_toggled(uint32_t user_id, Device_Item* item, bool state) = 0;
+    virtual void send_stream_param(Device_Item* item, const QByteArray& data) = 0;
     virtual void send_stream_data(Device_Item* item, const QByteArray& data) = 0;
 protected:
     void init_checker(Interface* checker, Scheme* scheme);

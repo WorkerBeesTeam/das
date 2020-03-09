@@ -294,7 +294,7 @@ void Worker::init_network_client(QSettings* s)
                 Z::Param<uint32_t>{"StreamTimeoutMs", 1500},
             }.obj<Ver::Client::Config>();
 
-    Helpz::DTLS::Create_Client_Protocol_Func_T func = [this, auth_info, config](const std::string& app_protocol) -> std::shared_ptr<Helpz::Network::Protocol>
+    Helpz::DTLS::Create_Client_Protocol_Func_T func = [this, auth_info, config](const std::string& app_protocol) -> std::shared_ptr<Helpz::Net::Protocol>
     {
         std::shared_ptr<Ver::Client::Protocol> ptr = std::make_shared<Ver::Client::Protocol>(this, auth_info, config);
 
@@ -312,7 +312,7 @@ void Worker::init_network_client(QSettings* s)
             }
         }
 
-        return std::static_pointer_cast<Helpz::Network::Protocol>(ptr);
+        return std::static_pointer_cast<Helpz::Net::Protocol>(ptr);
     };
 
     Helpz::DTLS::Client_Thread_Config conf{ tls_policy_file.toStdString(), host.toStdString(), port.toStdString(),

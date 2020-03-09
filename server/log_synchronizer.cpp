@@ -30,7 +30,7 @@ QString get_custom_q_array(const Table& table, int row_count)
 template<typename T>
 void fill_log_data_impl(uint32_t scheme_id, QIODevice &data_dev, QString &sql, QVariantList &values_pack, int &row_count)
 {
-    const int dsver = Helpz::Network::Protocol::DATASTREAM_VERSION;
+    const int dsver = Helpz::Net::Protocol::DATASTREAM_VERSION;
 
     QVariantList tmp_values;
     QVector<T> data;
@@ -453,7 +453,7 @@ void Log_Synchronizer::process_data(Log_Type_Wrapper type_id, QIODevice *data_de
 
 void Log_Synchronizer::process_pack(Log_Type_Wrapper type_id, QIODevice *data_dev, uint8_t msg_id)
 {
-    const int dsver = Helpz::Network::Protocol::DATASTREAM_VERSION;
+    const int dsver = Helpz::Net::Protocol::DATASTREAM_VERSION;
 
     switch (type_id.value())
     {

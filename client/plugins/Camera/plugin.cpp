@@ -1,7 +1,4 @@
-﻿#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/udp.hpp>
-
-#include <QDebug>
+﻿#include <QDebug>
 #include <QSettings>
 #include <QFile>
 #include <QElapsedTimer>
@@ -12,6 +9,7 @@
 #include <Das/device_item.h>
 #include <Das/db/device_item_type.h>
 
+#include "stream/stream_client_thread.h"
 #include "plugin.h"
 
 namespace Das {
@@ -19,33 +17,6 @@ namespace Das {
 Q_LOGGING_CATEGORY(CameraLog, "camera")
 
 // ----------------------------------------------------------
-
-class Stream_Socket
-{
-public:
-    Stream_Socket(const std::string &host, const std::string &port) :
-        io_context_(),
-        socket_(io_context_)
-    {
-        using boost::asio::ip::udp;
-
-        udp::resolver resolver(io_context_);
-        udp::resolver::query query(udp::v4(), host, port);
-        receiver_endpoint_ = *resolver.resolve(query);
-
-        socket_.open(udp::v4());
-    }
-
-    void send(const QByteArray& buffer)
-    {
-        socket_.send_to(boost::asio::buffer(buffer.constData(), buffer.size()), receiver_endpoint_);
-    }
-
-private:
-    boost::asio::io_context io_context_;
-    boost::asio::ip::udp::socket socket_;
-    boost::asio::ip::udp::endpoint receiver_endpoint_;
-};
 
 void Camera_Thread::start(Camera::Config config, Checker::Interface *iface)
 {
@@ -149,13 +120,15 @@ void Camera_Thread::run()
                         throw std::runtime_error("Already started");
 
                     if (!socket_)
-                        socket_.reset(new Stream_Socket(config().stream_server_.toStdString(), config().stream_server_port_.toStdString()));
+                        socket_.reset(new Stream_Client_Thread(config().stream_server_.toStdString(), config().stream_server_port_.toStdString()));
 
                     std::unique_ptr<Video_Stream> stream(new Video_Stream(path));
+                    const QByteArray param = stream->param();
                     auto it = streams_.emplace(data.item_, std::move(stream));
                     if (!it.second)
                         throw std::runtime_error("Emplace failed");
 
+                    iface_->manager()->send_stream_param(data.item_, param);
                     iface_->manager()->send_stream_toggled(data.user_id_, data.item_, true);
                 }
                 catch (const std::exception& e)
@@ -179,13 +152,15 @@ void Camera_Thread::run()
         {
             lock.unlock();
 
-            for (auto it = streams_.begin(); it != streams_.end(); ++it)
+            for (auto it = streams_.begin(); it != streams_.end(); )
             {
                 if (!send_stream_data(it->first, it->second.get()))
                 {
                     iface_->manager()->send_stream_toggled(/*user_id=*/0, it->first, /*state=*/false);
-                    it = --streams_.erase(it);
+                    it = streams_.erase(it);
                 }
+                else
+                    ++it;
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(config().frame_delay_));
@@ -198,11 +173,9 @@ bool Camera_Thread::send_stream_data(Device_Item *item, Video_Stream *stream)
     try
     {
         if (!socket_)
-        {
-            socket_.reset(new Stream_Socket(config().stream_server_.toStdString(), config().stream_server_port_.toStdString()));
-        }
+            throw std::runtime_error("No socket");
 
-        socket_->send(stream->get_frame());
+        socket_->send(item->id(), stream->param(), stream->get_frame());
 //        iface_->manager()->send_stream_data(item, stream->get_frame());
     }
     catch (const std::exception& e)

@@ -40,6 +40,7 @@ Worker::Worker(QObject *parent) :
     init_dbus_interface(&s);
     init_web_command(&s);
     init_restful(&s);
+    init_stream_server(&s);
 }
 
 Worker::~Worker()
@@ -131,7 +132,10 @@ void Worker::init_websocket_manager(QSettings* s)
                 Helpz::Param{"CertPath", QString()},
                 Helpz::Param{"KeyPath", QString()});
     websock_th_->start();
-//    connect(websock_th_->ptr(), &Network::WebSocket::closed, []() {});
+//    connect(websock_th_->ptr(), &Net::WebSocket::closed, []() {});
+    connect(websock_th_->ptr(), &Net::WebSocket::stream_stoped, [this](uint32_t scheme_id, uint32_t dev_item_id) {
+        stream_server_->remove_stream(scheme_id, dev_item_id);
+    });
 }
 
 void Worker::init_web_command(QSettings* /*s*/)

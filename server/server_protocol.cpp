@@ -142,6 +142,10 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
         send_answer(cmd, msg_id);
         apply_parse(data_dev, &Protocol::stream_toggled);
         break;
+    case Cmd::STREAM_PARAM:
+        send_answer(cmd, msg_id);
+        apply_parse(data_dev, &Protocol::stream_param);
+        break;
     case Cmd::STREAM_DATA:
         apply_parse(data_dev, &Protocol::stream_data);
         break;
@@ -250,6 +254,12 @@ void Protocol::stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state
 {
     QMetaObject::invokeMethod(work_object()->dbus_, "stream_toggled", Qt::QueuedConnection,
                               Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, dev_item_id), Q_ARG(bool, state));
+}
+
+void Protocol::stream_param(uint32_t dev_item_id, const QByteArray &data)
+{
+    QMetaObject::invokeMethod(work_object()->dbus_, "stream_param", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, dev_item_id), Q_ARG(QByteArray, data));
 }
 
 void Protocol::stream_data(uint32_t dev_item_id, const QByteArray &data)

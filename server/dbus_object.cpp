@@ -22,7 +22,7 @@ Dbus_Object::~Dbus_Object()
 
 std::shared_ptr<Helpz::DTLS::Server_Node> Dbus_Object::find_client(uint32_t scheme_id) const
 {
-    return server_->find_client([scheme_id](const Helpz::Network::Protocol* protocol) -> bool
+    return server_->find_client([scheme_id](const Helpz::Net::Protocol* protocol) -> bool
     {
         auto p = static_cast<const Protocol_Base*>(protocol);
         return p->id() == scheme_id;
@@ -36,7 +36,7 @@ bool Dbus_Object::is_connected(uint32_t scheme_id) const
 
 uint8_t Dbus_Object::get_scheme_connection_state(const std::set<uint32_t>& scheme_group_set, uint32_t scheme_id) const
 {
-    std::shared_ptr<Helpz::DTLS::Server_Node> node = server_->find_client([scheme_id, &scheme_group_set](const Helpz::Network::Protocol* protocol) -> bool
+    std::shared_ptr<Helpz::DTLS::Server_Node> node = server_->find_client([scheme_id, &scheme_group_set](const Helpz::Net::Protocol* protocol) -> bool
     {
         auto p = static_cast<const Protocol_Base*>(protocol);
         return p->id() == scheme_id && p->check_scheme_groups(scheme_group_set);
@@ -113,7 +113,7 @@ void Dbus_Object::send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uin
         uint16_t cmd = cmd_from_web_command(ws_cmd, scheme->protocol_version());
         if (cmd > 0)
         {
-            Helpz::Network::Protocol_Sender sender = std::move(scheme->send(cmd));
+            Helpz::Net::Protocol_Sender sender = std::move(scheme->send(cmd));
             sender << user_id;
             sender.writeRawData(data.constData(), data.size());
         }
