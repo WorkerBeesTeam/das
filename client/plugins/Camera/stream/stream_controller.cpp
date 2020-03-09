@@ -1,9 +1,36 @@
+#include <Helpz/net_protocol.h>
+
 #include "stream_controller.h"
 
 namespace Das {
 
+class Stream_Client : public Helpz::Net::Protocol
+{
+public:
+    Stream_Client(Stream_Controller* controller) :
+        controller_(controller)
+    {
+    }
+
+private:
+    void process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev) override
+    {
+        if (cmd == Helpz::Net::Cmd::CLOSE)
+            controller_->close();
+        else
+            qDebug() << "Stream_Client::process_message unknown" << cmd << data_dev.size();
+    }
+    void process_answer_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev) override
+    {
+        qDebug() << "Stream_Client::process_answer_message unknown" << cmd;
+    }
+
+    Stream_Controller* controller_;
+};
+
 Stream_Controller::Stream_Controller(boost::asio::io_context &io_context, boost::asio::ip::udp::resolver::query query) :
     timer_(this),
+    io_context_(io_context),
     socket_(io_context),
     recv_buffer_(new uint8_t[ HELPZ_MAX_UDP_PACKET_SIZE ])
 {
@@ -17,6 +44,11 @@ Stream_Controller::Stream_Controller(boost::asio::io_context &io_context, boost:
     client_.reset(new Stream_Client);
 
     start_receive();
+}
+
+void Stream_Controller::close()
+{
+    io_context_.stop();
 }
 
 void Stream_Controller::on_protocol_timeout(boost::asio::ip::udp::endpoint endpoint, void *data)

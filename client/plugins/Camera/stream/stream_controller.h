@@ -6,14 +6,14 @@
 
 #include <Helpz/net_protocol_timer.h>
 
-#include "stream_client.h"
-
 namespace Das {
 
+class Stream_Client;
 class Stream_Controller : public Helpz::Net::Protocol_Writer, public Helpz::Net::Protocol_Timer_Emiter
 {
 public:
     Stream_Controller(boost::asio::io_context& io_context, boost::asio::ip::udp::resolver::query query);
+    void close();
 
     void on_protocol_timeout(boost::asio::ip::udp::endpoint endpoint, void *data) override;
 
@@ -34,7 +34,7 @@ private:
 
     Helpz::Net::Protocol_Timer timer_;
 
-    boost::asio::io_context io_context_;
+    boost::asio::io_context& io_context_;
     boost::asio::ip::udp::socket socket_;
     boost::asio::ip::udp::endpoint receiver_endpoint_, sender_endpoint_;
 
