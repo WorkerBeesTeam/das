@@ -456,19 +456,25 @@ void WebSocket::sendDevice_ItemValues(const Scheme_Info &scheme, const QVector<L
     QDataStream ds(&message, QIODevice::WriteOnly);
     ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
 
-    ds << (quint8)WS_DEV_ITEM_VALUES << scheme.id() << (uint32_t)pack.size();
+    ds << (uint8_t)WS_DEV_ITEM_VALUES << scheme.id() << (uint32_t)pack.size();
 
-    uint32_t size = 0;
+    int size = 0;
     for (const Log_Value_Item& item: pack)
     {
-        if (item.value().data_ptr().type != QVariant::ByteArray
-            || static_cast<const QByteArray*>(item.value().constData())->size() < 8192)
+        if (!item.is_big_value())
         {
             ds << item.item_id() << item.raw_value() << item.value();
             ++size;
         }
-        else if (item.value().data_ptr().type == QVariant::ByteArray)
-            qDebug() << "VALUE SiZE:" << static_cast<const QByteArray*>(item.value().constData())->size();
+    }
+
+    if (size != pack.size())
+    {
+        if (!size)
+            return;
+
+        ds.device()->seek(1 + 4); // uint8_t + uint32_t
+        ds << size;
     }
     send(scheme, message);
 }

@@ -205,6 +205,9 @@ void Log_Value_Save_Timer::save_item_values()
     for (auto it: waited_item_values_)
     {
         const Device_Item_Value& value = it.second;
+        if (value.is_big_value())
+            continue;
+
         values.front() = value.timestamp_msecs();
         values[1] = value.user_id();
         values[2] = value.raw_value_to_db();

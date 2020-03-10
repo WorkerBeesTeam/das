@@ -202,10 +202,9 @@ void Camera_Thread::read_item(Device_Item *item)
         {
             const QString path = get_device_path(item);
             std::unique_ptr<Video_Stream> stream(new Video_Stream(path));
-            std::this_thread::sleep_for(std::chrono::milliseconds(60));
-            stream->get_frame();
-            std::this_thread::sleep_for(std::chrono::milliseconds(config().picture_sleep_));
 
+            for (uint32_t i = 0; i < config().picture_skip_; ++i)
+                stream->get_frame();
             data += stream->get_frame().toBase64();
         }
         catch (const std::exception& e)
@@ -245,7 +244,7 @@ void Camera_Plugin::configure(QSettings *settings)
                 Param<QString>{"StreamServer", "deviceaccess.ru"},
                 Param<QString>{"StreamServerPort", "6731"},
                 Param<uint32_t>{"FrameDelayMs", 60},
-                Param<uint32_t>{"PictureSleepMs", 3000}
+                Param<uint32_t>{"PictureSkip", 100}
     ).obj<Camera::Config>();
 
     thread_.start(std::move(config), this);

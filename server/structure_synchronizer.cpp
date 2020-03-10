@@ -244,6 +244,9 @@ QVector<DIG_Status> Structure_Synchronizer::insert_statuses(const QVector<DIG_St
 
 void Structure_Synchronizer::change_devitem_value_no_block(const Device_Item_Value &value)
 {
+    if (value.is_big_value())
+        return;
+
     auto it = std::lower_bound(devitem_value_vect_.begin(), devitem_value_vect_.end(), value, devitem_value_compare);
     if (it != devitem_value_vect_.end() && it->item_id() == value.item_id())
     {
@@ -273,9 +276,7 @@ void Structure_Synchronizer::insert_devitem_values(QVector<Device_Item_Value> &&
     }
 
     if (value_vect.empty())
-    {
         return;
-    }
 
     std::sort(value_vect.begin(), value_vect.end(), devitem_value_compare);
 
@@ -329,6 +330,9 @@ bool Structure_Synchronizer::clear_devitem_values_with_save()
 
     for (const Device_Item_Value& value: value_vect)
     {
+        if (value.is_big_value())
+            continue;
+
         values.front() = value.timestamp_msecs();
         values[1] = value.user_id();
         values[2] = value.raw_value_to_db();
