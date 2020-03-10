@@ -354,8 +354,16 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
                 obj.insert("ts", value.timestamp_msecs());
                 obj.insert("user_id", static_cast<int>(value.user_id()));
                 obj.insert("raw", QJsonValue::fromVariant(value.raw_value()));
-                obj.insert("display", QJsonValue::fromVariant(value.value()));
-                obj.insert("raw_value", QJsonValue::fromVariant(value.raw_value()));
+                if (value.is_big_value())
+                {
+                    obj.insert("display", value.value().toString().left(16));
+                    obj.insert("raw_value", value.raw_value().toString().left(16));
+                }
+                else
+                {
+                    obj.insert("display", QJsonValue::fromVariant(value.value()));
+                    obj.insert("raw_value", QJsonValue::fromVariant(value.raw_value()));
+                }
                 obj.insert("value", QJsonValue::fromVariant(value.value()));
             };
 

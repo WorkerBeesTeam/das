@@ -14,7 +14,7 @@
 #include <Helpz/dtls_client.h>
 
 #include <Das/commands.h>
-#include <Das/checkerinterface.h>
+#include <Das/checker_interface.h>
 #include <Das/device.h>
 #include <Das/db/dig_status.h>
 #include <Das/db/dig_mode.h>
@@ -194,14 +194,14 @@ void Worker::init_database(QSettings* s)
         #endif
             (
                 s, db_conf_group_name,
-                Z::Param<QString>{"Name", "deviceaccess_local"},
-                Z::Param<QString>{"User", "DasUser"},
+                Z::Param<QString>{"Name", "das"},
+                Z::Param<QString>{"User", "das"},
                 Z::Param<QString>{"Password", ""},
                 Z::Param<QString>{"Host", "localhost"},
                 Z::Param<int>{"Port", -1},
                 Z::Param<QString>{"Prefix", "das_"},
                 Z::Param<QString>{"Driver", "QMYSQL"},
-                Z::Param<QString>{"ConnectOptions", QString()}
+                Z::Param<QString>{"ConnectOptions", "CLIENT_FOUND_ROWS=1;MYSQL_OPT_RECONNECT=1"}
     ).obj<Helpz::DB::Connection_Info>();
 
     Helpz::DB::Connection_Info::set_common(db_info);
@@ -216,7 +216,8 @@ void Worker::init_scheme(QSettings* s)
     Helpz::ConsoleReader* cr = nullptr;
     if (Service::instance().isImmediately())
     {
-        cr = new Helpz::ConsoleReader(this);
+        if (qApp->arguments().indexOf("-disable-console") == -1)
+            cr = new Helpz::ConsoleReader(this);
 
 #ifdef QT_DEBUG
         if (qApp->arguments().indexOf("-debugger") != -1)
@@ -250,7 +251,7 @@ void Worker::init_checker(QSettings* s)
 {
     qRegisterMetaType<Device*>("Device*");
 
-    checker_th_ = Checker_Thread()(s, "Checker", this, Z::Param<QStringList>{"Plugins", QStringList{"ModbusPlugin","WiringPiPlugin"}} );
+    checker_th_ = Checker_Thread()(s, "Checker", this/*, Z::Param<QStringList>{"Plugins", QStringList{"ModbusPlugin","WiringPiPlugin"}}*/ );
     checker_th_->start();
 }
 
@@ -258,7 +259,6 @@ void Worker::init_network_client(QSettings* s)
 {
     structure_sync_ = new Worker_Structure_Synchronizer{ this };
 
-    qRegisterMetaType<Log_Value_Item>("Log_Value_Item");
     qRegisterMetaType<Log_Event_Item>("Log_Event_Item");
     qRegisterMetaType<QVector<Log_Value_Item>>("QVector<Log_Value_Item>");
     qRegisterMetaType<QVector<Log_Event_Item>>("QVector<Log_Event_Item>");
@@ -269,13 +269,11 @@ void Worker::init_network_client(QSettings* s)
                 Z::Param<QString>{"Login",              QString()},
                 Z::Param<QString>{"Password",           QString()},
                 Z::Param<QString>{"SchemeName",        QString()},
-                Z::Param<QUuid>{"Device",               QUuid()},
+                Z::Param<QUuid>{"Device",               QUuid()}
             }.obj<Authentication_Info>();
 
     if (!auth_info)
-    {
         return;
-    }
 
 #define DAS_PROTOCOL_LATEST "das/2.4"
 #define DAS_PROTOCOL_SUPORTED DAS_PROTOCOL_LATEST",das/2.3"
@@ -288,12 +286,17 @@ void Worker::init_network_client(QSettings* s)
                 Z::Param<QString>{"Host",               "deviceaccess.ru"},
                 Z::Param<QString>{"Port",               "25588"},
                 DAS_PROTOCOL_SUPORTED, // Z::Param<QString>{"Protocols",          "das/2.0,das/1.1"},
-                Z::Param<uint32_t>{"ReconnectSeconds",       15}
+                Z::Param<uint32_t>{"ReconnectSeconds",  15}
             }();
 
-    Helpz::DTLS::Create_Client_Protocol_Func_T func = [this, auth_info](const std::string& app_protocol) -> std::shared_ptr<Helpz::Network::Protocol>
+    const Ver::Client::Config config = Helpz::SettingsHelper{
+                s, "RemoteServer",
+                Z::Param<uint32_t>{"StreamTimeoutMs", 1500},
+            }.obj<Ver::Client::Config>();
+
+    Helpz::DTLS::Create_Client_Protocol_Func_T func = [this, auth_info, config](const std::string& app_protocol) -> std::shared_ptr<Helpz::Net::Protocol>
     {
-        std::shared_ptr<Ver::Client::Protocol> ptr = std::make_shared<Ver::Client::Protocol>(this, auth_info);
+        std::shared_ptr<Ver::Client::Protocol> ptr = std::make_shared<Ver::Client::Protocol>(this, auth_info, config);
 
         if (app_protocol != DAS_PROTOCOL_LATEST)
         {
@@ -309,7 +312,7 @@ void Worker::init_network_client(QSettings* s)
             }
         }
 
-        return std::static_pointer_cast<Helpz::Network::Protocol>(ptr);
+        return std::static_pointer_cast<Helpz::Net::Protocol>(ptr);
     };
 
     Helpz::DTLS::Client_Thread_Config conf{ tls_policy_file.toStdString(), host.toStdString(), port.toStdString(),

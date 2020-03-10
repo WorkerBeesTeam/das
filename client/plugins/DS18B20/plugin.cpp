@@ -32,7 +32,7 @@ DS18B20_Plugin::~DS18B20_Plugin()
         delete one_wire_;
 }
 
-void DS18B20_Plugin::configure(QSettings *settings, Scheme */*scheme*/)
+void DS18B20_Plugin::configure(QSettings *settings)
 {
     using Helpz::Param;
     auto [pin] = Helpz::SettingsHelper<Param<uint16_t>>

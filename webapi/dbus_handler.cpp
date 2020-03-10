@@ -18,51 +18,31 @@ Dbus_Handler::Dbus_Handler(Worker* worker) :
 {
 }
 
-void Dbus_Handler::connection_state_changed(const Scheme_Info& scheme, uint8_t state)
+void Dbus_Handler::set_stream_param(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data)
 {
-    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "send_connection_state", Qt::QueuedConnection, Q_ARG(Scheme_Info, scheme), Q_ARG(uint8_t, state));
+    worker_->stream_server_->set_param(scheme.id(), dev_item_id, data);
 }
 
-void Dbus_Handler::device_item_values_available(const Scheme_Info& scheme, const QVector<Log_Value_Item>& pack)
+void Dbus_Handler::connect_to(QDBusInterface *iface)
 {
-    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "sendDevice_ItemValues", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, scheme), Q_ARG(QVector<Log_Value_Item>, pack));
-}
+#define CONNECT_TO_(a,b,x,y,...) \
+    connect(iface, SIGNAL(x(Scheme_Info, __VA_ARGS__)), \
+            a, SLOT(y(Scheme_Info, __VA_ARGS__)), b)
 
-void Dbus_Handler::event_message_available(const Scheme_Info& scheme, const QVector<Log_Event_Item>& event_pack)
-{
-    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "sendEventMessage", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, scheme), Q_ARG(QVector<Log_Event_Item>, event_pack));
-}
+#define CONNECT_TO_WEBSOCK(x,y,...) CONNECT_TO_(worker_->websock_th_->ptr(), Qt::QueuedConnection, x, y, __VA_ARGS__)
+#define CONNECT_TO_THIS(x,y,...) CONNECT_TO_(this, Qt::DirectConnection, x, y, __VA_ARGS__)
 
-void Dbus_Handler::time_info(const Scheme_Info& scheme, const QTimeZone& tz, qint64 time_offset)
-{
-    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "send_time_info", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, scheme), Q_ARG(QTimeZone, tz), Q_ARG(qint64, time_offset));
-}
-
-void Dbus_Handler::structure_changed(const Scheme_Info& scheme, const QByteArray& data)
-{
-    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "send_structure_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, scheme), Q_ARG(QByteArray, data));
-}
-
-void Dbus_Handler::dig_param_values_changed(const Scheme_Info& scheme, const QVector<DIG_Param_Value>& pack)
-{
-    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "send_dig_param_values_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, scheme), Q_ARG(QVector<DIG_Param_Value>, pack));
-}
-
-void Dbus_Handler::dig_mode_changed(const Scheme_Info& scheme, const QVector<DIG_Mode> &pack)
-{
-    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "send_dig_mode_pack", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, scheme), Q_ARG(QVector<DIG_Mode>, pack));
-}
-
-void Dbus_Handler::status_changed(const Scheme_Info& scheme, const QVector<DIG_Status> &pack)
-{
-    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "send_dig_status_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, scheme), Q_ARG(QVector<DIG_Status>, pack));
+    CONNECT_TO_WEBSOCK(connection_state_changed, send_connection_state, uint8_t);
+    CONNECT_TO_WEBSOCK(device_item_values_available, sendDevice_ItemValues, QVector<Log_Value_Item>);
+    CONNECT_TO_WEBSOCK(event_message_available, sendEventMessage, QVector<Log_Event_Item>);
+    CONNECT_TO_WEBSOCK(time_info, send_time_info, QTimeZone, qint64);
+    CONNECT_TO_WEBSOCK(structure_changed, send_structure_changed, QByteArray);
+    CONNECT_TO_WEBSOCK(dig_param_values_changed, send_dig_param_values_changed, QVector<DIG_Param_Value>);
+    CONNECT_TO_WEBSOCK(dig_mode_changed, send_dig_mode_pack, QVector<DIG_Mode>);
+    CONNECT_TO_WEBSOCK(status_changed, send_dig_status_changed, QVector<DIG_Status>);
+    CONNECT_TO_WEBSOCK(stream_toggled, send_stream_toggled, uint32_t, uint32_t, bool);
+    CONNECT_TO_WEBSOCK(stream_data, send_stream_data, uint32_t, QByteArray);
+    CONNECT_TO_THIS(stream_param, set_stream_param, uint32_t, QByteArray);
 }
 
 } // namespace WebApi

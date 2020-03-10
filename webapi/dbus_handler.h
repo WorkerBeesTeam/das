@@ -22,17 +22,11 @@ class Dbus_Handler : public DBus::Handler_Object
 public:
     Dbus_Handler(Worker* worker);
 public slots:
-    void connection_state_changed(const Scheme_Info& scheme, uint8_t state);
-
-    void device_item_values_available(const Scheme_Info& scheme, const QVector<Log_Value_Item>& pack);
-    void event_message_available(const Scheme_Info& scheme, const QVector<Log_Event_Item>& event_pack);
-    void time_info(const Scheme_Info& scheme, const QTimeZone& tz, qint64 time_offset);
-
-    void structure_changed(const Scheme_Info& scheme, const QByteArray& data);
-    void dig_param_values_changed(const Scheme_Info& scheme, const QVector<DIG_Param_Value> &pack);
-    void dig_mode_changed(const Scheme_Info& scheme, const QVector<DIG_Mode> &pack);
-    void status_changed(const Scheme_Info& scheme, const QVector<DIG_Status> &pack);
+private slots:
+    void set_stream_param(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
 private:
+    void connect_to(QDBusInterface* iface) override;
+
     Worker* worker_;
 };
 

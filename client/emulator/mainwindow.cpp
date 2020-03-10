@@ -124,13 +124,13 @@ void Main_Window::init_database()
         #endif
             (
                 &das_settings, "Database",
-                Helpz::Param<QString>{"Name", "deviceaccess_local"},
-                Helpz::Param<QString>{"User", "DasUser"},
+                Helpz::Param<QString>{"Name", "das"},
+                Helpz::Param<QString>{"User", "das"},
                 Helpz::Param<QString>{"Password", ""},
                 Helpz::Param<QString>{"Host", "localhost"},
                 Helpz::Param<int>{"Port", -1},
                 Helpz::Param<QString>{"Driver", "QMYSQL"},
-                Helpz::Param<QString>{"ConnectOptions", QString()}
+                Helpz::Param<QString>{"ConnectOptions", "CLIENT_FOUND_ROWS=1;MYSQL_OPT_RECONNECT=1"}
     ).obj<Helpz::DB::Connection_Info>();
 
     db_manager_.set_connection_info(db_info);

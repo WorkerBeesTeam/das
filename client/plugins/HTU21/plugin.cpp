@@ -39,7 +39,7 @@ HTU21Plugin::~HTU21Plugin()
 {
 }
 
-void HTU21Plugin::configure(QSettings *settings, Scheme *scheme)
+void HTU21Plugin::configure(QSettings *settings)
 {
     /*
     using Helpz::Param;

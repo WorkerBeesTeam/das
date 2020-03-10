@@ -88,7 +88,7 @@ void Structure_Synchronizer::check(bool custom_only, bool force_clean)
             if (it != struct_type_array.end())
             {
                 struct_type_array.erase(it);
-                if (custom_only || !force_clean)
+//                if (custom_only || !force_clean)
                 {
                     continue;
                 }
@@ -244,6 +244,9 @@ QVector<DIG_Status> Structure_Synchronizer::insert_statuses(const QVector<DIG_St
 
 void Structure_Synchronizer::change_devitem_value_no_block(const Device_Item_Value &value)
 {
+    if (value.is_big_value())
+        return;
+
     auto it = std::lower_bound(devitem_value_vect_.begin(), devitem_value_vect_.end(), value, devitem_value_compare);
     if (it != devitem_value_vect_.end() && it->item_id() == value.item_id())
     {
@@ -273,9 +276,7 @@ void Structure_Synchronizer::insert_devitem_values(QVector<Device_Item_Value> &&
     }
 
     if (value_vect.empty())
-    {
         return;
-    }
 
     std::sort(value_vect.begin(), value_vect.end(), devitem_value_compare);
 
@@ -329,6 +330,9 @@ bool Structure_Synchronizer::clear_devitem_values_with_save()
 
     for (const Device_Item_Value& value: value_vect)
     {
+        if (value.is_big_value())
+            continue;
+
         values.front() = value.timestamp_msecs();
         values[1] = value.user_id();
         values[2] = value.raw_value_to_db();
@@ -380,47 +384,47 @@ void Structure_Synchronizer::send_modify_response(uint8_t /*struct_type*/, const
                               Q_ARG(Scheme_Info, *protocol_), Q_ARG(QByteArray, buffer));
 }
 
-Helpz::Network::Protocol_Sender Structure_Synchronizer::send_scheme_request(uint8_t struct_type)
+Helpz::Net::Protocol_Sender Structure_Synchronizer::send_scheme_request(uint8_t struct_type)
 {
     if (!struct_sync_timeout_)
     {
         struct_wait_set_.insert(struct_type);
     }
 
-    Helpz::Network::Protocol_Sender sender = std::move(protocol_->send(Cmd::GET_SCHEME)
-            .answer([this](QIODevice& data_dev)
+    Helpz::Net::Protocol_Sender sender = protocol_->send(Cmd::GET_SCHEME);
+
+    sender.answer([this](QIODevice& data_dev)
     {
         apply_parse(data_dev, &Structure_Synchronizer::process_scheme, &data_dev);
     })
-            .timeout([this, struct_type]()
+    .timeout([this, struct_type]()
     {
         struct_sync_timeout_ = true;
         struct_wait_set_.clear();
 
-        uint8_t flags = struct_type & ST_FLAGS;
-        uint8_t st_type = struct_type & ~ST_FLAGS;
-        qCWarning(Struct_Log).noquote() << title() << "[" << static_cast<Structure_Type>(st_type) << "] Timeout. flags:" << flags;
+        qCWarning(Struct_Log).noquote() << title() << '[' << type_name(struct_type) << "] Timeout";
+
         protocol()->set_connection_state(CS_CONNECTED_SYNC_TIMEOUT | (modified() ? CS_CONNECTED_MODIFIED : 0));
 
+        uint8_t st_type = struct_type & ~ST_FLAGS;
         send_scheme_request(st_type | ST_HASH_FLAG);
-    }, std::chrono::seconds(55), std::chrono::seconds(17)));
+    }, std::chrono::seconds(7), std::chrono::seconds(3));
 
     sender << struct_type;
 
+    qCDebug(Struct_Detail_Log).noquote() << title() << '[' << type_name(struct_type) << "] REQ GET_SCHEME";
     return sender;
 }
 
 void Structure_Synchronizer::process_scheme(uint8_t struct_type, QIODevice* data_dev)
 {
-//    qCDebug(Struct_Log) << title().c_str() << "process_scheme" << static_cast<Structure_Type>(struct_type & ~ST_HASH_FLAG) << "hash"
+//    qCDebug(Struct_Log).noquote() << title() << '[' << type_name(struct_type) << "] process_scheme";
 //             << bool(struct_type & ST_HASH_FLAG) << "size" << data_dev->size();
 
     uint8_t flags = struct_type & ST_FLAGS;
     struct_type &= ~ST_FLAGS;
 
-    qCDebug(Struct_Detail_Log).noquote() << title() << "GET_SCHEME"
-                                         << static_cast<Structure_Type>(struct_type)
-                                         << "flags:" << int(flags);
+    qCDebug(Struct_Detail_Log).noquote() << title() << '[' << type_name(struct_type) << "] GET_SCHEME";
 
     struct_wait_set_.erase(struct_type);
     struct_wait_set_.erase(struct_type | flags);
@@ -442,7 +446,7 @@ void Structure_Synchronizer::process_scheme(uint8_t struct_type, QIODevice* data
     }
     else
     {
-        qCWarning(Struct_Log).noquote() << title() << "need_to_use_parent_table" << struct_type << "flags" << flags;
+        qCWarning(Struct_Log).noquote() << title() << '[' << type_name(struct_type) << "] need_to_use_parent_table";
     }
 
     if (!struct_sync_timeout_ && struct_wait_set_.empty())
@@ -516,7 +520,7 @@ void Structure_Synchronizer::process_scheme_items_hash(QMap<uint32_t,uint16_t>&&
         }
 
         if (!insert_id_vect.isEmpty() || !update_id_vect.isEmpty() || !del_id_vect.isEmpty())
-            qCDebug(Struct_Log).noquote() << scheme->title() << "[" << static_cast<Structure_Type>(struct_type) << "] Check items hash. is_cant_edit:" << is_cant_edit
+            qCDebug(Struct_Log).noquote() << scheme->title() << '[' << type_name(struct_type) << "] Check items hash. is_cant_edit:" << is_cant_edit
                                << "diffrents: update_id_vect" << update_id_vect.size() << "insert_id_vect" << insert_id_vect.size() << "del_id_vect" << del_id_vect.size();
 
         if (is_cant_edit)
@@ -526,7 +530,7 @@ void Structure_Synchronizer::process_scheme_items_hash(QMap<uint32_t,uint16_t>&&
             // del_id_vect      - send data from db_name to client for insert
             if (!insert_id_vect.isEmpty() || !update_id_vect.isEmpty() || !del_id_vect.isEmpty())
             {
-                Helpz::Network::Protocol_Sender sender = scheme->send(Cmd::MODIFY_SCHEME);
+                Helpz::Net::Protocol_Sender sender = scheme->send(Cmd::MODIFY_SCHEME);
                 sender.timeout(nullptr, std::chrono::seconds(13));
                 sender << uint32_t(0) << struct_type;
                 self->add_structure_items_data(struct_type, update_id_vect, sender, *db, s_id);
@@ -597,7 +601,7 @@ void Structure_Synchronizer::process_scheme_hash(const QByteArray& client_hash, 
         {
             if (client_hash != self->get_structure_hash(struct_type, *db, s_id))
             {
-                qCDebug(Struct_Log).noquote() << scheme->title() << '[' << static_cast<Structure_Type>(struct_type) << "] Hash is diffrent. scheme_id:" << s_id;
+                qCDebug(Struct_Log).noquote() << scheme->title() << '[' << type_name(struct_type) << "] Hash is diffrent. scheme_id:" << s_id;
                 self->send_scheme_request(struct_type | ST_FLAGS);
             }
             else
@@ -611,7 +615,7 @@ void Structure_Synchronizer::process_scheme_hash(const QByteArray& client_hash, 
 
             if (client_hash != self->get_structure_hash_for_all(*db, s_id))
             {
-                qCDebug(Struct_Log).noquote() << scheme->title() << '[' << static_cast<Structure_Type>(struct_type) << "] Common hash is diffrent. scheme_id:" << s_id;
+                qCDebug(Struct_Log).noquote() << scheme->title() << '[' << type_name(struct_type) << "] Common hash is diffrent. scheme_id:" << s_id;
                 for (const uint8_t struct_type_item: struct_type_array)
                 {
                     self->send_scheme_request(struct_type_item | ST_FLAGS);

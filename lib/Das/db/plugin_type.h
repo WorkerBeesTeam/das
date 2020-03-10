@@ -4,7 +4,7 @@
 #include <QPluginLoader>
 #include <memory>
 
-#include <Das/checkerinterface.h>
+#include <Das/checker_interface.h>
 #include <Helpz/db_meta.h>
 #include "base_type.h"
 
@@ -26,7 +26,7 @@ public:
 
     bool need_it = false;
     std::shared_ptr<QPluginLoader> loader;
-    Checker_Interface* checker = nullptr;
+    Checker::Interface* checker = nullptr;
 
     const QStringList& param_names_device() const;
     void set_param_names_device(const QStringList& param_names_device);

@@ -8,7 +8,7 @@ namespace Client {
 Q_LOGGING_CATEGORY(NetClientLog, "net.client")
 
 Protocol_Base::Protocol_Base(Worker* worker, const Authentication_Info &auth_info) :
-    Helpz::Network::Protocol{},
+    Helpz::Net::Protocol{},
     worker_(worker), auth_info_(auth_info)
 {
 }

@@ -97,7 +97,7 @@ QString Param::value_to_string() const
     return value_to_string(type()->value_type(), value_);
 }
 
-uint32_t Param::count() const { return childrens_.size(); }
+std::size_t Param::count() const { return childrens_.size(); }
 
 uint Param::id() const { return id_; }
 DIG_Param_Type *Param::type() const { return type_; }

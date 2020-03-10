@@ -121,6 +121,20 @@ void Device_Item_Value::set_value_from_db(const QVariant& value)
     return text;
 }
 
+bool Device_Item_Value::is_big_value() const
+{
+    return is_big_value(raw_value_) || is_big_value(value_);
+}
+
+bool Device_Item_Value::is_big_value(const QVariant &val)
+{
+    if (val.data_ptr().type == QVariant::ByteArray)
+        return static_cast<const QByteArray*>(val.constData())->size() > 8192;
+    else if (val.data_ptr().type == QVariant::String)
+        return static_cast<const QString*>(val.constData())->size() > 8192;
+    return false;
+}
+
 QDataStream& operator>>(QDataStream& ds, Device_Item_Value& item)
 {
     return ds >> static_cast<Log_Base_Item&>(item) >> item.item_id_ >> item.raw_value_ >> item.value_;

@@ -19,7 +19,6 @@ TEMPLATE = app
 SOURCES += main.cpp \
     Scripts/scripted_scheme.cpp \
     worker.cpp \
-    checker.cpp \
     Scripts/tools/pidcontroller.cpp \
     Scripts/tools/automationhelper.cpp \
     Scripts/tools/severaltimeshelper.cpp \
@@ -36,12 +35,12 @@ SOURCES += main.cpp \
     log_value_save_timer.cpp \
     id_timer.cpp \
     Network/client_protocol_latest.cpp \
-    dbus_object.cpp
+    dbus_object.cpp \
+    checker_manager.cpp
 
 HEADERS  += \
     Scripts/scripted_scheme.h \
     worker.h \
-    checker.h \
     Scripts/tools/pidcontroller.h \
     Scripts/tools/automationhelper.h \
     Scripts/tools/severaltimeshelper.h \
@@ -58,7 +57,8 @@ HEADERS  += \
     log_value_save_timer.h \
     id_timer.h \
     Network/client_protocol_latest.h \
-    dbus_object.h
+    dbus_object.h \
+    checker_manager.h
 
 #Target version
 VER_MAJ = 1

@@ -712,6 +712,13 @@ QVector<Device_Item_Value> Scripted_Scheme::get_device_item_values() const
     return values;
 }
 
+void Scripted_Scheme::toggle_stream(uint32_t user_id, uint32_t dev_item_id, bool state)
+{
+    Device_Item* item = item_by_id(dev_item_id);
+    if (item)
+        emit change_stream_state(user_id, item, state);
+}
+
 void Scripted_Scheme::write_to_item(uint32_t user_id, uint32_t item_id, const QVariant& raw_data)
 {
     if (Device_Item* item = item_by_id(item_id))

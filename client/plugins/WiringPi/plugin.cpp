@@ -30,7 +30,7 @@ WiringPiPlugin::~WiringPiPlugin()
 {
 }
 
-void WiringPiPlugin::configure(QSettings *settings, Scheme *scheme)
+void WiringPiPlugin::configure(QSettings *settings)
 {
     /*
     using Helpz::Param;
@@ -52,7 +52,7 @@ void WiringPiPlugin::configure(QSettings *settings, Scheme *scheme)
     int pin;
     bool ok;
 
-    for (auto * device : scheme->devices())
+    for (auto * device : scheme()->devices())
     {
         for (Device_Item * item: device->items())
         {

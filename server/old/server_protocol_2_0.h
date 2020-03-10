@@ -28,11 +28,11 @@ public:
 private:
     void before_remove_copy() override;
     void ready_write() override;
-    void process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev) override;
-    void process_answer_message(uint8_t msg_id, uint8_t cmd, QIODevice& data_dev) override;
-    void process_unauthorized_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev);
+    void process_message(uint32_t msg_id, uint8_t cmd, QIODevice &data_dev) override;
+    void process_answer_message(uint32_t msg_id, uint8_t cmd, QIODevice& data_dev) override;
+    void process_unauthorized_message(uint32_t msg_id, uint8_t cmd, QIODevice &data_dev);
 
-    void auth(const Authentication_Info& info, bool modified, uint8_t msg_id);
+    void auth(const Authentication_Info& info, bool modified, uint32_t msg_id);
     QString concat_version(quint8 v_major, quint8 v_minor, uint32_t v_build);
     void print_version(QIODevice &data_dev);
     void set_time_offset(const QDateTime& scheme_time, const QTimeZone &timeZone);

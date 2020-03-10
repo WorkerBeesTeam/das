@@ -41,9 +41,15 @@ private:
     void print_version(QIODevice &data_dev);
     void set_time_offset(const QDateTime& scheme_time, const QTimeZone &timeZone);
 
+    void stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state);
+    void stream_param(uint32_t dev_item_id, const QByteArray& data);
+    void stream_data(uint32_t dev_item_id, const QByteArray& data);
+
     bool is_copy_;
     Log_Synchronizer log_sync_;
     Structure_Synchronizer structure_sync_;
+
+    std::chrono::system_clock::time_point last_sync_time_;
 };
 
 } // namespace Server

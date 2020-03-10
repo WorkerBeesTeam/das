@@ -8,7 +8,7 @@
 #include <QSerialPort>
 #include <QTimer>
 
-#include <Das/checkerinterface.h>
+#include <Das/checker_interface.h>
 
 #include "../plugin_global.h"
 #include "config.h"
@@ -20,7 +20,7 @@ Q_DECLARE_LOGGING_CATEGORY(ModbusLog)
 
 struct Modbus_Queue;
 
-class DAS_PLUGIN_SHARED_EXPORT Modbus_Plugin_Base : public QModbusRtuSerialMaster, public Checker_Interface
+class DAS_PLUGIN_SHARED_EXPORT Modbus_Plugin_Base : public QModbusRtuSerialMaster, public Checker::Interface
 {
     Q_OBJECT
 public:
@@ -39,7 +39,7 @@ public:
 
     // CheckerInterface interface
 public:
-    virtual void configure(QSettings* settings, Scheme*) override;
+    virtual void configure(QSettings* settings) override;
     virtual bool check(Device *dev) override;
     virtual void stop() override;
     virtual void write(std::vector<Write_Cache_Item>& items) override;

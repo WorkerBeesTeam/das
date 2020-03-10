@@ -10,6 +10,9 @@ DESTDIR = $${OUT_PWD}/../../..
 
 include(../../common.pri)
 
+DESTDIR = $${DESTDIR}/plugins
+mkpath($$DESTDIR)
+
 SOURCES += \
     plugin.cpp
 

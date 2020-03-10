@@ -1,4 +1,5 @@
 #include <QCryptographicHash>
+#include <QMetaEnum>
 
 #include <Helpz/net_protocol.h>
 #include <Helpz/db_builder.h>
@@ -31,6 +32,21 @@ Structure_Synchronizer_Base::~Structure_Synchronizer_Base()
 {
 }
 
+/*static*/ QString Structure_Synchronizer_Base::type_name(uint8_t struct_type)
+{
+    static QMetaEnum meta_enum = QMetaEnum::fromType<Structure_Type>();
+
+    uint8_t flags = struct_type & ST_FLAGS;
+    struct_type &= ~ST_FLAGS;
+
+    QString text = QString::number(struct_type) /*+ " flags " + QString::number(flags)*/ + ' ' + meta_enum.valueToKey(struct_type);
+    if (flags & ST_ITEM_FLAG)
+        text += " is_items";
+    if (flags & ST_HASH_FLAG)
+        text += " is_hash";
+    return text;
+}
+
 bool Structure_Synchronizer_Base::modified() const
 {
     return modified_;
@@ -45,12 +61,12 @@ void Structure_Synchronizer_Base::process_modify_message(uint32_t user_id, uint8
 {
     if (!is_can_modify(struct_type))
     {
-        qCWarning(Struct_Log) << "Attempt to modify" << int(struct_type) << "user" << user_id << "scheme" << scheme_id;
+        qCWarning(Struct_Log).noquote().nospace() << user_id << "|[" << type_name(struct_type) << "] Attempt to modify. scheme" << scheme_id;
         return;
     }
 
     using T = Structure_Synchronizer_Base;
-    auto v = Helpz::Network::Protocol::DATASTREAM_VERSION;
+    auto v = Helpz::Net::Protocol::DATASTREAM_VERSION;
 
     switch (struct_type)
     {
@@ -91,7 +107,7 @@ QByteArray Structure_Synchronizer_Base::get_structure_hash(uint8_t struct_type, 
     QBuffer buffer;
     buffer.open(QIODevice::ReadWrite);
     QDataStream ds(&buffer);
-    ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+    ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
     add_structure_data(struct_type, ds, db, scheme_id);
 
     return QCryptographicHash::hash(buffer.buffer(), QCryptographicHash::Sha1);
@@ -103,7 +119,7 @@ QByteArray Structure_Synchronizer_Base::get_structure_hash_for_all(Helpz::DB::Ba
     QBuffer buffer;
     buffer.open(QIODevice::ReadWrite);
     QDataStream ds(&buffer);
-    ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+    ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
     for (const uint8_t struct_type: struct_type_array)
         add_structure_data(struct_type, ds, db, scheme_id);
 
@@ -341,12 +357,12 @@ void Structure_Synchronizer_Base::modify(QVector<T>&& upd_vect, QVector<T>&& ins
                     self->modified_ = true;
                 }
 
-                qCInfo(Struct_Log).nospace() << user_id << "|modify " << static_cast<Structure_Type>(struct_type) << ' '
+                qCInfo(Struct_Log).noquote().nospace() << user_id << "|[" << type_name(struct_type) << "] modify "
                                              << upd_vect.size() << " update, " << insrt_vect.size() << " insert, " << del_vect.size() << " del";
 
                 QByteArray buffer;
                 QDataStream data_stream(&buffer, QIODevice::WriteOnly);
-                data_stream.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+                data_stream.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
                 data_stream << user_id << struct_type << upd_vect << insrt_vect << del_vect;
                 self->send_modify_response(struct_type, buffer, user_id);
             }

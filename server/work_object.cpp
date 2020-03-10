@@ -6,8 +6,6 @@
 #include <Helpz/dtls_server_thread.h>
 
 #include "database/db_thread_manager.h"
-#include "old/server_protocol_2_0.h"
-#include "old/server_protocol_2_1.h"
 #include "server_protocol.h"
 #include "dbus_object.h"
 
@@ -59,13 +57,13 @@ void Work_Object::init_database(QSettings* s)
     db_conn_info_ = Helpz::SettingsHelper(
                 s, "Database",
                 Helpz::Param{"Name", "das"},
-                Helpz::Param{"User", "DasUser"},
+                Helpz::Param{"User", "das"},
                 Helpz::Param{"Password", QString()},
                 Helpz::Param{"Host", "localhost"},
                 Helpz::Param{"Port", 3306},
                 Helpz::Param{"Prefix", "das_"},
                 Helpz::Param{"Driver", "QMYSQL"}, // QPSQL
-                Helpz::Param{"ConnectOptions", QString()}
+                Helpz::Param{"ConnectOptions", "CLIENT_FOUND_ROWS=1;MYSQL_OPT_RECONNECT=1"}
                 ).ptr<Helpz::DB::Connection_Info>();
     db_conn_info = db_conn_info_;
     Helpz::DB::Connection_Info::set_common(*db_conn_info_);
@@ -75,7 +73,7 @@ void Work_Object::init_database(QSettings* s)
 
 void Work_Object::init_server(QSettings* s)
 {
-    Helpz::DTLS::Create_Server_Protocol_Func_T create_protocol = [this](const std::vector<std::string> &client_protos, std::string* choose_out) -> std::shared_ptr<Helpz::Network::Protocol>
+    Helpz::DTLS::Create_Server_Protocol_Func_T create_protocol = [this](const std::vector<std::string> &client_protos, std::string* choose_out) -> std::shared_ptr<Helpz::Net::Protocol>
     {
         for (const std::string& proto: client_protos)
         {

@@ -374,7 +374,7 @@ bool Modbus_Plugin_Base::checkConnect()
     return false;
 }
 
-void Modbus_Plugin_Base::configure(QSettings *settings, Scheme *)
+void Modbus_Plugin_Base::configure(QSettings *settings)
 {
     using Helpz::Param;
 

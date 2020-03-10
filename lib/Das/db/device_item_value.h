@@ -44,6 +44,9 @@ public:
 
     static QVariant prepare_value(const QVariant& var);
     static QVariant variant_from_string(const QVariant& var);
+
+    bool is_big_value() const;
+    static bool is_big_value(const QVariant& val);
 private:
     uint32_t item_id_;
     QVariant raw_value_, value_;

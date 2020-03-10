@@ -283,7 +283,7 @@ Uart_Plugin::~Uart_Plugin()
     }
 }
 
-void Uart_Plugin::configure(QSettings *settings, Scheme */*scheme*/)
+void Uart_Plugin::configure(QSettings *settings)
 {
     using Helpz::Param;
 

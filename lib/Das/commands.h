@@ -19,7 +19,7 @@ namespace Cmd {
 #endif
 
     enum Command_Type {
-        AUTH = 16, // Helpz::Network::Cmd::USER_COMMAND,
+        AUTH = 16, // Helpz::Net::Cmd::USER_COMMAND,
         NO_AUTH,
 
         VERSION,
@@ -41,6 +41,10 @@ namespace Cmd {
 
         DEVICE_ITEM_VALUES,
         GROUP_STATUSES,
+
+        STREAM_TOGGLE,
+        STREAM_PARAM,
+        STREAM_DATA,
 
         /*
             cmdCreateDevice,
@@ -117,6 +121,9 @@ enum WebSockCmd : uint8_t {
     WS_GROUP_STATUS_REMOVED,
     WS_TIME_INFO,
     WS_IP_ADDRESS,
+
+    WS_STREAM_TOGGLE,
+    WS_STREAM_DATA,
 
     WEB_SOCK_CMD_COUNT
 };

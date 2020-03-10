@@ -52,6 +52,8 @@ public:
     Structure_Synchronizer_Base(Helpz::DB::Thread *db_thread);
     virtual ~Structure_Synchronizer_Base();
 
+    static QString type_name(uint8_t struct_type);
+
     bool modified() const;
     void set_modified(bool modified);
 

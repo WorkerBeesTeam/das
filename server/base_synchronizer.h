@@ -9,10 +9,6 @@ namespace Server {
 class Protocol_Base;
 } // namespace Server
 
-namespace Network {
-class WebSocket;
-} // namespace Network
-
 namespace DB {
 class global;
 } // namespace DB
@@ -20,7 +16,7 @@ class global;
 class Base_Synchronizer
 {
 public:
-    enum { DATASTREAM_VERSION = Helpz::Network::Protocol::DATASTREAM_VERSION };
+    enum { DATASTREAM_VERSION = Helpz::Net::Protocol::DATASTREAM_VERSION };
 
     Base_Synchronizer(Server::Protocol_Base* protocol);
     virtual ~Base_Synchronizer() = default;

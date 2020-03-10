@@ -1,0 +1,7 @@
+{
+    "type": "camera",
+    "param": {
+        "device": [],
+        "device_item": ["index"]
+    }
+}
