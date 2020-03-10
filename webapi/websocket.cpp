@@ -457,8 +457,19 @@ void WebSocket::sendDevice_ItemValues(const Scheme_Info &scheme, const QVector<L
     ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
 
     ds << (quint8)WS_DEV_ITEM_VALUES << scheme.id() << (uint32_t)pack.size();
+
+    uint32_t size = 0;
     for (const Log_Value_Item& item: pack)
-        ds << item.item_id() << item.raw_value() << item.value();
+    {
+        if (item.value().data_ptr().type != QVariant::ByteArray
+            || static_cast<const QByteArray*>(item.value().constData())->size() < 8192)
+        {
+            ds << item.item_id() << item.raw_value() << item.value();
+            ++size;
+        }
+        else if (item.value().data_ptr().type == QVariant::ByteArray)
+            qDebug() << "VALUE SiZE:" << static_cast<const QByteArray*>(item.value().constData())->size();
+    }
     send(scheme, message);
 }
 
