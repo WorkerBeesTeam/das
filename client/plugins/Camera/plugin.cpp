@@ -244,7 +244,7 @@ void Camera_Plugin::configure(QSettings *settings)
                 Param<QString>{"StreamServer", "deviceaccess.ru"},
                 Param<QString>{"StreamServerPort", "6731"},
                 Param<uint32_t>{"FrameDelayMs", 60},
-                Param<uint32_t>{"PictureSkip", 100}
+                Param<uint32_t>{"PictureSkip", 50}
     ).obj<Camera::Config>();
 
     thread_.start(std::move(config), this);
