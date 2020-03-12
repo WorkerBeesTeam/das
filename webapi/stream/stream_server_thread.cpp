@@ -11,6 +11,9 @@ namespace Das {
 
 Stream_Server_Thread::Stream_Server_Thread(Net::WebSocket* websock, uint16_t port)
 {
+    if (port == std::numeric_limits<uint16_t>::max())
+        return;
+
     std::thread th(&Stream_Server_Thread::run, this, websock, port);
     thread_.swap(th);
 }
@@ -18,7 +21,8 @@ Stream_Server_Thread::Stream_Server_Thread(Net::WebSocket* websock, uint16_t por
 Stream_Server_Thread::~Stream_Server_Thread()
 {
     io_context_->stop();
-    thread_.join();
+    if (thread_.joinable())
+        thread_.join();
 }
 
 void Stream_Server_Thread::set_param(uint32_t scheme_id, uint32_t dev_item_id, const QByteArray &data)

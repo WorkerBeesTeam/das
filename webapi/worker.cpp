@@ -153,7 +153,7 @@ void Worker::init_restful(QSettings* s)
     Rest::Config rest_config = Helpz::SettingsHelper(
         s, "Rest",
         Helpz::Param{"Thread_Count", 3},
-        Helpz::Param<std::string>{"Address", "0.0.0.0"},
+        Helpz::Param<std::string>{"Address", "localhost"},
         Helpz::Param<std::string>{"Port", "8123"}
     ).obj<Rest::Config>();
 
