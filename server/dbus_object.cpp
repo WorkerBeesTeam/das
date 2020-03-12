@@ -89,6 +89,17 @@ Scheme_Status Dbus_Object::get_scheme_status(uint32_t scheme_id) const
     return scheme_status;
 }
 
+void Dbus_Object::set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString &name)
+{
+    std::shared_ptr<Helpz::DTLS::Server_Node> node = find_client(scheme_id);
+    if (node)
+    {
+        std::shared_ptr<Ver::Server::Protocol> proto = std::dynamic_pointer_cast<Ver::Server::Protocol>(node->protocol());
+        if (proto)
+            return proto->set_scheme_name(user_id, name);
+    }
+}
+
 QVector<Device_Item_Value> Dbus_Object::get_device_item_values(uint32_t scheme_id) const
 {
     std::shared_ptr<Helpz::DTLS::Server_Node> node = find_client(scheme_id);
