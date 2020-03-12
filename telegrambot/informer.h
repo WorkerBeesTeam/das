@@ -20,6 +20,8 @@ class Base;
 
 namespace Das {
 
+Q_DECLARE_LOGGING_CATEGORY(Inf_Detail_log)
+
 class Informer : public Status_Helper
 {
 public:

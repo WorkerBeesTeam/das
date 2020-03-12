@@ -17,9 +17,7 @@ namespace Das {
                   "WHERE g.scheme_id = %1 AND g.id IN (";
 
     for (uint32_t id: group_id_set)
-    {
         sql += QString::number(id) + ',';
-    }
     sql[sql.size() - 1] = ')';
 
     QSqlQuery q = db.exec(sql.arg(scheme_id));
