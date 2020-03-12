@@ -148,32 +148,36 @@ const std::set<DIG_Status> &Device_item_Group::statuses() const
     return statuses_;
 }
 
-bool Device_item_Group::check_status(uint32_t info_id)
+bool Device_item_Group::check_status(uint32_t status_id) const
 {
-    return statuses_.find(info_id) != statuses_.cend();
+    for (const DIG_Status& item: statuses_)
+        if (item.status_id() == status_id)
+            return true;
+    return false;
 }
 
-void Device_item_Group::add_status(uint32_t info_id, const QStringList &args, uint32_t user_id)
+void Device_item_Group::add_status(uint32_t status_id, const QStringList &args, uint32_t user_id)
 {
-    if (statuses_.find(info_id) != statuses_.cend())
+    if (check_status(status_id))
         return;
-    if (info_id == 0)
+
+    if (status_id == 0)
     {
         qCWarning(SchemeDetailLog).noquote().nospace() << user_id << '|' << tr("Attempt to set zero status to group:") << ' ' << toString();
         return;
     }
 
-    const DIG_Status status(DB::Log_Base_Item::current_timestamp(), user_id, id(), info_id, args);
+    const DIG_Status status(DB::Log_Base_Item::current_timestamp(), user_id, id(), status_id, args);
 
     statuses_.emplace(status);
     emit status_changed(status);
 }
 
-void Device_item_Group::remove_status(uint32_t info_id, uint32_t user_id)
+void Device_item_Group::remove_status(uint32_t status_id, uint32_t user_id)
 {
     for (auto it = statuses_.begin(); it != statuses_.end(); ++it)
     {
-        if (it->status_id() == info_id)
+        if (it->status_id() == status_id)
         {
             DIG_Status status = *it;
             status.set_direction(DIG_Status::SD_DEL);
