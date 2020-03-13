@@ -74,7 +74,11 @@ void Device_Item_Value::set_value_from_db(const QVariant& value)
 
     if (text.length() > 2)
     {
-        if ((text.at(0) == '[' && text.at(text.length() - 1) == ']') || (text.at(0) == '{' && text.at(text.length() - 1) == '}'))
+        if (text.length() == 4 && text.toLower() == "true")
+            return true;
+        else if (text.length() == 5 && text.toLower() == "false")
+            return false;
+        else if ((text.at(0) == '[' && text.at(text.length() - 1) == ']') || (text.at(0) == '{' && text.at(text.length() - 1) == '}'))
         {
             QJsonParseError parse_error;
             parse_error.error = QJsonParseError::NoError;
@@ -112,11 +116,6 @@ void Device_Item_Value::set_value_from_db(const QVariant& value)
         if (ok)
             return dbl_val;
     }
-
-    if (text.toLower() == "true")
-        return true;
-    else if (text.toLower() == "false")
-        return false;
 
     return text;
 }
