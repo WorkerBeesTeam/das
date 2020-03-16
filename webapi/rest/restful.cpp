@@ -433,7 +433,7 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
             QMetaObject::invokeMethod(dbus_iface, "set_scheme_name", Qt::QueuedConnection,
                 Q_ARG(uint32_t, scheme.id()), Q_ARG(uint32_t, user_id), Q_ARG(QString, QString::fromStdString(scheme_name)));
 
-            res << "Ok";
+            res << "{\"text\": \"Ok\"}\n";
         });
 
         mux.handle(scheme_path).get([](served::response& res, const served::request& req)
