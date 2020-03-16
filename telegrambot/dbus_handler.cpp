@@ -15,6 +15,7 @@ namespace Das {
 Dbus_Handler::Dbus_Handler(Worker* worker) :
     worker_(worker)
 {
+    is_manual_connect_ = true;
 }
 
 void Dbus_Handler::connection_state_changed(const Scheme_Info& scheme, uint8_t state)
@@ -55,6 +56,19 @@ void Dbus_Handler::event_message_available(const Scheme_Info &scheme, const QVec
 void Dbus_Handler::status_changed(const Scheme_Info& scheme, const QVector<DIG_Status> &pack)
 {
     worker_->informer_->change_status(scheme, pack);
+}
+
+void Dbus_Handler::connect_to(QDBusInterface *iface)
+{
+#define CONNECT_TO_(a,b,x,y,...) \
+    connect(iface, SIGNAL(x(Scheme_Info, __VA_ARGS__)), \
+            a, SLOT(y(Scheme_Info, __VA_ARGS__)), b)
+
+#define CONNECT_TO_THIS(x,...) CONNECT_TO_(this, Qt::DirectConnection, x, x, __VA_ARGS__)
+
+    CONNECT_TO_THIS(connection_state_changed, uint8_t);
+    CONNECT_TO_THIS(event_message_available, QVector<Log_Event_Item>);
+    CONNECT_TO_THIS(status_changed, QVector<DIG_Status>);
 }
 
 } // namespace Das

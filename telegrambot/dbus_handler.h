@@ -19,18 +19,12 @@ class Dbus_Handler : public DBus::Handler_Object
     Q_OBJECT
 public:
     Dbus_Handler(Worker* worker);
-public slots:
+private slots:
     void connection_state_changed(const Scheme_Info& scheme, uint8_t state);
-
-//    void device_item_values_available(const Scheme_Info& scheme, const QVector<Log_Value_Item>& pack) {}
     void event_message_available(const Scheme_Info& scheme, const QVector<Log_Event_Item>& event_pack);
-//    void time_info(const Scheme_Info& scheme, const QTimeZone& tz, qint64 time_offset) {}
-//    void structure_changed(const Scheme_Info& scheme, const QByteArray& data) {}
-//    void group_param_values_changed(const Scheme_Info& scheme, const QVector<Group_Param_Value> &pack) {}
-//    void group_mode_changed(const Scheme_Info& scheme, quint32 mode_id, quint32 group_id) {}
-
     void status_changed(const Scheme_Info& scheme, const QVector<DIG_Status> &pack);
 private:
+    void connect_to(QDBusInterface* iface) override;
     Worker* worker_;
 };
 

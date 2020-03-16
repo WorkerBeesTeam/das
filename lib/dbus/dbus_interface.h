@@ -39,6 +39,8 @@ public:
 //    virtual void stream_toggled(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, bool state);
 //    virtual void stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
     virtual void connect_to(QDBusInterface* iface) { Q_UNUSED(iface); }
+
+    bool is_manual_connect_ = false;
 };
 
 class Interface : public QObject

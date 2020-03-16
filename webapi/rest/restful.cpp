@@ -13,6 +13,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QLoggingCategory>
 
 #define PICOJSON_USE_INT64
 #include <plus/jwt-cpp/include/jwt-cpp/picojson.h>
@@ -33,6 +34,8 @@
 
 namespace Das {
 namespace Rest {
+
+Q_LOGGING_CATEGORY(Rest_Log, "rest")
 
 using namespace Helpz::DB;
 
@@ -72,7 +75,7 @@ public:
             }
         }
 
-        qDebug() << "write_item_file" << req.body().size() << QString::fromStdString(content_type);
+        qCDebug(Rest_Log) << "write_item_file" << req.body().size() << QString::fromStdString(content_type);
     }
 private:
     void parse_part(const std::string& body, const std::string& boundary)
@@ -448,7 +451,7 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
             {
 
             }
-            qDebug() << QByteArray::fromStdString(req.body());
+            qCDebug(Rest_Log) << QByteArray::fromStdString(req.body());
             res.set_status(204);
         });
 
@@ -465,9 +468,13 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
 
         server.run(config.thread_count_);
     }
+    catch(const std::exception& e)
+    {
+        qCCritical(Rest_Log) << "Failure:" << e.what();
+    }
     catch(...)
     {
-        qCritical() << "Served EXCEPTION";
+        qCCritical(Rest_Log) << "Served unknown exception:" << strerror(errno);
     }
 
     server_ = nullptr;

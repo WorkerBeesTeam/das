@@ -16,6 +16,7 @@ namespace WebApi {
 Dbus_Handler::Dbus_Handler(Worker* worker) :
     worker_(worker)
 {
+    is_manual_connect_ = true;
 }
 
 void Dbus_Handler::set_stream_param(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data)

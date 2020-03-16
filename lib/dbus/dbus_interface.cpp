@@ -86,6 +86,9 @@ void Interface::connect_to_interface()
     {
         handler_->connect_to(iface_);
 
+        if (handler_->is_manual_connect_)
+            return;
+
 #define CONNECT_TO_HANDLER(name, ...) \
     connect(iface_, SIGNAL(name(Scheme_Info, __VA_ARGS__)), \
         handler_, SLOT(name(Scheme_Info, __VA_ARGS__)))
