@@ -52,7 +52,7 @@ private:
     DBus::Interface* dbus_;
     friend class Dbus_Handler;
 
-    using Websocket_Thread = Helpz::SettingsThreadHelper<Net::WebSocket, std::shared_ptr<JWT_Helper>, quint16, QString, QString>;
+    using Websocket_Thread = Helpz::SettingsThreadHelper<Net::WebSocket, std::shared_ptr<JWT_Helper>, QString, quint16, QString, QString>;
     Websocket_Thread::Type* websock_th_;
 
     using WebCommandThread = Helpz::ParamThread<Net::WebCommand, Net::WebSocket*>;

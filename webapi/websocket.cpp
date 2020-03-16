@@ -106,7 +106,8 @@ bool WebSocket::Stream_Item::operator<(const WebSocket::Stream_Item &o) const
 
 // --------------------------------------------------------------------------------
 
-WebSocket::WebSocket(std::shared_ptr<JWT_Helper> jwt_helper, quint16 port, const QString& certFilePath, const QString& keyFilePath, QObject *parent) :
+WebSocket::WebSocket(std::shared_ptr<JWT_Helper> jwt_helper, const QString& address, quint16 port,
+                     const QString& certFilePath, const QString& keyFilePath, QObject *parent) :
     QObject(parent),
     server_(new QWebSocketServer(QStringLiteral("Device Access Control"),
                                             certFilePath.isEmpty() || keyFilePath.isEmpty() ? QWebSocketServer::NonSecureMode : QWebSocketServer::SecureMode, this)),
@@ -153,7 +154,8 @@ WebSocket::WebSocket(std::shared_ptr<JWT_Helper> jwt_helper, quint16 port, const
 //    connect(worker->n_mng_th->ptr(), &Manager::modeChanged,
 //            this, &WebSocket::sendModeChanged, Qt::QueuedConnection);
 
-    if (server_->listen(QHostAddress::Any, port))
+    const QHostAddress host_address(!address.isEmpty() ? QHostAddress(address) : QHostAddress::Any);
+    if (server_->listen(host_address, port))
         qCDebug(WebSockLog) << "WebSocket listening on port" << port << "url:" << server_->serverUrl().toString();
     else
         qCCritical(WebSockLog) << server_->errorString();

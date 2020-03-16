@@ -128,6 +128,7 @@ void Worker::init_websocket_manager(QSettings* s)
     websock_th_ = Websocket_Thread()(
                 s, "WebSocket",
                 jwt_helper_,
+                Helpz::Param{"Address", QString()},
                 Helpz::Param<quint16>{"Port", 25589},
                 Helpz::Param{"CertPath", QString()},
                 Helpz::Param{"KeyPath", QString()});
