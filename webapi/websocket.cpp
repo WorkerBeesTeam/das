@@ -154,7 +154,7 @@ WebSocket::WebSocket(std::shared_ptr<JWT_Helper> jwt_helper, const QString& addr
 //    connect(worker->n_mng_th->ptr(), &Manager::modeChanged,
 //            this, &WebSocket::sendModeChanged, Qt::QueuedConnection);
 
-    const QHostAddress host_address(!address.isEmpty() ? QHostAddress(address) : QHostAddress::Any);
+    const QHostAddress host_address((!address.isEmpty()) ? QHostAddress(address) : QHostAddress::Any);
     if (server_->listen(host_address, port))
         qCDebug(WebSockLog) << "WebSocket listening on port" << port << "url:" << server_->serverUrl().toString();
     else

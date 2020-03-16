@@ -75,7 +75,7 @@ namespace Das {
     }
 
     if (is_up)
-        message = "Состояние \"~" + message + "~\" снято!";
+        message = "Состояние \"`" + message + "`\" снято!";
 
     for (Status_Helper::Section& sct: group_names)
     {
