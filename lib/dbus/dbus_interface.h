@@ -25,7 +25,7 @@ class Handler_Object : public QObject
 {
     Q_OBJECT
 public:
-//    virtual void connection_state_changed(const Scheme_Info& scheme, uint8_t state) {}
+    virtual void server_down() {}
 
 //    virtual void device_item_values_available(const Scheme_Info& scheme, const QVector<Log_Value_Item>& pack) {}
 //    virtual void event_message_available(const Scheme_Info& scheme, const QVector<Log_Event_Item>& event_pack) {}

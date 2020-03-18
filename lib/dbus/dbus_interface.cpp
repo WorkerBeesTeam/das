@@ -61,10 +61,7 @@ void Interface::service_unregistered(const QString& service)
     if (service == service_name_)
     {
         delete_iface();
-        QMetaObject::invokeMethod(handler_, "connection_state_changed", Qt::QueuedConnection,
-                                  Q_ARG(Scheme_Info, {}), Q_ARG(uint8_t, CS_SERVER_DOWN));
-//        connection_state_changed({}, CS_SERVER_DOWN);
-        // TODO: send CS_SERVER_DOWN state for all web sock
+        handler_->server_down();
     }
 }
 

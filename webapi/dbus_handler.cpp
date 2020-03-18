@@ -46,6 +46,13 @@ void Dbus_Handler::connect_to(QDBusInterface *iface)
     CONNECT_TO_THIS(stream_param, set_stream_param, uint32_t, QByteArray);
 }
 
+void Dbus_Handler::server_down()
+{
+    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "send_connection_state", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, {}), Q_ARG(uint8_t, CS_SERVER_DOWN));
+    // TODO: send CS_SERVER_DOWN state for all web sock
+}
+
 } // namespace WebApi
 } // namespace Server
 } // namespace Das

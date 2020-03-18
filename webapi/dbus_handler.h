@@ -26,6 +26,7 @@ private slots:
     void set_stream_param(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
 private:
     void connect_to(QDBusInterface* iface) override;
+    void server_down() override;
 
     Worker* worker_;
 };
