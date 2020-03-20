@@ -16,7 +16,7 @@ VER_MAJ = 1
 VER_MIN = 4
 include(../common.pri)
 
-LIBS += -L$$DESTDIR -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzNetwork -lHelpzDBMeta -lHelpzDB -lHelpzDTLS -lbotan-2 -lboost_thread
+LIBS += -L$$DESTDIR -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzDBMeta -lHelpzDB -lboost_thread
 
 # LIBS += -L$${OUT_PWD}/SMTPEmail -lSMTPEmail
 LIBS += \

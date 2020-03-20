@@ -250,7 +250,7 @@ void Bot::anyMessage(TgBot::Message::Ptr message)
 
 #ifdef QT_DEBUG
         if (!message->text.empty())
-            bot_->getApi().sendMessage(message->chat->id, "*You send*: " + message->text, false, 0, make_shared<TgBot::GenericReply>(), "Markdown");
+            send_message(message->chat->id, "*You send*: " + message->text);
 #endif
     }
 }

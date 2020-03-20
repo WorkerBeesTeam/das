@@ -37,7 +37,7 @@ VER_MAJ = 1
 VER_MIN = 5
 include(../../common.pri)
 
-LIBS += -lDas -lHelpzService -lHelpzDBMeta -lHelpzDB -lbotan-2
+LIBS += -lDas -lHelpzBase -lHelpzDBMeta -lHelpzDB -lbotan-2
 
 unix {
     target.path = /usr/local/lib
