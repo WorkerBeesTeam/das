@@ -73,7 +73,7 @@ void Informer::change_status(const Scheme_Info &scheme, const QVector<DIG_Status
 
         if (status.timestamp_msecs() == 0)
         {
-            expired_time = std::chrono::system_clock::now() + event_timeout_;
+            expired_time = std::chrono::system_clock::now();
         }
         else
         {
@@ -81,6 +81,8 @@ void Informer::change_status(const Scheme_Info &scheme, const QVector<DIG_Status
             expired_time = std::chrono::time_point_cast<std::chrono::system_clock::duration>
                    (__from(std::chrono::milliseconds(status.timestamp_msecs())));
         }
+
+        expired_time += event_timeout_;
 
         Status_Data& data = status_map[expired_time];
 

@@ -20,6 +20,7 @@
 
 #include <dbus/dbus_interface.h>
 #include <Das/db/dig_status_type.h>
+#include <Das/section.h>
 #include <Das/commands.h>
 
 #include "db/tg_auth.h"
@@ -548,6 +549,8 @@ void Bot::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
         }
     }
 
+//    QVector<Section> sct_vect = db_build_list<Section>(db, "WHERE scheme_id = " + QString::number(scheme.parent_id_or_id()));
+
     send_message(message->chat->id, text.toStdString());
 }
 
@@ -742,8 +745,8 @@ void Bot::sendSchemeMenu(TgBot::Message::Ptr message, const Scheme_Item& scheme)
 
     const string base_data = "scheme." + to_string(scheme.id());
     keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(base_data + ".status", "Состояние"));
-    keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(base_data + ".menu_sub_1", "Под меню 1")),
-    keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(base_data + ".menu_sub_2", "Под меню 2"));
+//    keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(base_data + ".menu_sub_1", "Под меню 1")),
+//    keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(base_data + ".menu_sub_2", "Под меню 2"));
     keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(base_data + ".restart", "Перезагрузка"));
     keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow("list", "Назад (<<)"));
 
