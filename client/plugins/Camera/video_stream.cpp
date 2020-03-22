@@ -182,6 +182,7 @@ void Video_Stream::init_format()
         src_format_ = copy;
     }
 
+#ifdef QT_DEBUG
     if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_UV8) qDebug() << "V4L2_PIX_FMT_UV8";
     if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YVU410) qDebug() << "V4L2_PIX_FMT_YVU410";
     if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YVU420) qDebug() << "V4L2_PIX_FMT_YVU420";
@@ -199,6 +200,7 @@ void Video_Stream::init_format()
     if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV32) qDebug() << "V4L2_PIX_FMT_YUV32";
     if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV410) qDebug() << "V4L2_PIX_FMT_YUV410";
     if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420) qDebug() << "V4L2_PIX_FMT_YUV420";
+#endif
 
     QDataStream ds(&data_, QIODevice::WriteOnly);
     ds << dest_format_.fmt.pix.width << dest_format_.fmt.pix.height;

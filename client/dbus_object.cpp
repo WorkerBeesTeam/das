@@ -52,6 +52,12 @@ Scheme_Status Dbus_Object::get_scheme_status(uint32_t /*scheme_id*/) const
     return scheme_status;
 }
 
+void Dbus_Object::set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString &name)
+{
+    if (scheme_id == DB::Schemed_Model::default_scheme_id())
+        worker_->set_scheme_name(user_id, name);
+}
+
 QVector<Device_Item_Value> Dbus_Object::get_device_item_values(uint32_t /*scheme_id*/) const
 {
     QVector<Device_Item_Value> values;

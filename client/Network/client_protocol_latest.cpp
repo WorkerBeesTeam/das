@@ -207,6 +207,11 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
         send_answer(Cmd::GROUP_STATUSES, msg_id) << get_group_statuses();
         break;
 
+    case Cmd::SET_SCHEME_NAME:
+        send_answer(Cmd::SET_SCHEME_NAME, msg_id);
+        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Worker::set_mode, worker());
+        break;
+
     default:
         if (cmd >= Helpz::Net::Cmd::USER_COMMAND)
         {

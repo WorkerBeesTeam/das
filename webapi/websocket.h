@@ -47,7 +47,8 @@ class WebSocket : public QObject
 {
     Q_OBJECT
 public:
-    explicit WebSocket(std::shared_ptr<JWT_Helper> jwt_helper, quint16 port, const QString &certFilePath = QString(), const QString &keyFilePath = QString(),
+    explicit WebSocket(std::shared_ptr<JWT_Helper> jwt_helper, const QString &address, quint16 port,
+                       const QString &certFilePath = QString(), const QString &keyFilePath = QString(),
                        QObject *parent = nullptr);
     ~WebSocket();
 

@@ -16,7 +16,7 @@ VER_MAJ = 1
 VER_MIN = 4
 include(../common.pri)
 
-LIBS += -L$$DESTDIR -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzNetwork -lHelpzDBMeta -lHelpzDB -lHelpzDTLS -lbotan-2 -lboost_thread
+LIBS += -L$$DESTDIR -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzDBMeta -lHelpzDB -lboost_thread
 
 # LIBS += -L$${OUT_PWD}/SMTPEmail -lSMTPEmail
 LIBS += \
@@ -34,20 +34,28 @@ SOURCES += main.cpp \
     db/tg_subscriber.cpp \
     db/tg_user.cpp \
     worker.cpp \
-    bot.cpp \
     informer.cpp \
     smtp_client.cpp \
-    dbus_handler.cpp
+    dbus_handler.cpp \
+    bot/scheme_item.cpp \
+    bot/controller.cpp \
+    bot/elements.cpp \
+    bot/menu_item.cpp \
+    bot/bot_base.cpp
 
 HEADERS += \
     db/tg_auth.h \
     db/tg_subscriber.h \
     db/tg_user.h \
     worker.h \
-    bot.h \
     informer.h \
     smtp_client.h \
-    dbus_handler.h
+    dbus_handler.h \
+    bot/scheme_item.h \
+    bot/elements.h \
+    bot/controller.h \
+    bot/menu_item.h \
+    bot/bot_base.h
 
 unix {
     target.path = /opt/das

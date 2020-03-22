@@ -28,6 +28,8 @@ public:
     void send_file(uint32_t user_id, uint32_t dev_item_id, const QString& file_name, const QString& file_path) override;
 
     void synchronize(bool full = false) override;
+
+    void set_scheme_name(uint32_t user_id, const QString& name);
 private:
     void before_remove_copy() override;
     void lost_msg_detected(uint8_t msg_id, uint8_t expected) override;

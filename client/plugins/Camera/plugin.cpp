@@ -217,6 +217,7 @@ void Camera_Thread::read_item(Device_Item *item)
     const qint64 now = Log_Value_Item::current_timestamp();
     const Log_Value_Item log_value_item{now, /*user_id=*/0, item->id(), data, QVariant(), /*need_to_save=*/true};
     emit iface_->scheme()->log_item_available(log_value_item);
+    QMetaObject::invokeMethod(item, "set_raw_value", Qt::QueuedConnection, Q_ARG(QVariant, 0), /*force=*/Q_ARG(bool, true));
 }
 
 // ----------------------------------------------------------

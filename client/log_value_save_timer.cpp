@@ -80,22 +80,19 @@ QVector<Device_Item_Value> Log_Value_Save_Timer::get_unsaved_values() const
 {
     QVector<Device_Item_Value> value_vect;
     for (auto it: waited_item_values_)
-    {
         value_vect.push_back(it.second);
-    }
     return value_vect;
 }
 
 void Log_Value_Save_Timer::add_log_value_item(const Log_Value_Item &item)
 {
-    auto waited_it = waited_item_values_.find(item.item_id());
-    if (waited_it == waited_item_values_.end())
+    if (!item.is_big_value())
     {
-        waited_item_values_.emplace(item.item_id(), Device_Item_Value{item});
-    }
-    else
-    {
-        waited_it->second = item;
+        auto waited_it = waited_item_values_.find(item.item_id());
+        if (waited_it == waited_item_values_.end())
+            waited_item_values_.emplace(item.item_id(), Device_Item_Value{item});
+        else
+            waited_it->second = item;
     }
 
     if (!item_values_timer_.isActive() || (item.need_to_save() && item_values_timer_.remainingTime() > 500))

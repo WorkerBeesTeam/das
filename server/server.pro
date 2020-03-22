@@ -1,4 +1,4 @@
-QT += core network dbus sql websockets
+QT += core network dbus sql
 QT -= gui widgets
 
 TARGET = DasServer

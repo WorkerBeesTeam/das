@@ -88,6 +88,7 @@ public slots:
     void save_server_data(const QUuid &devive_uuid, const QString& login, const QString& password);
 
     void set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
+    void set_scheme_name(uint32_t user_id, const QString& name);
 
     void update_plugin_param_names(const QVector<Plugin_Type>& plugins);
 public slots:

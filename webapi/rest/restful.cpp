@@ -13,6 +13,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QLoggingCategory>
 
 #define PICOJSON_USE_INT64
 #include <plus/jwt-cpp/include/jwt-cpp/picojson.h>
@@ -33,6 +34,8 @@
 
 namespace Das {
 namespace Rest {
+
+Q_LOGGING_CATEGORY(Rest_Log, "rest")
 
 using namespace Helpz::DB;
 
@@ -72,7 +75,7 @@ public:
             }
         }
 
-        qDebug() << "write_item_file" << req.body().size() << QString::fromStdString(content_type);
+        qCDebug(Rest_Log) << "write_item_file" << req.body().size() << QString::fromStdString(content_type);
     }
 private:
     void parse_part(const std::string& body, const std::string& boundary)
@@ -411,6 +414,28 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
             res << gen_json_list<DIG_Status_Type>("WHERE scheme_id=" + QString::number(scheme.parent_id_or_id()));
         });
 
+        mux.handle(scheme_path + "/set_name/").post([dbus_iface](served::response& res, const served::request& req)
+        {
+            const Scheme_Info scheme = get_scheme(req);
+
+            picojson::value val;
+            const std::string err = picojson::parse(val, req.body());
+            if (!err.empty() || !val.is<picojson::object>())
+                throw served::request_error(served::status_4XX::BAD_REQUEST, err);
+
+            const picojson::object obj = val.get<picojson::object>();
+            const std::string scheme_name = obj.at("name").get<std::string>();
+
+            std::cerr << "set_name: " << scheme_name << std::endl;
+
+            const uint32_t user_id = Auth_Middleware::get_thread_local_user().id_;
+
+            QMetaObject::invokeMethod(dbus_iface, "set_scheme_name", Qt::QueuedConnection,
+                Q_ARG(uint32_t, scheme.id()), Q_ARG(uint32_t, user_id), Q_ARG(QString, QString::fromStdString(scheme_name)));
+
+            res << "{\"text\": \"Ok\"}\n";
+        });
+
         mux.handle(scheme_path).get([](served::response& res, const served::request& req)
         {
             res.set_header("Content-Type", "application/json");
@@ -426,7 +451,7 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
             {
 
             }
-            qDebug() << QByteArray::fromStdString(req.body());
+            qCDebug(Rest_Log) << QByteArray::fromStdString(req.body());
             res.set_status(204);
         });
 
@@ -443,9 +468,13 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
 
         server.run(config.thread_count_);
     }
+    catch(const std::exception& e)
+    {
+        qCCritical(Rest_Log) << "Failure:" << e.what();
+    }
     catch(...)
     {
-        qCritical() << "Served EXCEPTION";
+        qCCritical(Rest_Log) << "Served unknown exception:" << strerror(errno);
     }
 
     server_ = nullptr;

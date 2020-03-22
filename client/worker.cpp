@@ -549,6 +549,23 @@ void Worker::set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id)
     QMetaObject::invokeMethod(prj(), "set_mode", Qt::QueuedConnection, Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, mode_id), Q_ARG(uint32_t, group_id));
 }
 
+void Worker::set_scheme_name(uint32_t user_id, const QString &name)
+{
+    // ATTENTION: This function calls from diffrent threads
+
+    auto s = settings();
+    s->beginGroup("RemoteServer");
+    const QString old_name = s->value("SchemeName").toString();
+    s->setValue("SchemeName", name.simplified());
+    s->endGroup();
+
+    qCInfo(Service::Log).nospace() << user_id << "|Scheme name changed from: " << old_name << " to: " << name;
+
+    Helpz::DB::Base& db = Helpz::DB::Base::get_thread_local_instance();
+    const Helpz::DB::Table table{"das_scheme", {}, {"name"}};
+    db.update(table, QVariantList{name}, "id=" + QString::number(DB::Schemed_Model::default_scheme_id()));
+}
+
 QVariant db_get_dig_status_id(Helpz::DB::Base* db, const QString& table_name, uint32_t group_id, uint32_t info_id)
 {
     auto q = db->select({table_name, {}, {"id"}}, QString("WHERE group_id = %1 AND status_id = %2").arg(group_id).arg(info_id));

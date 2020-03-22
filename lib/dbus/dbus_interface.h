@@ -18,11 +18,14 @@ QT_FORWARD_DECLARE_CLASS(QDBusServiceWatcher)
 namespace Das {
 namespace DBus {
 
+template<typename T> struct Non_Void { using type = T; };
+template<> struct Non_Void<void> { using type = void*; };
+
 class Handler_Object : public QObject
 {
     Q_OBJECT
 public:
-//    virtual void connection_state_changed(const Scheme_Info& scheme, uint8_t state) {}
+    virtual void server_down() {}
 
 //    virtual void device_item_values_available(const Scheme_Info& scheme, const QVector<Log_Value_Item>& pack) {}
 //    virtual void event_message_available(const Scheme_Info& scheme, const QVector<Log_Event_Item>& event_pack) {}
@@ -36,6 +39,8 @@ public:
 //    virtual void stream_toggled(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, bool state);
 //    virtual void stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
     virtual void connect_to(QDBusInterface* iface) { Q_UNUSED(iface); }
+
+    bool is_manual_connect_ = false;
 };
 
 class Interface : public QObject
@@ -58,10 +63,17 @@ public slots:
     uint8_t get_scheme_connection_state(const std::set<uint32_t> &scheme_group_set, uint32_t scheme_id);
     uint8_t get_scheme_connection_state2(uint32_t scheme_id);
     Scheme_Status get_scheme_status(uint32_t scheme_id) const;
+    void set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString& name);
     QVector<Device_Item_Value> get_device_item_values(uint32_t scheme_id) const;
     void send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& data);
 
 private:
+    template<typename Ret_Type,  typename... Args>
+    Ret_Type call_iface(const QString& name, const typename Non_Void<Ret_Type>::type ret, Args... args) const;
+
+    template<typename... Args>
+    void call_iface_void(const QString& name, Args... args);
+
     QDBusConnection* bus_;
     QDBusInterface* iface_;
     QDBusServiceWatcher* watcher_;

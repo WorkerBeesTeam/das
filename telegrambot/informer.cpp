@@ -9,6 +9,8 @@
 
 namespace Das {
 
+Q_LOGGING_CATEGORY(Inf_Detail_log, "informer.detail", QtInfoMsg)
+
 using namespace Helpz::DB;
 
 Informer::Data::Data(const Scheme_Info &scheme, std::chrono::time_point<std::chrono::system_clock> expired_time,
@@ -71,7 +73,7 @@ void Informer::change_status(const Scheme_Info &scheme, const QVector<DIG_Status
 
         if (status.timestamp_msecs() == 0)
         {
-            expired_time = std::chrono::system_clock::now() + event_timeout_;
+            expired_time = std::chrono::system_clock::now();
         }
         else
         {
@@ -80,12 +82,16 @@ void Informer::change_status(const Scheme_Info &scheme, const QVector<DIG_Status
                    (__from(std::chrono::milliseconds(status.timestamp_msecs())));
         }
 
+        expired_time += event_timeout_;
+
         Status_Data& data = status_map[expired_time];
 
         if (status.is_removed())
             data.del_vect_.push_back(status);
         else
             data.add_vect_.push_back(status);
+
+        qCDebug(Inf_Detail_log) << "change_status scheme:" << scheme.id() << "group:" << status.group_id() << "status:" << status.status_id() << (status.is_removed() ? "REMOVED" : "");
     }
 
     for (const auto& it: status_map)
@@ -227,14 +233,14 @@ void Informer::run()
 {
     std::unique_lock lock(mutex_, std::defer_lock);
 
-    while (!break_flag_)
+    while (true)
     {
 //        if (prepared_data_map_.empty())
 //            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
         lock.lock();
 
-        if (!data_queue_.empty())
+        if (!break_flag_ && !data_queue_.empty())
         {
             cond_.wait_until(lock, data_queue_.front()->expired_time_);
         }
@@ -419,6 +425,7 @@ void Informer::send_message(const std::map<uint32_t, Prepared_Data>& prepared_da
 
     for (const auto& it: message_map)
     {
+        qCDebug(Inf_Detail_log) << "send_message chat:" << it.first << "text:" << it.second;
         send_message_signal_(it.first, it.second.toStdString());
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }

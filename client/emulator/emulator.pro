@@ -1,4 +1,4 @@
-QT += core network gui sql serialport dbus serialbus websockets
+QT += core network gui sql serialport dbus serialbus
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -13,7 +13,7 @@ VER_MIN = 2
 include(../../common.pri)
 
 INCLUDEPATH += $${PWD}/..
-LIBS += -lDas -lDasPlus -lHelpzBase -lHelpzService -lHelpzDBMeta -lHelpzDB -lHelpzNetwork -lbotan-2 -lboost_system
+LIBS += -lDas -lDasPlus -lHelpzBase -lHelpzDBMeta -lHelpzDB -lboost_system
 
 SOURCES += main.cpp \
     device_item_table_item.cpp \

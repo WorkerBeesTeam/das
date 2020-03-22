@@ -84,6 +84,11 @@ void Protocol::synchronize(bool full)
     structure_sync_.check(full ? structure_sync_.modified() : true, true);
 }
 
+void Protocol::set_scheme_name(uint32_t user_id, const QString &name)
+{
+    send(Cmd::SET_SCHEME_NAME).timeout(nullptr, std::chrono::seconds(8)) << user_id << name;
+}
+
 void Protocol::before_remove_copy()
 {
     is_copy_ = true;

@@ -85,9 +85,9 @@ public slots:
 
     const std::set<DIG_Status>& statuses() const;
 
-    bool check_status(uint32_t info_id);
-    void add_status(uint32_t info_id, const QStringList& args = QStringList(), uint32_t user_id = 0);
-    void remove_status(uint32_t info_id, uint32_t user_id = 0);
+    bool check_status(uint32_t status_id) const;
+    void add_status(uint32_t status_id, const QStringList& args = QStringList(), uint32_t user_id = 0);
+    void remove_status(uint32_t status_id, uint32_t user_id = 0);
     void clear_status(uint32_t user_id = 0);
 
     bool write_to_control(uint32_t type_id, const QVariant& raw_data, uint32_t mode_id = 0, uint32_t user_id = 0);
@@ -100,6 +100,7 @@ private slots:
     void value_changed(uint32_t user_id, const QVariant& old_raw_value);
     void connection_state_changed(bool value);
 private:
+
 
     DIG_Mode mode_;
 

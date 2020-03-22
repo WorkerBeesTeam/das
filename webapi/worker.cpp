@@ -128,6 +128,7 @@ void Worker::init_websocket_manager(QSettings* s)
     websock_th_ = Websocket_Thread()(
                 s, "WebSocket",
                 jwt_helper_,
+                Helpz::Param{"Address", QString()},
                 Helpz::Param<quint16>{"Port", 25589},
                 Helpz::Param{"CertPath", QString()},
                 Helpz::Param{"KeyPath", QString()});
@@ -153,7 +154,7 @@ void Worker::init_restful(QSettings* s)
     Rest::Config rest_config = Helpz::SettingsHelper(
         s, "Rest",
         Helpz::Param{"Thread_Count", 3},
-        Helpz::Param<std::string>{"Address", "0.0.0.0"},
+        Helpz::Param<std::string>{"Address", "localhost"},
         Helpz::Param<std::string>{"Port", "8123"}
     ).obj<Rest::Config>();
 

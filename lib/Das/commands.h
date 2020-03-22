@@ -46,6 +46,8 @@ namespace Cmd {
         STREAM_PARAM,
         STREAM_DATA,
 
+        SET_SCHEME_NAME,
+
         /*
             cmdCreateDevice,
             cmdSetInform,

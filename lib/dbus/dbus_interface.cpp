@@ -61,10 +61,7 @@ void Interface::service_unregistered(const QString& service)
     if (service == service_name_)
     {
         delete_iface();
-        QMetaObject::invokeMethod(handler_, "connection_state_changed", Qt::QueuedConnection,
-                                  Q_ARG(Scheme_Info, {}), Q_ARG(uint8_t, CS_SERVER_DOWN));
-//        connection_state_changed({}, CS_SERVER_DOWN);
-        // TODO: send CS_SERVER_DOWN state for all web sock
+        handler_->server_down();
     }
 }
 
@@ -86,6 +83,9 @@ void Interface::connect_to_interface()
     {
         handler_->connect_to(iface_);
 
+        if (handler_->is_manual_connect_)
+            return;
+
 #define CONNECT_TO_HANDLER(name, ...) \
     connect(iface_, SIGNAL(name(Scheme_Info, __VA_ARGS__)), \
         handler_, SLOT(name(Scheme_Info, __VA_ARGS__)))
@@ -106,101 +106,69 @@ void Interface::connect_to_interface()
     }
 }
 
-bool Interface::is_connected(uint32_t scheme_id)
+template<typename Ret_Type, typename... Args>
+Ret_Type Interface::call_iface(const QString& name, const typename Non_Void<Ret_Type>::type ret, Args... args) const
 {
     if (iface_)
     {
-        QDBusReply<bool> reply = iface_->call("is_connected", scheme_id);
+        QDBusReply<Ret_Type> reply = iface_->call(name, args...);
         if (reply.isValid())
         {
-            return reply.value();
+            if constexpr (!std::is_same<void, Ret_Type>::value)
+                return reply.value();
         }
         else
-        {
-            qWarning(DBus_log) << reply.error();
-        }
+            qWarning(DBus_log) << "Call iface function" << name << "failed:" << reply.error();
     }
-    return false;
+
+    return static_cast<Ret_Type>(ret);
+}
+
+template<typename... Args>
+void Interface::call_iface_void(const QString& name, Args... args)
+{
+    if (iface_)
+    {
+        QDBusReply<void> reply = iface_->call(name, args...);
+        if (!reply.isValid())
+            qWarning(DBus_log) << "Call iface function" << name << "failed:" << reply.error();
+    }
+}
+
+
+bool Interface::is_connected(uint32_t scheme_id)
+{
+    return call_iface<bool>("is_connected", false, scheme_id);
 }
 
 uint8_t Interface::get_scheme_connection_state(const std::set<uint32_t>& scheme_group_set, uint32_t scheme_id)
 {
-    if (iface_)
-    {
-        QDBusReply<uint8_t> reply = iface_->call("get_scheme_connection_state", QVariant::fromValue(scheme_group_set), scheme_id);
-        if (reply.isValid())
-        {
-            return reply.value();
-        }
-        else
-        {
-            qWarning(DBus_log) << reply.error();
-        }
-    }
-    return CS_SERVER_DOWN;
+    return call_iface<uint8_t>("get_scheme_connection_state", CS_SERVER_DOWN, QVariant::fromValue(scheme_group_set), scheme_id);
 }
 
 uint8_t Interface::get_scheme_connection_state2(uint32_t scheme_id)
 {
-    if (iface_)
-    {
-        QDBusReply<uint8_t> reply = iface_->call("get_scheme_connection_state2", scheme_id);
-        if (reply.isValid())
-        {
-            return reply.value();
-        }
-        else
-        {
-            qWarning(DBus_log) << reply.error();
-        }
-    }
-    return CS_SERVER_DOWN;
+    return call_iface<uint8_t>("get_scheme_connection_state2", CS_SERVER_DOWN, scheme_id);
 }
 
 Scheme_Status Interface::get_scheme_status(uint32_t scheme_id) const
 {
-    if (iface_)
-    {
-        QDBusReply<Scheme_Status> reply = iface_->call("get_scheme_status", scheme_id);
-        if (reply.isValid())
-        {
-            return reply.value();
-        }
-        else
-        {
-            qWarning(DBus_log) << reply.error();
-        }
-    }
-    return Scheme_Status{CS_SERVER_DOWN, {}};
+    return call_iface<Scheme_Status>("get_scheme_status", Scheme_Status{CS_SERVER_DOWN, {}}, scheme_id);
+}
+
+void Interface::set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString &name)
+{
+    call_iface<void>("set_scheme_name", nullptr, scheme_id, user_id, name);
 }
 
 QVector<Device_Item_Value> Interface::get_device_item_values(uint32_t scheme_id) const
 {
-    if (iface_)
-    {
-        QDBusReply<QVector<Device_Item_Value>> reply = iface_->call("get_device_item_values", scheme_id);
-        if (reply.isValid())
-        {
-            return reply.value();
-        }
-        else
-        {
-            qWarning(DBus_log) << reply.error();
-        }
-    }
-    return {};
+    return call_iface<QVector<Device_Item_Value>>("get_device_item_values", {}, scheme_id);
 }
 
 void Interface::send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& data)
 {
-    if (iface_)
-    {
-        QDBusReply<void> reply = iface_->call("send_message_to_scheme", scheme_id, QVariant::fromValue(ws_cmd), user_id, data);
-        if (!reply.isValid())
-        {
-            qWarning(DBus_log) << reply.error();
-        }
-    }
+    call_iface<void>("send_message_to_scheme", nullptr, scheme_id, QVariant::fromValue(ws_cmd), user_id, data);
 }
 
 } // namespace DBus

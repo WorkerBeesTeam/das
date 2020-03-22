@@ -16,6 +16,7 @@ namespace WebApi {
 Dbus_Handler::Dbus_Handler(Worker* worker) :
     worker_(worker)
 {
+    is_manual_connect_ = true;
 }
 
 void Dbus_Handler::set_stream_param(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data)
@@ -43,6 +44,13 @@ void Dbus_Handler::connect_to(QDBusInterface *iface)
     CONNECT_TO_WEBSOCK(stream_toggled, send_stream_toggled, uint32_t, uint32_t, bool);
     CONNECT_TO_WEBSOCK(stream_data, send_stream_data, uint32_t, QByteArray);
     CONNECT_TO_THIS(stream_param, set_stream_param, uint32_t, QByteArray);
+}
+
+void Dbus_Handler::server_down()
+{
+    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "send_connection_state", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, {}), Q_ARG(uint8_t, CS_SERVER_DOWN));
+    // TODO: send CS_SERVER_DOWN state for all web sock
 }
 
 } // namespace WebApi

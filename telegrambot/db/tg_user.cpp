@@ -5,9 +5,9 @@ namespace DB {
 
 Tg_User::Tg_User(int32_t id, uint32_t user_id, const QString &first_name,
                  const QString &last_name, const QString &user_name, const QString &lang, qint64 private_chat_id) :
-    id_(id), user_id_(user_id), first_name_(first_name),
-    last_name_(last_name), user_name_(user_name), lang_(lang),
-    private_chat_id_(private_chat_id)
+    id_(id), user_id_(user_id),
+    private_chat_id_(private_chat_id),
+    first_name_(first_name), last_name_(last_name), user_name_(user_name), lang_(lang)
 {
 }
 
