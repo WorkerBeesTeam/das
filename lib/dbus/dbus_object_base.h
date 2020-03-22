@@ -2,6 +2,7 @@
 #define DBUS_OBJECT_BASE_H
 
 #include <QDBusContext>
+#include <QLoggingCategory>
 
 #include <Das/db/dig_status.h>
 #include <Das/db/dig_param_value.h>
@@ -12,6 +13,9 @@
 #include <dbus/dbus_common.h>
 
 namespace Das {
+
+Q_DECLARE_LOGGING_CATEGORY(DBusLog)
+
 namespace DBus {
 
 /*
@@ -26,9 +30,11 @@ namespace DBus {
     void time_info(const Scheme_Info& scheme, const QTimeZone& tz, qint64 time_offset); \
     void structure_changed(const Scheme_Info& scheme, const QByteArray& data); \
     void dig_param_values_changed(const Scheme_Info& scheme, const QVector<DIG_Param_Value> &pack); \
-    void dig_mode_item_changed(const Scheme_Info& scheme, uint32_t mode_id, uint32_t group_id); \
-    void status_inserted(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id, const QStringList& args); \
-    void status_removed(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id);
+    void status_changed(const Scheme_Info& scheme, const QVector<DIG_Status>& pack); \
+    void dig_mode_changed(const Scheme_Info& scheme, const QVector<DIG_Mode> &pack); \
+    void stream_toggled(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, bool state); \
+    void stream_param(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data); \
+    void stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
 
 class Object_Base : public QObject, protected QDBusContext
 {
@@ -45,6 +51,7 @@ public:
     virtual uint8_t get_scheme_connection_state(const std::set<uint32_t> &scheme_group_set, uint32_t scheme_id) const = 0;
     virtual uint8_t get_scheme_connection_state2(uint32_t scheme_id) const = 0;
     virtual Scheme_Status get_scheme_status(uint32_t scheme_id) const = 0;
+    virtual void set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString& name) = 0;
     virtual QVector<Device_Item_Value> get_device_item_values(uint32_t scheme_id) const = 0;
 
     virtual void send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& data) = 0;

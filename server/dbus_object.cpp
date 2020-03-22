@@ -22,7 +22,7 @@ Dbus_Object::~Dbus_Object()
 
 std::shared_ptr<Helpz::DTLS::Server_Node> Dbus_Object::find_client(uint32_t scheme_id) const
 {
-    return server_->find_client([scheme_id](const Helpz::Network::Protocol* protocol) -> bool
+    return server_->find_client([scheme_id](const Helpz::Net::Protocol* protocol) -> bool
     {
         auto p = static_cast<const Protocol_Base*>(protocol);
         return p->id() == scheme_id;
@@ -36,7 +36,7 @@ bool Dbus_Object::is_connected(uint32_t scheme_id) const
 
 uint8_t Dbus_Object::get_scheme_connection_state(const std::set<uint32_t>& scheme_group_set, uint32_t scheme_id) const
 {
-    std::shared_ptr<Helpz::DTLS::Server_Node> node = server_->find_client([scheme_id, &scheme_group_set](const Helpz::Network::Protocol* protocol) -> bool
+    std::shared_ptr<Helpz::DTLS::Server_Node> node = server_->find_client([scheme_id, &scheme_group_set](const Helpz::Net::Protocol* protocol) -> bool
     {
         auto p = static_cast<const Protocol_Base*>(protocol);
         return p->id() == scheme_id && p->check_scheme_groups(scheme_group_set);
@@ -76,7 +76,7 @@ Scheme_Status Dbus_Object::get_scheme_status(uint32_t scheme_id) const
     {
         std::shared_ptr<Protocol_Base> p = std::static_pointer_cast<Protocol_Base>(node->protocol());
         scheme_status.connection_state_ = p->connection_state();
-        Ver_2_4::Server::Protocol* proto = dynamic_cast<Ver_2_4::Server::Protocol*>(p.get());
+        Ver::Server::Protocol* proto = dynamic_cast<Ver::Server::Protocol*>(p.get());
         if (proto)
         {
             scheme_status.status_set_ = proto->structure_sync()->get_statuses();
@@ -89,12 +89,23 @@ Scheme_Status Dbus_Object::get_scheme_status(uint32_t scheme_id) const
     return scheme_status;
 }
 
+void Dbus_Object::set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString &name)
+{
+    std::shared_ptr<Helpz::DTLS::Server_Node> node = find_client(scheme_id);
+    if (node)
+    {
+        std::shared_ptr<Ver::Server::Protocol> proto = std::dynamic_pointer_cast<Ver::Server::Protocol>(node->protocol());
+        if (proto)
+            return proto->set_scheme_name(user_id, name);
+    }
+}
+
 QVector<Device_Item_Value> Dbus_Object::get_device_item_values(uint32_t scheme_id) const
 {
     std::shared_ptr<Helpz::DTLS::Server_Node> node = find_client(scheme_id);
     if (node)
     {
-        std::shared_ptr<Ver_2_4::Server::Protocol> proto = std::dynamic_pointer_cast<Ver_2_4::Server::Protocol>(node->protocol());
+        std::shared_ptr<Ver::Server::Protocol> proto = std::dynamic_pointer_cast<Ver::Server::Protocol>(node->protocol());
         if (proto)
         {
             return proto->structure_sync()->get_devitem_values();
@@ -113,7 +124,7 @@ void Dbus_Object::send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uin
         uint16_t cmd = cmd_from_web_command(ws_cmd, scheme->protocol_version());
         if (cmd > 0)
         {
-            Helpz::Network::Protocol_Sender sender = std::move(scheme->send(cmd));
+            Helpz::Net::Protocol_Sender sender = std::move(scheme->send(cmd));
             sender << user_id;
             sender.writeRawData(data.constData(), data.size());
         }

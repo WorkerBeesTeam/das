@@ -12,11 +12,10 @@
 
 namespace Das {
 
-Q_LOGGING_CATEGORY(DBus_log, "DBus")
-
 Dbus_Handler::Dbus_Handler(Worker* worker) :
     worker_(worker)
 {
+    is_manual_connect_ = true;
 }
 
 void Dbus_Handler::connection_state_changed(const Scheme_Info& scheme, uint8_t state)
@@ -32,10 +31,11 @@ void Dbus_Handler::connection_state_changed(const Scheme_Info& scheme, uint8_t s
     {
     case CS_DISCONNECTED:
         dbg << "disconnected";
-        worker_->informer_->disconnected(scheme);
+        worker_->informer_->disconnected(scheme, false);
         break;
     case CS_DISCONNECTED_JUST_NOW:
         dbg << "disconnected just now";
+        worker_->informer_->disconnected(scheme, true);
         break;
     case CS_CONNECTED_JUST_NOW:
         dbg << "connected";
@@ -53,14 +53,22 @@ void Dbus_Handler::event_message_available(const Scheme_Info &scheme, const QVec
     worker_->informer_->send_event_messages(scheme, event_pack);
 }
 
-void Dbus_Handler::status_inserted(const Scheme_Info& scheme, quint32 group_id, quint32 info_id, const QStringList& args)
+void Dbus_Handler::status_changed(const Scheme_Info& scheme, const QVector<DIG_Status> &pack)
 {
-    worker_->informer_->add_status(scheme, {0, group_id, info_id, args});
+    worker_->informer_->change_status(scheme, pack);
 }
 
-void Dbus_Handler::status_removed(const Scheme_Info& scheme, quint32 group_id, quint32 info_id)
+void Dbus_Handler::connect_to(QDBusInterface *iface)
 {
-    worker_->informer_->remove_status(scheme, {0, group_id, info_id});
+#define CONNECT_TO_(a,b,x,y,...) \
+    connect(iface, SIGNAL(x(Scheme_Info, __VA_ARGS__)), \
+            a, SLOT(y(Scheme_Info, __VA_ARGS__)), b)
+
+#define CONNECT_TO_THIS(x,...) CONNECT_TO_(this, Qt::DirectConnection, x, x, __VA_ARGS__)
+
+    CONNECT_TO_THIS(connection_state_changed, uint8_t);
+    CONNECT_TO_THIS(event_message_available, QVector<Log_Event_Item>);
+    CONNECT_TO_THIS(status_changed, QVector<DIG_Status>);
 }
 
 } // namespace Das

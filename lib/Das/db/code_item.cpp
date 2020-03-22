@@ -1,7 +1,7 @@
 #include "code_item.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 Code_Item::Code_Item(uint id, const QString &name, uint32_t global_id, const QString &text) :
     Base_Type(id, name), global_id(global_id), text(text) {}
@@ -21,5 +21,5 @@ QDataStream &operator>>(QDataStream &ds, Code_Item &item)
     return ds >> static_cast<Base_Type&>(item) >> item.global_id >> item.text;
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

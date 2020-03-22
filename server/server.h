@@ -18,18 +18,15 @@
 
 namespace Das {
 /*
-namespace Database {
+namespace DB {
 class global;
-}
-namespace Network {
-class WebSocket;
 }
 
 //typedef std::shared_ptr<das::database::global> (*DatabaseOpenFunc)(const std::string&);
 
 struct AppGlobal {
-//    Network::WebSocket* webSock;
-    //using WebSocketThread = Helpz::SettingsThreadHelper<Network::WebSocket, QString, QString, quint16>;
+//    Net::WebSocket* webSock;
+    //using WebSocketThread = Helpz::SettingsThreadHelper<Net::WebSocket, QString, QString, quint16>;
     //extern WebSocketThread::Type* webSock_th;
 
 //    dtls::server* dtls_server;
@@ -41,11 +38,11 @@ struct AppGlobal {
 //    server_config* serv_conf;
 };
 
-extern Network::WebSocket* webSock;
+extern Net::WebSocket* webSock;
 extern Helpz::DTLS::Server_Thread* server_thread;
 */
 
-extern Helpz::Database::Connection_Info* db_conn_info;
+extern Helpz::DB::Connection_Info* db_conn_info;
 
 } // namespace Das
 

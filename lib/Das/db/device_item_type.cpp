@@ -1,7 +1,7 @@
 #include "device_item_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 Device_Item_Type::Device_Item_Type(uint32_t id, const QString &name, const QString &title, uint32_t group_type_id,
                      uint32_t sign_id, uint8_t register_type, uint8_t save_algorithm, uint32_t save_timer_id) :
@@ -49,5 +49,5 @@ uint32_t Device_Item_Type_Manager::save_timer_id(uint type_id) const
             ? device_item_type.save_timer_id : 0;
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

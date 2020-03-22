@@ -65,15 +65,16 @@ public:
 
     QScriptValue value_from_variant(const QVariant& data) const;
 signals:
-    void log_item_available(const Log_Value_Item& log_value_item);
     void param_value_changed(const DIG_Param_Value& param_value);
     void sct_connection_state_change(Device_Item*, bool value);
+    void dig_mode_available(const DIG_Mode& mode);
 
-    void status_added(uint32_t group_id, uint32_t info_id, const QStringList& args, uint32_t user_id);
-    void status_removed(uint32_t group_id, uint32_t info_id, uint32_t user_id);
+    void status_changed(const DIG_Status& status);
 
     void checker_stop();
     void checker_start();
+
+    void change_stream_state(uint32_t user_id, Device_Item* item, bool state);
 
     void add_event_message(Log_Event_Item event);
 //    QVariantList modbusRead(int serverAddress, uchar registerType = QModbusDataUnit::InputRegisters,
@@ -101,15 +102,16 @@ public slots:
     QVector<DIG_Status> get_group_statuses() const;
     QVector<Device_Item_Value> get_device_item_values() const;
 
-    void write_to_item(uint32_t user_id, uint32_t item_id, const QVariant &raw_data);
+    void toggle_stream(uint32_t user_id, uint32_t dev_item_id, bool state);
 
+    void write_to_item(uint32_t user_id, uint32_t item_id, const QVariant &raw_data);
     void write_to_item_file(const QString& file_name);
 private slots:
     void group_initialized(Device_item_Group* group);
 
     bool control_change_check(Device_Item* item, const QVariant& display_value, uint32_t user_id);
 
-    void dig_mode_item_changed(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
+    void dig_mode_changed(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
     void dig_param_changed(Param *param, uint32_t user_id = 0);
     void item_changed(Device_Item* item, uint32_t user_id, const QVariant& old_raw_value);
     void handler_exception(const QScriptValue &exception);

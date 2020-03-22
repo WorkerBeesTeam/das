@@ -1,7 +1,7 @@
 #include "sign_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

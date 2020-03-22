@@ -5,7 +5,7 @@
 #include "base_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 struct DAS_LIBRARY_SHARED_EXPORT Code_Item : public Base_Type
 {
@@ -24,9 +24,9 @@ public:
 QDataStream& operator<<(QDataStream& ds, const Code_Item& item);
 QDataStream& operator>>(QDataStream& ds, Code_Item& item);
 
-} // namespace Database
+} // namespace DB
 
-using Code_Item = Database::Code_Item;
+using Code_Item = DB::Code_Item;
 
 } // namespace Das
 

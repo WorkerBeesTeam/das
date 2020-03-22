@@ -252,8 +252,11 @@ void ServerApiCall::set_changed_param_values(const QVariantList &params)
     {
         param_pair = p.toList();
         qDebug() << "adding param, " << param_pair;
-        if (param_pair.length() == 2)
-            pack.push_back({param_pair.at(0).toUInt(), param_pair.at(1).toString()});
+        if (param_pair.length() == 4)
+            pack.push_back({param_pair.at(0).toLongLong(),
+                            param_pair.at(1).toUInt(),
+                            param_pair.at(2).toUInt(),
+                            param_pair.at(3).toString()});
     }
     qDebug() << "Write params" << params;
     qDebug() << "Count = " << pack.count();
@@ -435,7 +438,7 @@ void ServerApiCall::proc_scheme_detail(QNetworkReply *reply)
                             json.value(title_str).toString(),
                             json.value("description").toString(),
                             (DIG_Param_Type::Value_Type)json.value("type").toInt(),
-                            static_cast<uint>(json.value("groupType_id").toInt()),
+                            static_cast<uint>(json.value("group_type_id").toInt()),
                             static_cast<uint>(json.value("parent_id").toInt()) });
     }
 
@@ -459,7 +462,7 @@ void ServerApiCall::proc_scheme_detail(QNetworkReply *reply)
         for (const QJsonValue& group_val: groups_arr)
         {
             json = group_val.toObject();
-            Database::Device_Item_Group item_group( json.value(id_str).toInt(), json.value("title").toString(), sct->id(), json.value("type_id").toInt() );
+            DB::Device_Item_Group item_group( json.value(id_str).toInt(), json.value("title").toString(), sct->id(), json.value("type_id").toInt() );
 
             group = sct->add_group(std::move(item_group), json.value("mode_id").toInt());
             groups.push_back(group);
@@ -495,7 +498,7 @@ void ServerApiCall::proc_scheme_detail(QNetworkReply *reply)
         Device device(json.value(id_str).toInt(),
                       json.value(name_str).toString(),
                       json.value("extra").toObject().toVariantMap(),
-                      json.value("checker_id").toInt());
+                      json.value("plugin_id").toInt());
         dev = prj_.add_device( std::move(device) );
         item_arr = json.value("items").toArray();
         for (const QJsonValue& item_val: item_arr)

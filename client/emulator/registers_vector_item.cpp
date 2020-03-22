@@ -2,7 +2,7 @@
 #include "device_item_table_item.h"
 #include <QDebug>
 
-RegistersVectorItem::RegistersVectorItem(Das::Database::Device_Item_Type_Manager* mng,
+RegistersVectorItem::RegistersVectorItem(Das::DB::Device_Item_Type_Manager* mng,
                                          QModbusServer* modbus_server,
                                          QModbusDataUnit::RegisterType type,
                                          const QVector<Das::Device_Item*>& items,
@@ -64,7 +64,7 @@ QVector<Das::Device_Item*> RegistersVectorItem::items() const {
     return this->items_;
 }
 
-Das::Database::Device_Item_Type_Manager* RegistersVectorItem::manager() const {
+Das::DB::Device_Item_Type_Manager* RegistersVectorItem::manager() const {
     return this->device_item_type_manager_;
 }
 

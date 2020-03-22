@@ -7,7 +7,7 @@ namespace Das {
 
 class Worker;
 
-class Worker_Structure_Synchronizer : public Ver_2_4::Structure_Synchronizer_Base
+class Worker_Structure_Synchronizer : public Ver::Structure_Synchronizer_Base
 {
 public:
     Worker_Structure_Synchronizer(Worker* worker);

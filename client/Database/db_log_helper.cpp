@@ -7,9 +7,9 @@
 #include "db_log_helper.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
-Log_Helper::Log_Helper(Helpz::Database::Thread* db_thread) :
+Log_Helper::Log_Helper(Helpz::DB::Thread* db_thread) :
     db_(db_thread)
 {
 }
@@ -27,9 +27,9 @@ void Log_Helper::log_event_data(const QPair<uint32_t, uint32_t>& range, std::fun
 template<typename T>
 void Log_Helper::log_data(const QPair<uint32_t, uint32_t>& range, std::function<void (const QVector<uint32_t>&, const QVector<T>&)>& callback)
 {
-    db_->add_query([range, callback](Helpz::Database::Base* db)
+    db_->add_query([range, callback](Helpz::DB::Base* db)
     {
-        QSqlQuery q = db->select(Helpz::Database::db_table<T>(), QString("WHERE id >= %1 AND id <= %2").arg(range.first).arg(range.second));
+        QSqlQuery q = db->select(Helpz::DB::db_table<T>(), QString("WHERE id >= %1 AND id <= %2").arg(range.first).arg(range.second));
         if (q.isActive())
         {
             uint32_t id = 0, next_id = range.first;
@@ -44,7 +44,7 @@ void Log_Helper::log_data(const QPair<uint32_t, uint32_t>& range, std::function<
                 }
                 ++next_id;
 
-                data.push_back(Helpz::Database::db_build<T>(q));
+                data.push_back(Helpz::DB::db_build<T>(q));
             }
 
             callback(not_found, data);
@@ -52,5 +52,5 @@ void Log_Helper::log_data(const QPair<uint32_t, uint32_t>& range, std::function<
     });
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

@@ -18,7 +18,7 @@ class DevicesTableModel : public QAbstractItemModel
     typedef QVector<Das::Device*> Devices_Vector;
 
     QVector<DeviceTableItem*> modbus_devices_vector_;
-    Das::Database::Device_Item_Type_Manager* device_item_type_manager_;
+    Das::DB::Device_Item_Type_Manager* device_item_type_manager_;
 
     void add_items(const Devices_Vector* devices, QModbusServer* modbus_server);
 
@@ -29,8 +29,8 @@ public slots:
 signals:
     void call_script(Das::Device*);
 public:
-    DevicesTableModel(Das::Database::Device_Item_Type_Manager* mng, const QVector<Das::Device *> *devices_vector, QModbusServer *modbus_server, QObject *parent = nullptr);
-    DevicesTableModel(Das::Database::Device_Item_Type_Manager* mng, QObject *parent = nullptr);
+    DevicesTableModel(Das::DB::Device_Item_Type_Manager* mng, const QVector<Das::Device *> *devices_vector, QModbusServer *modbus_server, QObject *parent = nullptr);
+    DevicesTableModel(Das::DB::Device_Item_Type_Manager* mng, QObject *parent = nullptr);
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;

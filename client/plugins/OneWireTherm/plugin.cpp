@@ -19,7 +19,7 @@ OneWireThermPlugin::~OneWireThermPlugin()
     delete therm_thread_;
 }
 
-void OneWireThermPlugin::configure(QSettings */*settings*/, Scheme */*scheme*/)
+void OneWireThermPlugin::configure(QSettings */*settings*/)
 {
     therm_thread_ = new Therm_Task_Thread();
     therm_thread_->start();

@@ -16,7 +16,7 @@ android {
 SOURCES += \
     db/device_item_group.cpp \
     db/dig_mode.cpp \
-    db/dig_mode_item.cpp \
+    db/dig_mode_type.cpp \
     db/dig_param.cpp \
     db/dig_param_type.cpp \
     db/dig_status.cpp \
@@ -30,13 +30,17 @@ SOURCES += \
     db/translation.cpp \
     device_item.cpp \
     device_item_group.cpp \
+    log/log_base_item.cpp \
+    log/log_event_item.cpp \
+    log/log_mode_item.cpp \
+    log/log_param_item.cpp \
+    log/log_status_item.cpp \
+    log/log_value_item.cpp \
     proto_scheme.cpp \
     scheme.cpp \
     section.cpp \
     timerange.cpp \
     param/paramgroup.cpp \
-    checkerinterface.cpp \
-    log/log_pack.cpp \
     log/log_type.cpp \
     lib.cpp \
     device.cpp \
@@ -50,13 +54,14 @@ SOURCES += \
     db/device_item_value.cpp \
     db/device_item.cpp \
     db/device_extra_params.cpp \
-    db/save_timer.cpp
+    db/save_timer.cpp \
+    checker_interface.cpp
 
 HEADERS +=\
     db/auth_group.h \
     db/device_item_group.h \
     db/dig_mode.h \
-    db/dig_mode_item.h \
+    db/dig_mode_type.h \
     db/dig_param.h \
     db/dig_param_type.h \
     db/dig_status.h \
@@ -69,12 +74,17 @@ HEADERS +=\
     db/translation.h \
     device_item.h \
     device_item_group.h \
+    log/log_base_item.h \
+    log/log_event_item.h \
+    log/log_mode_item.h \
+    log/log_param_item.h \
+    log/log_status_item.h \
+    log/log_value_item.h \
     proto_scheme.h \
     scheme.h \
     section.h \
     timerange.h \
     param/paramgroup.h \
-    checkerinterface.h \
     commands.h \
     log/log_pack.h \
     log/log_type.h \
@@ -91,7 +101,8 @@ HEADERS +=\
     db/device_item_value.h \
     db/device_item.h \
     db/device_extra_params.h \
-    db/save_timer.h
+    db/save_timer.h \
+    checker_interface.h
 
 DESTDIR = $${OUT_PWD}/../..
 

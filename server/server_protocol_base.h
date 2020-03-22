@@ -12,7 +12,7 @@
 
 namespace Das {
 
-namespace Database {
+namespace DB {
 class global;
 class Thread_Manager;
 }
@@ -21,7 +21,7 @@ namespace Server {
 Q_DECLARE_LOGGING_CATEGORY(Log)
 Q_DECLARE_LOGGING_CATEGORY(DetailLog)
 
-class Protocol_Base : public Helpz::Network::Protocol, public Scheme_Info
+class Protocol_Base : public Helpz::Net::Protocol, public Scheme_Info
 {
 public:
     Protocol_Base(Work_Object* work_object);
@@ -37,7 +37,7 @@ public:
 
     virtual void synchronize(bool full = false) = 0;
 
-    bool operator ==(const Helpz::Network::Protocol& o) const override;
+    bool operator ==(const Helpz::Net::Protocol& o) const override;
 
     const QString &name() const;
     void set_name(const QString& name);
@@ -52,8 +52,8 @@ public:
 
     QDateTime get_value_time(qint64 time_msecs) const;
 
-    std::shared_ptr<Database::global> db();
-    Helpz::Database::Thread* db_thread();
+    std::shared_ptr<DB::global> db();
+    Helpz::DB::Thread* db_thread();
 
     Work_Object* work_object();
 protected:

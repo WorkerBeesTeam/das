@@ -8,7 +8,7 @@
 #include <plus/das/structure_synchronizer_base.h>
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Client {
 
 //using namespace Das::Client;
@@ -18,14 +18,16 @@ class Protocol;
 class Structure_Synchronizer : public Structure_Synchronizer_Base
 {
 public:
-    Structure_Synchronizer(Helpz::Database::Thread *db_thread, Protocol* protocol);
+    Structure_Synchronizer(Helpz::DB::Thread *db_thread, Protocol* protocol);
 
     static QString get_scheme_group_users_fill_sql();
 
     void send_scheme_structure(uint8_t struct_type, uint8_t msg_id, QIODevice* data_dev);
 private:
+    static Helpz::Net::Protocol_Sender send_answer(Ver::Client::Protocol& proto, uint8_t struct_type, uint8_t msg_id);
+
     void send_structure_items_hash(uint8_t struct_type, uint8_t msg_id);
-    void add_structure_items_hash(uint8_t struct_type, QDataStream& ds, Helpz::Database::Base& db);
+    void add_structure_items_hash(uint8_t struct_type, uint8_t msg_id, Helpz::DB::Base& db);
 
     void send_structure_items(const QVector<uint32_t>& id_vect, uint8_t struct_type, uint8_t msg_id);
 
@@ -39,7 +41,7 @@ private:
 };
 
 } // namespace Client
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das
 
 #endif // DAS_CLIENT_STRUCTURE_SYNCHRONIZER_H

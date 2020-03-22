@@ -7,13 +7,13 @@
 #include <Das/device_item.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 struct Plugin_Type;
 struct Device_Item_Type_Manager;
 }
 class Scheme;
 
-class DAS_LIBRARY_SHARED_EXPORT Device : public QObject, public Database::Base_Type, public Database::Device_Extra_Params
+class DAS_LIBRARY_SHARED_EXPORT Device : public QObject, public DB::Base_Type, public DB::Device_Extra_Params
 {
     Q_OBJECT
     Q_PROPERTY(uint32_t id READ id WRITE set_id)
@@ -33,7 +33,7 @@ public:
     ~Device();
 
     uint32_t plugin_id() const;
-    void set_plugin_id(uint32_t checker_id);
+    void set_plugin_id(uint32_t plugin_id);
 
     uint32_t check_interval() const;
     void set_check_interval(uint32_t check_interval);
@@ -42,8 +42,8 @@ public:
 
     QObject* checker();
 
-    Database::Device_Item_Type_Manager *type_mng() const;
-    Database::Plugin_Type *checker_type() const;
+    DB::Device_Item_Type_Manager *type_mng() const;
+    DB::Plugin_Type *checker_type() const;
 
     const QVector< Device_Item* >& items() const;
 
@@ -52,19 +52,26 @@ public:
 
     void set_scheme(Scheme* scheme);
 
+    struct Data_Item
+    {
+        uint32_t user_id_;
+        qint64 timestamp_msecs_;
+        QVariant raw_data_;
+    };
+
 signals:
     void changed();
 public:
     QString toString() const;
 public slots:
-    void set_device_items_values(const std::map<Das::Device_Item*, QVariant>& device_items_values, bool is_connection_force = false);
+    void set_device_items_values(const std::map<Device_Item*, Device::Data_Item>& device_items_values, bool is_connection_force = false);
     void set_device_items_disconnect(const std::vector<Device_Item*>& device_items);
 private:
     uint32_t plugin_id_, check_interval_;
     QVector< Device_Item* > items_;
 
-    Database::Device_Item_Type_Manager* type_mng_;
-    Database::Plugin_Type* checker_type_;
+    DB::Device_Item_Type_Manager* type_mng_;
+    DB::Plugin_Type* checker_type_;
 
     friend QDataStream &operator>>(QDataStream& ds, Device& dev);
 };

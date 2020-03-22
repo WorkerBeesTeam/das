@@ -16,7 +16,7 @@ Q_LOGGING_CATEGORY(RandomLog, "random")
 
 RandomPlugin::RandomPlugin() : QObject() {}
 
-void RandomPlugin::configure(QSettings */*settings*/, Scheme */*scheme*/)
+void RandomPlugin::configure(QSettings */*settings*/)
 {
     using Helpz::Param;
 //    auto [interval] = Helpz::SettingsHelper(
@@ -32,11 +32,17 @@ bool RandomPlugin::check(Device* dev)
     if (!dev)
         return false;
 
+    std::vector<Device_Item*> device_items_disconected;
+    std::map<Device_Item*, Device::Data_Item> device_items_values;
+    const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
+
     for (Device_Item* item: dev->items())
     {
         if (writed_list_.find(item->id()) != writed_list_.cend())
             continue;
-        switch (static_cast<Device_Item_Type::Register_Type>(item->register_type())) {
+
+        switch (static_cast<Device_Item_Type::Register_Type>(item->register_type()))
+        {
         case Device_Item_Type::RT_DISCRETE_INPUTS:
         case Device_Item_Type::RT_COILS:
             value = random(-32767, 32768) > 0;
@@ -47,10 +53,28 @@ bool RandomPlugin::check(Device* dev)
             break;
         default:
             value.clear();
+            device_items_disconected.push_back(item);
             break;
         }
 
-        QMetaObject::invokeMethod(item, "set_raw_value", Qt::QueuedConnection, Q_ARG(const QVariant&, value));
+        if (value.isValid())
+        {
+            Device::Data_Item data_item{0, timestamp_msecs, value};
+            device_items_values.emplace(item, std::move(data_item));
+        }
+    }
+
+    if (!device_items_values.empty())
+    {
+        QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
+                                  QArgument<std::map<Device_Item*, Device::Data_Item>>
+                                  ("std::map<Device_Item*, Device::Data_Item>", device_items_values), Q_ARG(bool, true));
+    }
+
+    if (!device_items_disconected.empty())
+    {
+        QMetaObject::invokeMethod(dev, "set_device_items_disconnect", Qt::QueuedConnection,
+                                  Q_ARG(std::vector<Device_Item*>, device_items_disconected));
     }
 
     return true;
@@ -60,15 +84,28 @@ void RandomPlugin::stop() {}
 
 void RandomPlugin::write(std::vector<Write_Cache_Item>& items)
 {
+    std::map<Device_Item*, Device::Data_Item> device_items_values;
+    const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
+
     for (const Write_Cache_Item& item: items)
     {
-        QMetaObject::invokeMethod(item.dev_item_, "set_raw_value", Qt::QueuedConnection,
-                                  Q_ARG(const QVariant&, item.raw_data_), Q_ARG(bool, false), Q_ARG(uint32_t, item.user_id_));
+        Device::Data_Item data_item{item.user_id_, timestamp_msecs, item.raw_data_};
+        device_items_values.emplace(item.dev_item_, std::move(data_item));
+
         writed_list_.insert(item.dev_item_->id());
+    }
+
+    if (!device_items_values.empty())
+    {
+        Device* dev = device_items_values.begin()->first->device();
+        QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
+                                  QArgument<std::map<Device_Item*, Device::Data_Item>>
+                                  ("std::map<Device_Item*, Device::Data_Item>", device_items_values), Q_ARG(bool, true));
     }
 }
 
-int RandomPlugin::random(int min, int max) const {
+int RandomPlugin::random(int min, int max) const
+{
     return min + (qrand() % static_cast<int>(max - min + 1));
 }
 

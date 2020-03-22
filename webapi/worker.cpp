@@ -35,15 +35,17 @@ Worker::Worker(QObject *parent) :
 
     init_logging(&s);
     init_database(&s);
-    init_dbus_interface(&s);
     init_jwt_helper(&s);
     init_websocket_manager(&s);
+    init_dbus_interface(&s);
     init_web_command(&s);
     init_restful(&s);
+    init_stream_server(&s);
 }
 
 Worker::~Worker()
 {
+    delete stream_server_;
     delete restful_;
 
     web_command_th_->quit();
@@ -86,17 +88,17 @@ void Worker::init_database(QSettings* s)
     db_conn_info_ = Helpz::SettingsHelper(
                 s, "Database",
                 Helpz::Param{"Name", "das"},
-                Helpz::Param{"User", "DasUser"},
+                Helpz::Param{"User", "das"},
                 Helpz::Param{"Password", QString()},
                 Helpz::Param{"Host", "localhost"},
                 Helpz::Param{"Port", 3306},
                 Helpz::Param{"Prefix", "das_"},
                 Helpz::Param{"Driver", "QMYSQL"}, // QPSQL
-                Helpz::Param{"ConnectOptions", QString()}
-                ).ptr<Helpz::Database::Connection_Info>();
+                Helpz::Param{"ConnectOptions", "CLIENT_FOUND_ROWS=1;MYSQL_OPT_RECONNECT=1"}
+                ).ptr<Helpz::DB::Connection_Info>();
 
-    Helpz::Database::Connection_Info::set_common(*db_conn_info_);
-    db_pending_thread_ = new Helpz::Database::Thread{Helpz::Database::Connection_Info(*db_conn_info_)};
+    Helpz::DB::Connection_Info::set_common(*db_conn_info_);
+    db_pending_thread_ = new Helpz::DB::Thread{Helpz::DB::Connection_Info(*db_conn_info_)};
 }
 
 void Worker::init_dbus_interface(QSettings* s)
@@ -126,11 +128,15 @@ void Worker::init_websocket_manager(QSettings* s)
     websock_th_ = Websocket_Thread()(
                 s, "WebSocket",
                 jwt_helper_,
+                Helpz::Param{"Address", QString()},
                 Helpz::Param<quint16>{"Port", 25589},
                 Helpz::Param{"CertPath", QString()},
                 Helpz::Param{"KeyPath", QString()});
     websock_th_->start();
-//    connect(websock_th_->ptr(), &Network::WebSocket::closed, []() {});
+//    connect(websock_th_->ptr(), &Net::WebSocket::closed, []() {});
+    connect(websock_th_->ptr(), &Net::WebSocket::stream_stoped, [this](uint32_t scheme_id, uint32_t dev_item_id) {
+        stream_server_->remove_stream(scheme_id, dev_item_id);
+    });
 }
 
 void Worker::init_web_command(QSettings* /*s*/)
@@ -138,8 +144,9 @@ void Worker::init_web_command(QSettings* /*s*/)
     assert(websock_th_);
     web_command_th_ = new WebCommandThread(websock_th_->ptr());
     web_command_th_->start();
-    connect(web_command_th_->ptr(), &Network::WebCommand::get_scheme_connection_state, dbus_, &DBus::Interface::get_scheme_connection_state, Qt::BlockingQueuedConnection);
-    connect(web_command_th_->ptr(), &Network::WebCommand::send_message_to_scheme, dbus_, &DBus::Interface::send_message_to_scheme, Qt::QueuedConnection);
+    connect(web_command_th_->ptr(), &Net::WebCommand::get_scheme_connection_state, dbus_, &DBus::Interface::get_scheme_connection_state, Qt::BlockingQueuedConnection);
+    connect(web_command_th_->ptr(), &Net::WebCommand::get_scheme_connection_state2, dbus_, &DBus::Interface::get_scheme_connection_state2, Qt::BlockingQueuedConnection);
+    connect(web_command_th_->ptr(), &Net::WebCommand::send_message_to_scheme, dbus_, &DBus::Interface::send_message_to_scheme, Qt::QueuedConnection);
 }
 
 void Worker::init_restful(QSettings* s)
@@ -147,11 +154,19 @@ void Worker::init_restful(QSettings* s)
     Rest::Config rest_config = Helpz::SettingsHelper(
         s, "Rest",
         Helpz::Param{"Thread_Count", 3},
-        Helpz::Param<std::string>{"Address", "0.0.0.0"},
+        Helpz::Param<std::string>{"Address", "localhost"},
         Helpz::Param<std::string>{"Port", "8123"}
     ).obj<Rest::Config>();
 
     restful_ = new Rest::Restful{dbus_, jwt_helper_, rest_config};
+}
+
+void Worker::init_stream_server(QSettings *s)
+{
+    stream_server_ = Helpz::SettingsHelper(
+        s, "Stream", websock_th_->ptr(),
+        Helpz::Param<uint16_t>{"Port", 6731}
+    ).ptr<Stream_Server_Thread>();
 }
 
 } // namespace WebApi

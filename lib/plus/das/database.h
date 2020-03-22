@@ -15,20 +15,20 @@
 #include <Das/type_managers.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 
-class Helper : public QObject, public Helpz::Database::Base
+class Helper : public QObject, public Helpz::DB::Base
 {
     Q_OBJECT
 public:
     Helper(QObject* parent = nullptr);
-    Helper(const Helpz::Database::Connection_Info &info, const QString& name = QSqlDatabase::defaultConnection, QObject* parent = nullptr);
+    Helper(const Helpz::DB::Connection_Info &info, const QString& name = QSqlDatabase::defaultConnection, QObject* parent = nullptr);
 
     static QString get_default_suffix();
     static QString get_default_where_suffix();
     static QVector<Save_Timer> get_save_timer_vect();
     static QVector<Code_Item> get_code_item_vect();
-    static bool set_mode(uint32_t mode_id, uint32_t group_id);
+    static bool set_mode(const DIG_Mode& mode);
 
     void fill_types(Type_Managers *type_mng);
 
@@ -39,7 +39,7 @@ public:
 private:
 };
 
-} // namespace Database
+} // namespace DB
 } // namespace Das
 
 #endif // DAS_DATABASE_H

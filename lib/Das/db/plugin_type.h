@@ -4,12 +4,12 @@
 #include <QPluginLoader>
 #include <memory>
 
-#include <Das/checkerinterface.h>
+#include <Das/checker_interface.h>
 #include <Helpz/db_meta.h>
 #include "base_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Plugin_Type : public Base_Type
 {
@@ -26,7 +26,7 @@ public:
 
     bool need_it = false;
     std::shared_ptr<QPluginLoader> loader;
-    Checker_Interface* checker = nullptr;
+    Checker::Interface* checker = nullptr;
 
     const QStringList& param_names_device() const;
     void set_param_names_device(const QStringList& param_names_device);
@@ -51,10 +51,10 @@ QDataStream& operator>>(QDataStream& ds, Plugin_Type& item);
 
 struct DAS_LIBRARY_SHARED_EXPORT Plugin_Type_Manager : public Base_Type_Manager<Plugin_Type> {};
 
-} // namespace Database
+} // namespace DB
 
-using Plugin_Type = Database::Plugin_Type;
-using Plugin_Type_Manager = Database::Plugin_Type_Manager;
+using Plugin_Type = DB::Plugin_Type;
+using Plugin_Type_Manager = DB::Plugin_Type_Manager;
 
 } // namespace Das
 

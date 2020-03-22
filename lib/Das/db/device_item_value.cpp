@@ -5,43 +5,40 @@
 #include "device_item_value.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
-Device_Item_Value::Device_Item_Value(uint32_t device_item_id, const QVariant& raw, const QVariant& display) :
-    id_(0), device_item_id_(device_item_id), raw_(raw), display_(display)
+Device_Item_Value::Device_Item_Value(qint64 timestamp_msecs, uint32_t user_id, uint32_t device_item_id, const QVariant& raw, const QVariant& display, bool flag) :
+    Log_Base_Item(0, timestamp_msecs, user_id, flag), item_id_(device_item_id), raw_value_(raw), value_(display)
 {
 }
 
-uint32_t Device_Item_Value::id() const { return id_; }
-void Device_Item_Value::set_id(uint32_t id) { id_ = id; }
+uint32_t Device_Item_Value::item_id() const { return item_id_; }
+void Device_Item_Value::set_item_id(uint32_t device_item_id) { item_id_ = device_item_id; }
 
-uint32_t Device_Item_Value::device_item_id() const { return device_item_id_; }
-void Device_Item_Value::set_device_item_id(uint32_t device_item_id) { device_item_id_ = device_item_id; }
+const QVariant &Device_Item_Value::raw_value() const { return raw_value_; }
+void Device_Item_Value::set_raw_value(const QVariant& raw) { raw_value_ = raw; }
 
-QVariant Device_Item_Value::raw() const { return raw_; }
-void Device_Item_Value::set_raw(const QVariant& raw) { raw_ = raw; }
-
-QVariant Device_Item_Value::raw_to_db() const
+QVariant Device_Item_Value::raw_value_to_db() const
 {
-    return prepare_value(raw_);
+    return prepare_value(raw_value_);
 }
 
-void Device_Item_Value::set_raw_from_db(const QVariant& value)
+void Device_Item_Value::set_raw_value_from_db(const QVariant& value)
 {
-    raw_ = variant_from_string(value);
+    raw_value_ = variant_from_string(value);
 }
 
-QVariant Device_Item_Value::display() const { return display_; }
-void Device_Item_Value::set_display(const QVariant& display) { display_ = display; }
+const QVariant &Device_Item_Value::value() const { return value_; }
+void Device_Item_Value::set_value(const QVariant& display) { value_ = display; }
 
-QVariant Device_Item_Value::display_to_db() const
+QVariant Device_Item_Value::value_to_db() const
 {
-    return prepare_value(display_);
+    return prepare_value(value_);
 }
 
-void Device_Item_Value::set_display_from_db(const QVariant& value)
+void Device_Item_Value::set_value_from_db(const QVariant& value)
 {
-    display_ = variant_from_string(value);
+    value_ = variant_from_string(value);
 }
 
 /*static*/ QVariant Device_Item_Value::prepare_value(const QVariant &var)
@@ -68,7 +65,7 @@ void Device_Item_Value::set_display_from_db(const QVariant& value)
 
 /*static*/ QVariant Device_Item_Value::variant_from_string(const QVariant &var)
 {
-    if (!var.isValid() || var.type() != QVariant::String)
+    if (!var.isValid() || (var.type() != QVariant::String && var.type() != QVariant::ByteArray))
         return var;
 
     QString text = var.toString();
@@ -77,7 +74,11 @@ void Device_Item_Value::set_display_from_db(const QVariant& value)
 
     if (text.length() > 2)
     {
-        if ((text.at(0) == '[' && text.at(text.length() - 1) == ']') || (text.at(0) == '{' && text.at(text.length() - 1) == '}'))
+        if (text.length() == 4 && text.toLower() == "true")
+            return true;
+        else if (text.length() == 5 && text.toLower() == "false")
+            return false;
+        else if ((text.at(0) == '[' && text.at(text.length() - 1) == ']') || (text.at(0) == '{' && text.at(text.length() - 1) == '}'))
         {
             QJsonParseError parse_error;
             parse_error.error = QJsonParseError::NoError;
@@ -89,6 +90,8 @@ void Device_Item_Value::set_display_from_db(const QVariant& value)
                 if (doc.isObject())
                     return doc.object().toVariantMap();
             }
+            else
+                return text;
         }
         else if (text.startsWith("base64:"))
         {
@@ -114,23 +117,32 @@ void Device_Item_Value::set_display_from_db(const QVariant& value)
             return dbl_val;
     }
 
-    if (text.toLower() == "true")
-        return true;
-    else if (text.toLower() == "false")
-        return false;
-
     return text;
+}
+
+bool Device_Item_Value::is_big_value() const
+{
+    return is_big_value(raw_value_) || is_big_value(value_);
+}
+
+bool Device_Item_Value::is_big_value(const QVariant &val)
+{
+    if (val.data_ptr().type == QVariant::ByteArray)
+        return static_cast<const QByteArray*>(val.constData())->size() > 8192;
+    else if (val.data_ptr().type == QVariant::String)
+        return static_cast<const QString*>(val.constData())->size() > 8192;
+    return false;
 }
 
 QDataStream& operator>>(QDataStream& ds, Device_Item_Value& item)
 {
-    return ds >> item.device_item_id_ >> item.raw_ >> item.display_;
+    return ds >> static_cast<Log_Base_Item&>(item) >> item.item_id_ >> item.raw_value_ >> item.value_;
 }
 
 QDataStream& operator<<(QDataStream& ds, const Device_Item_Value& item)
 {
-    return ds << item.device_item_id() << item.raw() << item.display();
+    return ds << static_cast<const Log_Base_Item&>(item) << item.item_id() << item.raw_value() << item.value();
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

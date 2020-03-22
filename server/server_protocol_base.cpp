@@ -31,7 +31,7 @@ void Protocol_Base::set_connection_state(uint8_t connection_state)
     }
 }
 
-bool Protocol_Base::operator ==(const Helpz::Network::Protocol &o) const
+bool Protocol_Base::operator ==(const Helpz::Net::Protocol &o) const
 {
     return id() > 0 && id() == static_cast<const Protocol_Base &>(o).id();
 }
@@ -60,12 +60,12 @@ QDateTime Protocol_Base::get_value_time(qint64 time_msecs) const
     }
 }
 
-std::shared_ptr<Database::global> Protocol_Base::db()
+std::shared_ptr<DB::global> Protocol_Base::db()
 {
     return work_object_->db_thread_mng_->get_db();
 }
 
-Helpz::Database::Thread* Protocol_Base::db_thread()
+Helpz::DB::Thread* Protocol_Base::db_thread()
 {
     return work_object_->db_thread_mng_->thread();
 }

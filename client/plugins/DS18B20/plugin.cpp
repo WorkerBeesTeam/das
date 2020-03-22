@@ -32,7 +32,7 @@ DS18B20_Plugin::~DS18B20_Plugin()
         delete one_wire_;
 }
 
-void DS18B20_Plugin::configure(QSettings *settings, Scheme */*scheme*/)
+void DS18B20_Plugin::configure(QSettings *settings)
 {
     using Helpz::Param;
     auto [pin] = Helpz::SettingsHelper<Param<uint16_t>>
@@ -83,7 +83,9 @@ bool DS18B20_Plugin::check(Device* dev)
     if (!rom_array_ || rom_count_ < max_num)
         search_rom();
 
-    std::map<Device_Item*, QVariant> device_items_values;
+    const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
+
+    std::map<Device_Item*, Device::Data_Item> device_items_values;
     std::vector<Device_Item*> device_items_disconnected;
     double value;
 
@@ -91,7 +93,10 @@ bool DS18B20_Plugin::check(Device* dev)
     {
         value = get_temperature(it->first, is_ok);
         if (is_ok)
-            device_items_values.emplace(it->second, std::floor(value * 10) / 10);
+        {
+            Device::Data_Item data_item{0, timestamp_msecs, std::floor(value * 10) / 10};
+            device_items_values.emplace(it->second, std::move(data_item));
+        }
         else
             device_items_disconnected.push_back(it->second);
     }
@@ -99,7 +104,7 @@ bool DS18B20_Plugin::check(Device* dev)
     if (!device_items_values.empty())
     {
         QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
-                                  QArgument<std::map<Device_Item*, QVariant>>("std::map<Device_Item*, QVariant>", device_items_values),
+                                  QArgument<std::map<Device_Item*, Device::Data_Item>>("std::map<Device_Item*, Device::Data_Item>", device_items_values),
                                   Q_ARG(bool, true));
     }
 

@@ -2,7 +2,7 @@
 #include "dig_param_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 DIG_Param_Type::DIG_Param_Type(uint id, const QString &name, const QString &title, QString description, Value_Type value_type,
                      uint group_type_id, uint parent_id) :
@@ -58,5 +58,5 @@ QDataStream &operator>>(QDataStream &ds, DIG_Param_Type &param)
     return ds >> base >> param.description_ >> reinterpret_cast<quint8&>(param.value_type_) >> param.group_type_id >> param.parent_id;
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

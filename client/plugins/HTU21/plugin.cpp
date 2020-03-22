@@ -39,7 +39,7 @@ HTU21Plugin::~HTU21Plugin()
 {
 }
 
-void HTU21Plugin::configure(QSettings *settings, Scheme *scheme)
+void HTU21Plugin::configure(QSettings *settings)
 {
     /*
     using Helpz::Param;
@@ -81,37 +81,36 @@ bool HTU21Plugin::check(Device* dev)
     int fd = 0;
 #endif
 
-    std::map<Device_Item*, QVariant> device_items_values;
+    std::map<Device_Item*, Device::Data_Item> device_items_values;
     std::vector<Device_Item*> device_items_disconnected;
     QString type;
     bool is_error;
+    double value;
+
+    const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
 
     for (Device_Item * item: dev->items())
     {
+        is_error = true;
         type = item->param("type").toString().trimmed().toLower();
         if (type == "temp")
-        {
-            const double value = get_temperature(fd, is_error);
-            if (is_error)
-                device_items_disconnected.push_back(item);
-            else
-                device_items_values.emplace(item, std::floor(value * 10) / 10);
-
-        }
+            value = get_temperature(fd, is_error);
         else if (type == "humidity")
+            value = get_humidity(fd, is_error);
+
+        if (is_error)
+            device_items_disconnected.push_back(item);
+        else
         {
-            const double value = get_humidity(fd, is_error);
-            if (is_error)
-                device_items_disconnected.push_back(item);
-            else
-                device_items_values.emplace(item, std::floor(value * 10) / 10);
+            Device::Data_Item data_item{0, timestamp_msecs, std::floor(value * 10) / 10};
+            device_items_values.emplace(item, std::move(data_item));
         }
     }
 
     if (!device_items_values.empty())
     {
         QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
-                                  QArgument<std::map<Device_Item*, QVariant>>("std::map<Device_Item*, QVariant>", device_items_values),
+                                  QArgument<std::map<Device_Item*, Device::Data_Item>>("std::map<Device_Item*, Device::Data_Item>", device_items_values),
                                   Q_ARG(bool, true));
     }
 

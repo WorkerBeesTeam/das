@@ -8,6 +8,7 @@
 #include <Helpz/db_thread.h>
 
 #include "webcommand.h"
+#include "stream/stream_server_thread.h"
 
 namespace Das {
 
@@ -40,25 +41,28 @@ private:
     void init_websocket_manager(QSettings *s);
     void init_web_command(QSettings* s);
     void init_restful(QSettings *s);
+    void init_stream_server(QSettings *s);
 signals:
 private slots:
 private:
-    Helpz::Database::Connection_Info* db_conn_info_;
-    Helpz::Database::Thread* db_pending_thread_;
+    Helpz::DB::Connection_Info* db_conn_info_;
+    Helpz::DB::Thread* db_pending_thread_;
 
     Dbus_Handler* dbus_handler_;
     DBus::Interface* dbus_;
     friend class Dbus_Handler;
 
-    using Websocket_Thread = Helpz::SettingsThreadHelper<Network::WebSocket, std::shared_ptr<JWT_Helper>, quint16, QString, QString>;
+    using Websocket_Thread = Helpz::SettingsThreadHelper<Net::WebSocket, std::shared_ptr<JWT_Helper>, QString, quint16, QString, QString>;
     Websocket_Thread::Type* websock_th_;
 
-    using WebCommandThread = Helpz::ParamThread<Network::WebCommand, Network::WebSocket*>;
+    using WebCommandThread = Helpz::ParamThread<Net::WebCommand, Net::WebSocket*>;
     WebCommandThread* web_command_th_;
 
     Rest::Restful* restful_;
 
     std::shared_ptr<JWT_Helper> jwt_helper_;
+
+    Stream_Server_Thread* stream_server_;
 };
 
 typedef Helpz::Service::Impl<Worker> Service;

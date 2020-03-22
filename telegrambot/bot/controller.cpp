@@ -19,40 +19,42 @@
 #include <Helpz/db_builder.h>
 
 #include <dbus/dbus_interface.h>
+#include <Das/db/dig_status_type.h>
 #include <Das/commands.h>
 
 #include "db/tg_auth.h"
 #include "db/tg_user.h"
 #include "db/tg_subscriber.h"
 
-#include "bot.h"
+#include "elements.h"
+#include "controller.h"
 
 namespace Das {
+namespace Bot {
 
 using namespace std;
-using namespace Helpz::Database;
+using namespace Helpz::DB;
 
-Bot::Bot(DBus::Interface *dbus_iface, const string &token, const string& webhook_url, uint16_t port, const string &webhook_cert) :
-    QThread(),
+Controller::Controller(DBus::Interface *dbus_iface, const string &token, const string& webhook_url, uint16_t port, const string &webhook_cert) :
+    QThread(), Bot_Base(dbus_iface),
     stop_flag_(false), port_(port), bot_(nullptr), server_(nullptr), token_(token),
-    webhook_url_(webhook_url), webhook_cert_(webhook_cert),
-    dbus_iface_(dbus_iface)
+    webhook_url_(webhook_url), webhook_cert_(webhook_cert)
 {
 }
 
-Bot::~Bot()
+Controller::~Controller()
 {
     stop();
 }
 
-void Bot::stop()
+void Controller::stop()
 {
     stop_flag_ = true;
     if (server_)
         server_->stop();
 }
 
-void Bot::send_message(int64_t chat_id, const string& text) const
+void Controller::send_message(int64_t chat_id, const string& text) const
 {
     try
     {
@@ -65,7 +67,7 @@ void Bot::send_message(int64_t chat_id, const string& text) const
     catch(...) { std::cerr << "Send message unknown exception" << std::endl; }
 }
 
-void Bot::init()
+void Controller::init()
 {
     bot_ = new TgBot::Bot(token_);
 
@@ -132,23 +134,30 @@ void Bot::init()
         if (user_id == 0)
             return;
 
-        const vector<string> cmd = StringTools::split(q->data, '.');
+        std::string answer_text;
         try
         {
-            process_directory(user_id, cmd, q->message);
+            answer_text = process_directory(user_id, q->message, q->data, q->from->id);
+        }
+        catch(const std::exception& e)
+        {
+            qCritical() << "onCallBack process_directory exception:" << e.what();
+        }
+
+        try
+        {
+            bot_->getApi().answerCallbackQuery(q->id, answer_text);
         }
         catch(const std::exception& e)
         {
             qCritical() << "onCallBack exception:" << e.what();
         }
-
-        bot_->getApi().answerCallbackQuery(q->id);
     });
 
     bot_->getEvents().onAnyMessage([this](TgBot::Message::Ptr message) { anyMessage(message); });
 }
 
-void Bot::run()
+void Controller::run()
 {
     qDebug() << "started thread";
     try
@@ -207,7 +216,7 @@ void Bot::run()
     }
 }
 
-void Bot::anyMessage(TgBot::Message::Ptr message)
+void Controller::anyMessage(TgBot::Message::Ptr message)
 {
     if (!message)
         return;
@@ -247,15 +256,35 @@ void Bot::anyMessage(TgBot::Message::Ptr message)
     {
         dbg << "Text:" << message->text.c_str();
 
-#ifdef QT_DEBUG
         if (!message->text.empty())
-            bot_->getApi().sendMessage(message->chat->id, "*You send*: " + message->text, false, 0, make_shared<TgBot::GenericReply>(), "Markdown");
+        {
+            auto it = waited_map_.find(message->chat->id);
+            if (it != waited_map_.end() && it->second.tg_user_id_ == message->from->id)
+            {
+                uint32_t user_id = get_authorized_user_id(message->from->id, message->chat->id);
+                if (user_id)
+                {
+                    const vector<string> cmd = StringTools::split(it->second.data_, '.');
+
+                    Elements elements(*this, user_id, it->second.scheme_, cmd, it->second.data_);
+                    elements.process_user_data(message->text);
+
+                    if (!elements.text_.empty())
+                        send_message(message->chat->id, elements.text_);
+                }
+
+                waited_map_.erase(it);
+            }
+#ifdef QT_DEBUG
+            send_message(message->chat->id, "*You send*: " + message->text);
 #endif
+        }
     }
 }
 
-void Bot::process_directory(uint32_t user_id, const vector<string>& cmd, TgBot::Message::Ptr message)
+string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr message, const string &msg_data, int32_t tg_user_id)
 {
+    const vector<string> cmd = StringTools::split(msg_data, '.');
     const string directory = cmd.at(0);
 
     if (directory == "page")
@@ -292,17 +321,35 @@ void Bot::process_directory(uint32_t user_id, const vector<string>& cmd, TgBot::
         {
             const string &action = cmd.at(2);
             if (action == "status")
-            {
                 status(scheme, message);
+            else if (action == "elem")
+            {
+                Elements elements(*this, user_id, scheme, cmd, msg_data);
+                elements.generate_answer();
+
+                if (elements.skip_edit_)
+                {
+                    if (!elements.text_.empty())
+                    {
+                        Waited_Item& waited_item = waited_map_[message->chat->id];
+                        waited_item.tg_user_id_ = tg_user_id;
+                        waited_item.time_ = std::chrono::system_clock::now().time_since_epoch().count();
+                        waited_item.data_ = msg_data;
+                        waited_item.scheme_ = scheme;
+
+                        send_message(message->chat->id, elements.text_);
+                    }
+                }
+                else if (elements.text_.empty())
+                    bot_->getApi().editMessageReplyMarkup(message->chat->id, message->messageId, "", elements.keyboard_);
+                else
+                    bot_->getApi().editMessageText(elements.text_, message->chat->id, message->messageId, "", "", false, elements.keyboard_);
             }
+
             else if (action == "menu_sub_1")
-            {
                 menu_sub_list(scheme, message, "sub_1");
-            }
             else if (action == "menu_sub_2")
-            {
                 menu_sub_list(scheme, message, "sub_2");
-            }
             else if (action == "sub" && cmd.size() >= 5)
             {
 //                    uint32_t sub_id = std::stoi(cmd.at(3));
@@ -353,7 +400,7 @@ void Bot::process_directory(uint32_t user_id, const vector<string>& cmd, TgBot::
 
         const char* group_id_str = cmd.at(1).c_str();
         uint32_t group_id = atoi(group_id_str);
-        qDebug() << "subscriber team:" << group_id_str;
+        qDebug() << "subscriber scheme group:" << group_id_str;
 
         const QString sql =
                 "SELECT sg.id, tgs.id FROM das_scheme_group sg "
@@ -385,10 +432,12 @@ void Bot::process_directory(uint32_t user_id, const vector<string>& cmd, TgBot::
     {
         throw std::runtime_error("Unhandled directory for callback: " + directory);
     }
+
+    return {};
 }
 
 // Chat methods
-void Bot::find(uint32_t user_id, TgBot::Message::Ptr message) const
+void Controller::find(uint32_t user_id, TgBot::Message::Ptr message) const
 {
     const string find_str = "/find ";
     if (message->text.size() < find_str.size() + 1)
@@ -408,18 +457,18 @@ void Bot::find(uint32_t user_id, TgBot::Message::Ptr message) const
     send_schemes_list(user_id, message->chat, 0, nullptr, search_text);
 }
 
-void Bot::list(uint32_t user_id, TgBot::Message::Ptr message) const
+void Controller::list(uint32_t user_id, TgBot::Message::Ptr message) const
 {
     send_schemes_list(user_id, message->chat);
 }
 
-void Bot::report(TgBot::Message::Ptr message) const
+void Controller::report(TgBot::Message::Ptr message) const
 {
     TgBot::InputFile::Ptr file = TgBot::InputFile::fromFile(getReportFilepathForUser(message->from), REPORT_MIME);
     bot_->getApi().sendDocument(message->chat->id, file);
 }
 
-void Bot::inform_onoff(uint32_t user_id, TgBot::Chat::Ptr chat, TgBot::Message::Ptr msg_to_update)
+void Controller::inform_onoff(uint32_t user_id, TgBot::Chat::Ptr chat, TgBot::Message::Ptr msg_to_update)
 {
     const QString sql =
             "SELECT sg.id, sg.name, tgs.id FROM das_scheme_group sg "
@@ -449,12 +498,12 @@ void Bot::inform_onoff(uint32_t user_id, TgBot::Chat::Ptr chat, TgBot::Message::
         bot_->getApi().sendMessage(chat->id, text, false, 0, keyboard);
 }
 
-void Bot::help(TgBot::Message::Ptr message) const
+void Controller::help(TgBot::Message::Ptr message) const
 {
     bot_->getApi().sendMessage(message->chat->id, "(Ещё не реализованно) TODO: insert text here");
 }
 
-void Bot::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
+void Controller::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
 {
     Scheme_Status scheme_status;
     QMetaObject::invokeMethod(dbus_iface_, "get_scheme_status", Qt::BlockingQueuedConnection,
@@ -480,11 +529,11 @@ void Bot::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
         sql = "SELECT dig.id, s.name, dig.title, gt.title "
               "FROM das_device_item_group dig "
               "LEFT JOIN das_section s ON s.id = dig.section_id AND s.scheme_id = %1 "
-              "LEFT JOIN das_grouptype gt ON gt.id = dig.type_id AND gt.scheme_id = %1 "
-              "WHERE dig.scheme_id = %1 dig.id IN (";
+              "LEFT JOIN das_dig_type gt ON gt.id = dig.type_id AND gt.scheme_id = %1 "
+              "WHERE dig.scheme_id = %1 AND dig.id IN (";
         sql = sql.arg(scheme.parent_id_or_id());
 
-        status_sql = "SELECT id, text, category_id FROM das_status_type WHERE scheme_id = ";
+        status_sql = "WHERE scheme_id = ";
         status_sql += QString::number(scheme.parent_id_or_id());
         status_sql += " AND id IN (";
 
@@ -496,6 +545,12 @@ void Bot::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
 
         sql.replace(sql.size() - 1, 1, QChar(')'));
         status_sql.replace(status_sql.size() - 1, 1, QChar(')'));
+
+        status_sql = db.select_query(db_table<DIG_Status_Type>(), status_sql, {
+                                         DIG_Status_Type::COL_id,
+                                         DIG_Status_Type::COL_text,
+                                         DIG_Status_Type::COL_category_id
+                                     });
 
         std::map<uint32_t, QString> group_title_map;
         QSqlQuery q = db.exec(sql);
@@ -524,14 +579,7 @@ void Bot::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
                 continue;
 
             text += '\n';
-            switch (status_it->second.second)
-            {
-            case 2: text += "✅"; break;
-            case 3: text += "⚠️"; break;
-            case 4: text += "🚨"; break;
-            default:
-                break;
-            }
+            text += default_status_category_emoji(status_it->second.second);
 
             status_text = status_it->second.first;
             for (const QString& arg: status.args())
@@ -544,7 +592,13 @@ void Bot::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
     send_message(message->chat->id, text.toStdString());
 }
 
-void Bot::restart(uint32_t user_id, const Scheme_Item& scheme, TgBot::Message::Ptr message)
+void Controller::elements(uint32_t user_id, const Scheme_Item &scheme, TgBot::Message::Ptr message,
+                   vector<string>::const_iterator begin, const std::vector<string> &cmd, const std::string& msg_data)
+{
+
+}
+
+void Controller::restart(uint32_t user_id, const Scheme_Item& scheme, TgBot::Message::Ptr message)
 {
     QMetaObject::invokeMethod(dbus_iface_, "send_message_to_scheme", Qt::QueuedConnection,
         Q_ARG(uint32_t, scheme.id()), Q_ARG(uint8_t, Das::WS_RESTART), Q_ARG(uint32_t, user_id), Q_ARG(QByteArray, QByteArray()));
@@ -552,7 +606,7 @@ void Bot::restart(uint32_t user_id, const Scheme_Item& scheme, TgBot::Message::P
     bot_->getApi().sendMessage(message->chat->id, "🔄 Команда на перезагрузку отправлена!");
 }
 
-void Bot::sub_1_list(const Scheme_Item& scheme, TgBot::Message::Ptr message)
+void Controller::sub_1_list(const Scheme_Item& scheme, TgBot::Message::Ptr message)
 {
     const unordered_map<uint32_t, string> sub_1_names = get_sub_1_names_for_scheme(scheme);
     TgBot::InlineKeyboardMarkup::Ptr keyboard(new TgBot::InlineKeyboardMarkup);
@@ -561,14 +615,14 @@ void Bot::sub_1_list(const Scheme_Item& scheme, TgBot::Message::Ptr message)
     for (const auto &sub_1_it: sub_1_names)
     {
         const string data = base_data + ".menu_sub_1." + to_string(sub_1_it.first);
-        keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(data, sub_1_it.second));
+        keyboard->inlineKeyboard.push_back(Controller::makeInlineButtonRow(data, sub_1_it.second));
     }
 
-    keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(base_data, "Назад (<<)"));
+    keyboard->inlineKeyboard.push_back(Controller::makeInlineButtonRow(base_data, "Назад (<<)"));
     bot_->getApi().editMessageReplyMarkup(message->chat->id, message->messageId, "", keyboard);
 }
 
-void Bot::menu_sub_list(const Scheme_Item& scheme, TgBot::Message::Ptr message, const string& action)
+void Controller::menu_sub_list(const Scheme_Item& scheme, TgBot::Message::Ptr message, const string& action)
 {
     TgBot::InlineKeyboardMarkup::Ptr keyboard(new TgBot::InlineKeyboardMarkup);
 
@@ -583,7 +637,7 @@ void Bot::menu_sub_list(const Scheme_Item& scheme, TgBot::Message::Ptr message, 
     bot_->getApi().editMessageReplyMarkup(message->chat->id, message->messageId, "", keyboard);
 }
 
-void Bot::menu_sub_1(const Scheme_Item& scheme, TgBot::Message::Ptr message, const string &sub_id)
+void Controller::menu_sub_1(const Scheme_Item& scheme, TgBot::Message::Ptr message, const string &sub_id)
 {
     TgBot::InlineKeyboardMarkup::Ptr keyboard(new TgBot::InlineKeyboardMarkup);
 
@@ -598,14 +652,14 @@ void Bot::menu_sub_1(const Scheme_Item& scheme, TgBot::Message::Ptr message, con
     bot_->getApi().editMessageReplyMarkup(message->chat->id, message->messageId, "", keyboard);
 }
 
-void Bot::sub_1(const Scheme_Item& scheme, TgBot::Message::Ptr message, uint32_t sub_id, uint32_t sub_1_id)
+void Controller::sub_1(const Scheme_Item& scheme, TgBot::Message::Ptr message, uint32_t sub_id, uint32_t sub_1_id)
 {
     const string text = "(Ещё не реализованно) Sub 1: " + to_string(sub_1_id)
             + " на голове " + to_string(sub_id) + " в " + to_string(scheme.id());
     bot_->getApi().sendMessage(message->chat->id, text);
 }
 
-void Bot::menu_sub_2(const Scheme_Item& scheme, TgBot::Message::Ptr message, const string& sub_id)
+void Controller::menu_sub_2(const Scheme_Item& scheme, TgBot::Message::Ptr message, const string& sub_id)
 {
     TgBot::InlineKeyboardMarkup::Ptr keyboard(new TgBot::InlineKeyboardMarkup);
 
@@ -613,18 +667,18 @@ void Bot::menu_sub_2(const Scheme_Item& scheme, TgBot::Message::Ptr message, con
     const string str = base_data + ".sub." + sub_id + ".sub_2.";
     vector<TgBot::InlineKeyboardButton::Ptr > replaceRow
     {
-        Bot::makeInlineButton(str + "action_1", "Действие 1"),
-                Bot::makeInlineButton(str + "action_2", "Действие 2"),
-                Bot::makeInlineButton(str + "action_3", "Действие 3")
+        Controller::makeInlineButton(str + "action_1", "Действие 1"),
+                Controller::makeInlineButton(str + "action_2", "Действие 2"),
+                Controller::makeInlineButton(str + "action_3", "Действие 3")
     };
 
     keyboard->inlineKeyboard.push_back(replaceRow);
-    keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(base_data, "Назад (<<)"));
+    keyboard->inlineKeyboard.push_back(Controller::makeInlineButtonRow(base_data, "Назад (<<)"));
 
     bot_->getApi().editMessageReplyMarkup(message->chat->id, message->messageId, "", keyboard);
 }
 
-void Bot::sub_2(const Scheme_Item& scheme, TgBot::Message::Ptr message, const std::string &sub_2_type)
+void Controller::sub_2(const Scheme_Item& scheme, TgBot::Message::Ptr message, const std::string &sub_2_type)
 {
     const string text = "(Ещё не реализованно) Действие Sub 2 тип: " + sub_2_type + " в " + to_string(scheme.id());
     bot_->getApi().sendMessage(message->chat->id, text);
@@ -632,12 +686,12 @@ void Bot::sub_2(const Scheme_Item& scheme, TgBot::Message::Ptr message, const st
 
 // Helpers
 
-map<uint32_t, string> Bot::list_schemes_names(uint32_t user_id, uint32_t page_number, const string &search_text) const
+map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t page_number, const string &search_text) const
 {
     QString search_cond;
     const QString sql = "SELECT s.id, s.title FROM das_scheme s "
             "LEFT JOIN das_scheme_groups sg ON sg.scheme_id = s.id "
-            "LEFT JOIN das_scheme_group_user sgu ON sgu.team_id = sg.scheme_group_id "
+            "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.scheme_group_id "
             "WHERE sgu.user_id = %1%4 GROUP BY s.id LIMIT %2, %3";
 
     if (!search_text.empty())
@@ -653,23 +707,23 @@ map<uint32_t, string> Bot::list_schemes_names(uint32_t user_id, uint32_t page_nu
     return res;
 }
 
-string Bot::getReportFilepathForUser(TgBot::User::Ptr user) const
+string Controller::getReportFilepathForUser(TgBot::User::Ptr user) const
 {
     // TODO: generate filepath
     return "/opt/book1.xlsx";
 }
 
-unordered_map<uint32_t, string> Bot::get_sub_base_for_scheme(const Scheme_Item& scheme) const
+unordered_map<uint32_t, string> Controller::get_sub_base_for_scheme(const Scheme_Item& scheme) const
 {
     return unordered_map<uint32_t, string> { {2, "Base 2"}, {1, "Base 1"} };
 }
 
-unordered_map<uint32_t, string> Bot::get_sub_1_names_for_scheme(const Scheme_Item& scheme) const
+unordered_map<uint32_t, string> Controller::get_sub_1_names_for_scheme(const Scheme_Item& scheme) const
 {
     return unordered_map<uint32_t, string> { {2, "Item 2"}, {1, "Item 1"} };
 }
 
-uint32_t Bot::get_authorized_user_id(uint32_t user_id, int64_t chat_id, bool skip_message) const
+uint32_t Controller::get_authorized_user_id(uint32_t user_id, int64_t chat_id, bool skip_message) const
 {
     Base& db = Base::get_thread_local_instance();
     QSqlQuery q = db.select({Tg_User::table_name(), {}, {"user_id"}}, "WHERE id=" + QString::number(user_id));
@@ -681,7 +735,7 @@ uint32_t Bot::get_authorized_user_id(uint32_t user_id, int64_t chat_id, bool ski
     return 0;
 }
 
-void Bot::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint32_t current_page,
+void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint32_t current_page,
                               TgBot::Message::Ptr msg_to_update, const string &search_text) const
 {
     TgBot::InlineKeyboardMarkup::Ptr keyboard(new TgBot::InlineKeyboardMarkup);
@@ -729,22 +783,23 @@ void Bot::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint32_t cu
     }
 }
 
-void Bot::sendSchemeMenu(TgBot::Message::Ptr message, const Scheme_Item& scheme) const
+void Controller::sendSchemeMenu(TgBot::Message::Ptr message, const Scheme_Item& scheme) const
 {
     TgBot::InlineKeyboardMarkup::Ptr keyboard(new TgBot::InlineKeyboardMarkup);
 
     const string base_data = "scheme." + to_string(scheme.id());
-    keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(base_data + ".status", "Состояние"));
-    keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(base_data + ".menu_sub_1", "Под меню 1")),
-    keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(base_data + ".menu_sub_2", "Под меню 2"));
-    keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow(base_data + ".restart", "Перезагрузка"));
-    keyboard->inlineKeyboard.push_back(Bot::makeInlineButtonRow("list", "Назад (<<)"));
+    keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".status", "Состояние"));
+    keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".elem", "Элементы"));
+//    keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".menu_sub_1", "Под меню 1")),
+//    keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".menu_sub_2", "Под меню 2"));
+    keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".restart", "Перезагрузка"));
+    keyboard->inlineKeyboard.push_back(makeInlineButtonRow("list", "Назад (<<)"));
 
 //    bot_->getApi().editMessageReplyMarkup(message->chat->id, message->messageId, "", keyboard);
     bot_->getApi().editMessageText(scheme.title_.toStdString(), message->chat->id, message->messageId, "", "", false, keyboard);
 }
 
-void Bot::send_authorization_message(const TgBot::Message& msg) const
+void Controller::send_authorization_message(const TgBot::Message& msg) const
 {
     const int64_t chat_id = msg.chat->id;
     if (msg.chat->type != TgBot::Chat::Type::Private)
@@ -757,13 +812,14 @@ void Bot::send_authorization_message(const TgBot::Message& msg) const
 
     const auto user = msg.from;
     Tg_User tg_user(user->id, 0,
-                     QString::fromStdString(user->firstName),
-                     QString::fromStdString(user->lastName),
-                     QString::fromStdString(user->username),
-                     QString::fromStdString(user->languageCode));
+                    QString::fromStdString(user->firstName),
+                    QString::fromStdString(user->lastName),
+                    QString::fromStdString(user->username),
+                    QString::fromStdString(user->languageCode),
+                    chat_id);
 
     const QString suffix = "ON DUPLICATE KEY UPDATE first_name=VALUES(first_name), last_name=VALUES(last_name),"
-                           "user_name=VALUES(user_name), lang=VALUES(lang)";
+                           "user_name=VALUES(user_name), lang=VALUES(lang), private_chat_id=VALUES(private_chat_id)";
     if (!db.insert(db_table<Tg_User>(), Tg_User::to_variantlist(tg_user), nullptr, suffix))
     {
         send_message(chat_id, "Ошибка во время добавления пользователя");
@@ -793,36 +849,20 @@ void Bot::send_authorization_message(const TgBot::Message& msg) const
         send_message(chat_id, "Ошибка во время инициализации привязки пользователя");
 }
 
-TgBot::InlineKeyboardButton::Ptr Bot::makeInlineButton(const string &data, const string &text)
-{
-    TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
-    button->text = text;
-    button->callbackData = data;
-    return button;
-}
-
-std::vector<TgBot::InlineKeyboardButton::Ptr > Bot::makeInlineButtonRow(const string &data, const string &text)
-{
-    return vector<TgBot::InlineKeyboardButton::Ptr>
-    {
-        Bot::makeInlineButton(data, text)
-    };
-}
-
-void Bot::finished()
+void Controller::finished()
 {
     qDebug() << "finished";
     bot_->getApi().deleteWebhook();
 }
 
-Scheme_Item Bot::get_scheme(uint32_t user_id, const string &scheme_id) const
+Scheme_Item Controller::get_scheme(uint32_t user_id, const string &scheme_id) const
 {
     Scheme_Item scheme{std::atoi(scheme_id.c_str())};
     fill_scheme(user_id, scheme);
     return scheme;
 }
 
-void Bot::fill_scheme(uint32_t user_id, Scheme_Item &scheme) const
+void Controller::fill_scheme(uint32_t user_id, Scheme_Item &scheme) const
 {
     if (scheme.id() == 0)
         return;
@@ -843,4 +883,5 @@ void Bot::fill_scheme(uint32_t user_id, Scheme_Item &scheme) const
         scheme.set_id(0);
 }
 
-}	// namespace Das
+} // namespace Bot
+} // namespace Das

@@ -1,7 +1,7 @@
 #include "translation.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 Translation::Translation(uint32_t id, const QString &lang, const QString &data) :
     Base_Type(id, lang), data_(data)
@@ -38,5 +38,5 @@ QDataStream &operator>>(QDataStream &ds, Translation &item)
     return ds >> static_cast<Base_Type&>(item) >> item.data_;
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

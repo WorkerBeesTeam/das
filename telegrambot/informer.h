@@ -13,31 +13,33 @@
 #include <plus/das/status_helper.h>
 
 namespace Helpz {
-namespace Database {
+namespace DB {
 class Base;
 }
 }
 
 namespace Das {
 
+Q_DECLARE_LOGGING_CATEGORY(Inf_Detail_log)
+
 class Informer : public Status_Helper
 {
 public:
-    Informer();
+    Informer(bool skip_connected_event, int event_timeout_secs);
     ~Informer();
 
     boost::signals2::signal<void (int64_t, const std::string&)> send_message_signal_;
 
     void connected(const Scheme_Info& scheme);
-    void disconnected(const Scheme_Info& scheme);
-    void add_status(const Scheme_Info& scheme, const DIG_Status &item);
-    void remove_status(const Scheme_Info& scheme, const DIG_Status& item);
+    void disconnected(const Scheme_Info& scheme, bool just_now);
+    void change_status(const Scheme_Info& scheme, const QVector<DIG_Status> &pack);
 
     void send_event_messages(const Scheme_Info &scheme, const QVector<Log_Event_Item> &event_pack);
 private:
     struct Data
     {
         Data(const Scheme_Info& scheme,
+             std::chrono::time_point<std::chrono::system_clock> expired_time,
              const QVector<DIG_Status>& add_vect,
              const QVector<DIG_Status>& del_vect = {});
         std::chrono::time_point<std::chrono::system_clock> expired_time_;
@@ -60,7 +62,7 @@ private:
     QString get_status_text(Data* data) const;
     void send_message(const std::map<uint32_t, Prepared_Data>& prepared_data_map);
 
-    bool break_flag_;
+    bool break_flag_, skip_connected_event_;
     std::thread* thread_;
     std::mutex mutex_;
     std::condition_variable cond_;
@@ -69,6 +71,7 @@ private:
     std::map<uint32_t, std::vector<std::shared_ptr<Data>>> schemedata_map_;
     std::map<uint32_t, Prepared_Data> prepared_data_map_;
 
+    std::chrono::seconds event_timeout_;
     /*
      * В очереди лежат данные в порядке добавления и поток ожидает до время истечения отправки данных
      * в schemedata_map_ лежат данные каждого проекта

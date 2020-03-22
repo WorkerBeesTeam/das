@@ -6,8 +6,6 @@
 #include <Helpz/dtls_server_thread.h>
 
 #include "database/db_thread_manager.h"
-#include "old/server_protocol_2_0.h"
-#include "old/server_protocol_2_1.h"
 #include "server_protocol.h"
 #include "dbus_object.h"
 
@@ -15,7 +13,7 @@
 
 namespace Das {
 
-Helpz::Database::Connection_Info* db_conn_info;
+Helpz::DB::Connection_Info* db_conn_info;
 
 namespace Server {
 
@@ -59,30 +57,30 @@ void Work_Object::init_database(QSettings* s)
     db_conn_info_ = Helpz::SettingsHelper(
                 s, "Database",
                 Helpz::Param{"Name", "das"},
-                Helpz::Param{"User", "DasUser"},
+                Helpz::Param{"User", "das"},
                 Helpz::Param{"Password", QString()},
                 Helpz::Param{"Host", "localhost"},
                 Helpz::Param{"Port", 3306},
                 Helpz::Param{"Prefix", "das_"},
                 Helpz::Param{"Driver", "QMYSQL"}, // QPSQL
-                Helpz::Param{"ConnectOptions", QString()}
-                ).ptr<Helpz::Database::Connection_Info>();
+                Helpz::Param{"ConnectOptions", "CLIENT_FOUND_ROWS=1;MYSQL_OPT_RECONNECT=1"}
+                ).ptr<Helpz::DB::Connection_Info>();
     db_conn_info = db_conn_info_;
-    Helpz::Database::Connection_Info::set_common(*db_conn_info_);
+    Helpz::DB::Connection_Info::set_common(*db_conn_info_);
 
-    db_thread_mng_ = new Database::Thread_Manager{*db_conn_info_};
+    db_thread_mng_ = new DB::Thread_Manager{*db_conn_info_};
 }
 
 void Work_Object::init_server(QSettings* s)
 {
-    Helpz::DTLS::Create_Server_Protocol_Func_T create_protocol = [this](const std::vector<std::string> &client_protos, std::string* choose_out) -> std::shared_ptr<Helpz::Network::Protocol>
+    Helpz::DTLS::Create_Server_Protocol_Func_T create_protocol = [this](const std::vector<std::string> &client_protos, std::string* choose_out) -> std::shared_ptr<Helpz::Net::Protocol>
     {
         for (const std::string& proto: client_protos)
         {
             if (proto == "das/2.4")
             {
                 *choose_out = proto;
-                return std::make_shared<Ver_2_4::Server::Protocol>(this);
+                return std::make_shared<Ver::Server::Protocol>(this);
             }
             else if (true) {}
             else if (proto == "das/2.1" && (choose_out->empty() || proto == "das/2.0"))
@@ -109,7 +107,9 @@ void Work_Object::init_server(QSettings* s)
     };
 
     const QString default_dir = qApp->applicationDirPath() + '/';
-    auto [ port, tls_policy_file, certificate_file, certificate_key_file, cleaning_timeout, receive_thread_count, record_thread_count ]
+    auto [ port, tls_policy_file, certificate_file, certificate_key_file,
+            cleaning_timeout, receive_thread_count, record_thread_count,
+            disconnect_event_timeout ]
             = Helpz::SettingsHelper{
         s, "Server",
                 Helpz::Param{"Port", (uint16_t)25588},
@@ -118,8 +118,11 @@ void Work_Object::init_server(QSettings* s)
                 Helpz::Param{"CertificateKeyFile", default_dir + "dtls.key"},
                 Helpz::Param{"CleaningTimeout", (uint32_t)3 * 60},
                 Helpz::Param{"ReceiveThreadCount", (uint16_t)5},
-                Helpz::Param{"RecordThreadCount", (uint16_t)5}
+                Helpz::Param{"RecordThreadCount", (uint16_t)5},
+                Helpz::Param{"DisconnectEventTimeoutSeconds", 60}
     }();
+
+    disconnect_event_timeout_ = std::chrono::seconds{disconnect_event_timeout};
 
     Helpz::DTLS::Server_Thread_Config conf{ port, tls_policy_file.toStdString(), certificate_file.toStdString(), certificate_key_file.toStdString(),
                 cleaning_timeout, receive_thread_count, record_thread_count, 60 };

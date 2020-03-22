@@ -14,10 +14,10 @@
 #include <Helpz/dtls_client.h>
 
 #include <Das/commands.h>
-#include <Das/checkerinterface.h>
+#include <Das/checker_interface.h>
 #include <Das/device.h>
 #include <Das/db/dig_status.h>
-#include <Das/db/dig_mode_item.h>
+#include <Das/db/dig_mode.h>
 
 #include "dbus_object.h"
 #include "worker.h"
@@ -109,7 +109,7 @@ const Scheme_Info &Worker::scheme_info() const
     return scheme_info_;
 }
 
-Helpz::Database::Thread* Worker::db_pending() { return db_pending_thread_.get(); }
+Helpz::DB::Thread* Worker::db_pending() { return db_pending_thread_.get(); }
 
 /*static*/ std::unique_ptr<QSettings> Worker::settings()
 {
@@ -127,13 +127,13 @@ Worker_Structure_Synchronizer* Worker::structure_sync()
     return structure_sync_;
 }
 
-std::shared_ptr<Ver_2_4::Client::Protocol> Worker::net_protocol()
+std::shared_ptr<Ver::Client::Protocol> Worker::net_protocol()
 {
     if (net_thread_)
     {
         auto client = net_thread_->client();
         if (client)
-            return std::static_pointer_cast<Ver_2_4::Client::Protocol>(client->protocol());
+            return std::static_pointer_cast<Ver::Client::Protocol>(client->protocol());
     }
     return {};
 }
@@ -186,7 +186,7 @@ void Worker::init_database(QSettings* s)
                 s, db_conf_group_name,
                 Z::Param<uint32_t>{"SchemeId", 1})();
 
-    Database::Schemed_Model::set_default_scheme_id(scheme_id);
+    DB::Schemed_Model::set_default_scheme_id(scheme_id);
 
     auto db_info = Helpz::SettingsHelper
         #if (__cplusplus < 201402L) || (defined(__GNUC__) && (__GNUC__ < 7))
@@ -194,19 +194,19 @@ void Worker::init_database(QSettings* s)
         #endif
             (
                 s, db_conf_group_name,
-                Z::Param<QString>{"Name", "deviceaccess_local"},
-                Z::Param<QString>{"User", "DasUser"},
+                Z::Param<QString>{"Name", "das"},
+                Z::Param<QString>{"User", "das"},
                 Z::Param<QString>{"Password", ""},
                 Z::Param<QString>{"Host", "localhost"},
                 Z::Param<int>{"Port", -1},
                 Z::Param<QString>{"Prefix", "das_"},
                 Z::Param<QString>{"Driver", "QMYSQL"},
-                Z::Param<QString>{"ConnectOptions", QString()}
-    ).obj<Helpz::Database::Connection_Info>();
+                Z::Param<QString>{"ConnectOptions", "CLIENT_FOUND_ROWS=1;MYSQL_OPT_RECONNECT=1"}
+    ).obj<Helpz::DB::Connection_Info>();
 
-    Helpz::Database::Connection_Info::set_common(db_info);
+    Helpz::DB::Connection_Info::set_common(db_info);
 
-    db_pending_thread_.reset(new Helpz::Database::Thread);
+    db_pending_thread_.reset(new Helpz::DB::Thread);
 }
 
 void Worker::init_scheme(QSettings* s)
@@ -216,7 +216,8 @@ void Worker::init_scheme(QSettings* s)
     Helpz::ConsoleReader* cr = nullptr;
     if (Service::instance().isImmediately())
     {
-        cr = new Helpz::ConsoleReader(this);
+        if (qApp->arguments().indexOf("-disable-console") == -1)
+            cr = new Helpz::ConsoleReader(this);
 
 #ifdef QT_DEBUG
         if (qApp->arguments().indexOf("-debugger") != -1)
@@ -250,7 +251,7 @@ void Worker::init_checker(QSettings* s)
 {
     qRegisterMetaType<Device*>("Device*");
 
-    checker_th_ = Checker_Thread()(s, "Checker", this, Z::Param<QStringList>{"Plugins", QStringList{"ModbusPlugin","WiringPiPlugin"}} );
+    checker_th_ = Checker_Thread()(s, "Checker", this/*, Z::Param<QStringList>{"Plugins", QStringList{"ModbusPlugin","WiringPiPlugin"}}*/ );
     checker_th_->start();
 }
 
@@ -258,7 +259,6 @@ void Worker::init_network_client(QSettings* s)
 {
     structure_sync_ = new Worker_Structure_Synchronizer{ this };
 
-    qRegisterMetaType<Log_Value_Item>("Log_Value_Item");
     qRegisterMetaType<Log_Event_Item>("Log_Event_Item");
     qRegisterMetaType<QVector<Log_Value_Item>>("QVector<Log_Value_Item>");
     qRegisterMetaType<QVector<Log_Event_Item>>("QVector<Log_Event_Item>");
@@ -269,13 +269,11 @@ void Worker::init_network_client(QSettings* s)
                 Z::Param<QString>{"Login",              QString()},
                 Z::Param<QString>{"Password",           QString()},
                 Z::Param<QString>{"SchemeName",        QString()},
-                Z::Param<QUuid>{"Device",               QUuid()},
+                Z::Param<QUuid>{"Device",               QUuid()}
             }.obj<Authentication_Info>();
 
     if (!auth_info)
-    {
         return;
-    }
 
 #define DAS_PROTOCOL_LATEST "das/2.4"
 #define DAS_PROTOCOL_SUPORTED DAS_PROTOCOL_LATEST",das/2.3"
@@ -288,12 +286,17 @@ void Worker::init_network_client(QSettings* s)
                 Z::Param<QString>{"Host",               "deviceaccess.ru"},
                 Z::Param<QString>{"Port",               "25588"},
                 DAS_PROTOCOL_SUPORTED, // Z::Param<QString>{"Protocols",          "das/2.0,das/1.1"},
-                Z::Param<uint32_t>{"ReconnectSeconds",       15}
+                Z::Param<uint32_t>{"ReconnectSeconds",  15}
             }();
 
-    Helpz::DTLS::Create_Client_Protocol_Func_T func = [this, auth_info](const std::string& app_protocol) -> std::shared_ptr<Helpz::Network::Protocol>
+    const Ver::Client::Config config = Helpz::SettingsHelper{
+                s, "RemoteServer",
+                Z::Param<uint32_t>{"StreamTimeoutMs", 1500},
+            }.obj<Ver::Client::Config>();
+
+    Helpz::DTLS::Create_Client_Protocol_Func_T func = [this, auth_info, config](const std::string& app_protocol) -> std::shared_ptr<Helpz::Net::Protocol>
     {
-        std::shared_ptr<Ver_2_4::Client::Protocol> ptr = std::make_shared<Ver_2_4::Client::Protocol>(this, auth_info);
+        std::shared_ptr<Ver::Client::Protocol> ptr = std::make_shared<Ver::Client::Protocol>(this, auth_info, config);
 
         if (app_protocol != DAS_PROTOCOL_LATEST)
         {
@@ -309,7 +312,7 @@ void Worker::init_network_client(QSettings* s)
             }
         }
 
-        return std::static_pointer_cast<Helpz::Network::Protocol>(ptr);
+        return std::static_pointer_cast<Helpz::Net::Protocol>(ptr);
     };
 
     Helpz::DTLS::Client_Thread_Config conf{ tls_policy_file.toStdString(), host.toStdString(), port.toStdString(),
@@ -539,18 +542,31 @@ void Worker::save_server_data(const QUuid &devive_uuid, const QString &login, co
     }
 }
 
-bool Worker::set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id)
+void Worker::set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id)
 {
-    if (Database::Helper::set_mode(mode_id, group_id))
-    {
-        QMetaObject::invokeMethod(prj(), "set_mode", Qt::QueuedConnection, Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, mode_id), Q_ARG(uint32_t, group_id) );
-        return true;
-    }
+    // ATTENTION: This function calls from diffrent threads
 
-    return false;
+    QMetaObject::invokeMethod(prj(), "set_mode", Qt::QueuedConnection, Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, mode_id), Q_ARG(uint32_t, group_id));
 }
 
-QVariant db_get_dig_status_id(Helpz::Database::Base* db, const QString& table_name, uint32_t group_id, uint32_t info_id)
+void Worker::set_scheme_name(uint32_t user_id, const QString &name)
+{
+    // ATTENTION: This function calls from diffrent threads
+
+    auto s = settings();
+    s->beginGroup("RemoteServer");
+    const QString old_name = s->value("SchemeName").toString();
+    s->setValue("SchemeName", name.simplified());
+    s->endGroup();
+
+    qCInfo(Service::Log).nospace() << user_id << "|Scheme name changed from: " << old_name << " to: " << name;
+
+    Helpz::DB::Base& db = Helpz::DB::Base::get_thread_local_instance();
+    const Helpz::DB::Table table{"das_scheme", {}, {"name"}};
+    db.update(table, QVariantList{name}, "id=" + QString::number(DB::Schemed_Model::default_scheme_id()));
+}
+
+QVariant db_get_dig_status_id(Helpz::DB::Base* db, const QString& table_name, uint32_t group_id, uint32_t info_id)
 {
     auto q = db->select({table_name, {}, {"id"}}, QString("WHERE group_id = %1 AND status_id = %2").arg(group_id).arg(info_id));
     if (q.next())
@@ -566,8 +582,8 @@ void Worker::update_plugin_param_names(const QVector<Plugin_Type>& plugins)
     QDataStream ds(&data, QIODevice::ReadWrite);
     ds << plugins << uint32_t(0) << uint32_t(0);
     ds.device()->seek(0);
-    structure_sync_->process_modify_message(0, Ver_2_4::ST_PLUGIN_TYPE, ds.device(),
-                                            Database::Schemed_Model::default_scheme_id(), nullptr);
+    structure_sync_->process_modify_message(0, Ver::ST_PLUGIN_TYPE, ds.device(),
+                                            DB::Schemed_Model::default_scheme_id(), nullptr);
 
     for (Device* dev: prj()->devices())
     {
@@ -588,7 +604,8 @@ void Worker::update_plugin_param_names(const QVector<Plugin_Type>& plugins)
 
 void Worker::connection_state_changed(Device_Item *item, bool value)
 {
-    Log_Value_Item log_value_item{ QDateTime::currentDateTimeUtc().toMSecsSinceEpoch(), 0, false, item->id()};
+    Log_Value_Item log_value_item{QDateTime::currentDateTimeUtc().toMSecsSinceEpoch(), 0,
+                                  item->id(), QVariant(), QVariant(), false};
 
     if (value)
     {

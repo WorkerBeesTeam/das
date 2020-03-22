@@ -7,7 +7,7 @@
 #include "device_extra_params.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Device_Item : public Base_Type, public Device_Extra_Params
 {
@@ -41,7 +41,7 @@ private:
 QDataStream &operator>>(QDataStream& ds, Device_Item& item);
 QDataStream &operator<<(QDataStream& ds, const Device_Item& item);
 
-} // namespace Database
+} // namespace DB
 } // namespace Das
 
 #endif // DAS_DATABASE_DEVICE_ITEM_H

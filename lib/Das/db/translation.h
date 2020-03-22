@@ -6,7 +6,7 @@
 #include "base_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Translation : public Base_Type
 {
@@ -29,9 +29,9 @@ private:
 QDataStream& operator<<(QDataStream& ds, const Translation& item);
 QDataStream& operator>>(QDataStream& ds, Translation& item);
 
-} // namespace Database
+} // namespace DB
 
-using Translation = Database::Translation;
+using Translation = DB::Translation;
 
 } // namespace Das
 

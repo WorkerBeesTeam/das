@@ -10,7 +10,7 @@
 
 #include "../plugin_global.h"
 
-#include <Das/checkerinterface.h>
+#include <Das/checker_interface.h>
 
 QT_BEGIN_NAMESPACE
 class QProcess;
@@ -20,11 +20,11 @@ namespace Das {
 
 Q_DECLARE_LOGGING_CATEGORY(FileIO_Log)
 
-class DAS_PLUGIN_SHARED_EXPORT FileIO_Plugin : public QObject, public Checker_Interface
+class DAS_PLUGIN_SHARED_EXPORT FileIO_Plugin : public QObject, public Checker::Interface
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID DasCheckerInterface_iid FILE "checkerinfo.json")
-    Q_INTERFACES(Das::Checker_Interface)
+    Q_INTERFACES(Das::Checker::Interface)
 public:
     FileIO_Plugin();
 
@@ -32,7 +32,7 @@ public:
     void initialize(Device* dev);
     // CheckerInterface interface
 public:
-    void configure(QSettings* settings, Scheme* scheme) override;
+    void configure(QSettings* settings) override;
     bool check(Device *dev) override;
     void stop() override;
     void write(std::vector<Write_Cache_Item>& items) override;

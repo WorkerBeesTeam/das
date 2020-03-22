@@ -6,20 +6,20 @@
 #include "base_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 class Auth_Group;
 class Auth_Group_Permission;
-} // namespace Database
+} // namespace DB
 } // namespace Das
 namespace Helpz {
-namespace Database {
-template<> inline bool is_table_use_common_prefix<Das::Database::Auth_Group>() { return false; }
-template<> inline bool is_table_use_common_prefix<Das::Database::Auth_Group_Permission>() { return false; }
-} // namespace Database
+namespace DB {
+template<> inline bool is_table_use_common_prefix<Das::DB::Auth_Group>() { return false; }
+template<> inline bool is_table_use_common_prefix<Das::DB::Auth_Group_Permission>() { return false; }
+} // namespace DB
 } // namespace Helpz
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Auth_Group : public Base_Type
 {
@@ -54,10 +54,10 @@ private:
 QDataStream& operator<<(QDataStream& ds, const Auth_Group_Permission& item);
 QDataStream& operator>>(QDataStream& ds, Auth_Group_Permission& item);
 
-} // namespace Database
+} // namespace DB
 
-using Auth_Group = Database::Auth_Group;
-using Auth_Group_Permission = Database::Auth_Group_Permission;
+using Auth_Group = DB::Auth_Group;
+using Auth_Group_Permission = DB::Auth_Group_Permission;
 
 } // namespace Das
 

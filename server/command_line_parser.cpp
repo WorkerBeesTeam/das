@@ -80,7 +80,7 @@ void Command_Line_Parser::process_commands(const QStringList& args)
             {
                 if (work_object_->server_thread_ && work_object_->server_thread_->server())
                 {
-                    auto node = work_object_->server_thread_->server()->find_client([scheme_id](const Helpz::Network::Protocol* protocol) -> bool
+                    auto node = work_object_->server_thread_->server()->find_client([scheme_id](const Helpz::Net::Protocol* protocol) -> bool
                     {
                         return static_cast<const Protocol_Base*>(protocol)->id() == scheme_id;
                     });
@@ -140,12 +140,12 @@ void Command_Line_Parser::print_connected_schemes(bool with_version) const
             std::cout   << "[Server " << getVersionString()
                         << "][Lib " << Lib::ver_str()
                         << "][DTLS " << Helpz::DTLS::ver_str()
-                        << "][Net " << Helpz::Network::ver_str() << ']';
+                        << "][Net " << Helpz::Net::ver_str() << ']';
         std::cout << std::endl;
     }
 
     int n = 0;
-    work_object_->server_thread_->server()->find_client([with_version, &n](const Helpz::Network::Protocol* protocol) -> bool
+    work_object_->server_thread_->server()->find_client([with_version, &n](const Helpz::Net::Protocol* protocol) -> bool
     {
         auto proto = static_cast<const Protocol_Base*>(protocol);
         auto node = std::static_pointer_cast<const Helpz::DTLS::Node>(protocol->writer());

@@ -6,15 +6,16 @@
 #include <Das/daslib_global.h>
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Tg_User
 {
-    HELPZ_DB_META(Tg_User, "das_tg_user", "tu", 6, DB_A(id), DB_AN(user_id), DB_A(first_name),
-                  DB_A(last_name), DB_A(user_name), DB_A(lang))
+    HELPZ_DB_META(Tg_User, "tg_user", "tu", 7, DB_A(id), DB_AN(user_id), DB_A(first_name),
+                  DB_A(last_name), DB_A(user_name), DB_A(lang), DB_AN(private_chat_id))
 public:
     Tg_User(int32_t id = 0, uint32_t user_id = 0, const QString& first_name = {},
-            const QString& last_name = {}, const QString& user_name = {}, const QString& lang = {});
+            const QString& last_name = {}, const QString& user_name = {}, const QString& lang = {},
+            qint64 private_chat_id = 0);
 
     int32_t id() const;
     void set_id(int32_t id);
@@ -33,15 +34,19 @@ public:
 
     QString lang() const;
     void set_lang(const QString& name);
+
+    qint64 private_chat_id() const;
+    void set_private_chat_id(qint64 private_chat_id);
 private:
     int32_t id_;
     uint32_t user_id_;
+    qint64 private_chat_id_;
     QString first_name_, last_name_, user_name_, lang_;
 };
 
-} // namespace Database
+} // namespace DB
 
-using Tg_User = Database::Tg_User;
+using Tg_User = DB::Tg_User;
 
 } // namespace Das
 

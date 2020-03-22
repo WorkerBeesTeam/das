@@ -1,5 +1,9 @@
 TEMPLATE = subdirs
-SUBDIRS += Modbus Random OneWireTherm FileIO
+SUBDIRS += Modbus Random OneWireTherm FileIO Uart
+
+!NO_V4L {
+    SUBDIRS += Camera
+}
 
 !NO_WIRINGPI {
   RESULT = $$find(QMAKE_HOST.arch, "^arm")

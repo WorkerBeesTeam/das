@@ -15,7 +15,7 @@
 #include <Helpz/dtls_tools.h>
 
 //--------
-#include "bot.h"
+#include "bot/controller.h"
 #include "dbus_handler.h"
 #include "informer.h"
 #include "worker.h"
@@ -78,12 +78,13 @@ void Worker::init_database(QSettings* s)
                 Helpz::Param{"Password", QString()},
                 Helpz::Param{"Host", "localhost"},
                 Helpz::Param{"Port", 3306},
+                Helpz::Param{"Prefix", "das_"},
                 Helpz::Param{"Driver", "QMYSQL"}, // QPSQL
-                Helpz::Param{"ConnectOptions", QString()}
-                ).ptr<Helpz::Database::Connection_Info>();
+                Helpz::Param{"ConnectOptions", "CLIENT_FOUND_ROWS=1;MYSQL_OPT_RECONNECT=1"}
+                ).ptr<Helpz::DB::Connection_Info>();
 
-    Helpz::Database::Connection_Info::set_common(*db_conn_info_);
-    db_pending_thread_ = new Helpz::Database::Thread{Helpz::Database::Connection_Info(*db_conn_info_)};
+    Helpz::DB::Connection_Info::set_common(*db_conn_info_);
+    db_pending_thread_ = new Helpz::DB::Thread{Helpz::DB::Connection_Info(*db_conn_info_)};
 }
 
 void Worker::init_bot(QSettings* s)
@@ -108,16 +109,20 @@ void Worker::init_bot(QSettings* s)
         Helpz::Param<std::string>{"WebHook", "https://deviceaccess.ru/tg_bot"},
         Helpz::Param<uint16_t>{"WebHookPort", 8033},
         Helpz::Param<std::string>{"WebHookCert", std::string()}
-        ).ptr<Bot>();
+        ).ptr<Bot::Controller>();
     bot_->start();
 }
 
-void Worker::init_informer(QSettings* /*s*/)
+void Worker::init_informer(QSettings* s)
 {
-    informer_ = new Informer;
+    informer_ = Helpz::SettingsHelper(
+        s, "Informer",
+        Helpz::Param<bool>{"SkipConnectedEvent", false},
+        Helpz::Param<int>{"EventTimeoutSecons", 10 * 60}
+        ).ptr<Informer>();
 
     using namespace boost::placeholders;
-    informer_->send_message_signal_.connect(boost::bind(&Bot::send_message, bot_, _1, _2));
+    informer_->send_message_signal_.connect(boost::bind(&Bot::Controller::send_message, bot_, _1, _2));
 }
 
 void Worker::init_dbus_interface(QSettings* s)

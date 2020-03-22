@@ -9,18 +9,14 @@ namespace Server {
 class Protocol_Base;
 } // namespace Server
 
-namespace Network {
-class WebSocket;
-} // namespace Network
-
-namespace Database {
+namespace DB {
 class global;
-} // namespace Database
+} // namespace DB
 
 class Base_Synchronizer
 {
 public:
-    enum { DATASTREAM_VERSION = Helpz::Network::Protocol::DATASTREAM_VERSION };
+    enum { DATASTREAM_VERSION = Helpz::Net::Protocol::DATASTREAM_VERSION };
 
     Base_Synchronizer(Server::Protocol_Base* protocol);
     virtual ~Base_Synchronizer() = default;
@@ -44,7 +40,7 @@ public:
 protected:
     uint32_t scheme_id() const;
     QString title() const;
-    std::shared_ptr<Database::global> db();
+    std::shared_ptr<DB::global> db();
 
     Server::Protocol_Base* protocol_;
 };

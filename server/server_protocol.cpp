@@ -13,7 +13,7 @@
 #include "server_protocol.h"
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Server {
 
 Protocol::Protocol(Work_Object* work_object) :
@@ -84,6 +84,11 @@ void Protocol::synchronize(bool full)
     structure_sync_.check(full ? structure_sync_.modified() : true, true);
 }
 
+void Protocol::set_scheme_name(uint32_t user_id, const QString &name)
+{
+    send(Cmd::SET_SCHEME_NAME).timeout(nullptr, std::chrono::seconds(8)) << user_id << name;
+}
+
 void Protocol::before_remove_copy()
 {
     is_copy_ = true;
@@ -92,7 +97,13 @@ void Protocol::before_remove_copy()
 void Protocol::lost_msg_detected(uint8_t /*msg_id*/, uint8_t /*expected*/)
 {
     set_connection_state(connection_state() | CS_CONNECTED_WITH_LOSSES);
-    log_sync_.check();
+
+    const auto now = std::chrono::system_clock::now();
+    if (now - last_sync_time_ > std::chrono::seconds(7))
+    {
+        last_sync_time_ = now;
+        log_sync_.check();
+    }
 }
 
 void Protocol::ready_write()
@@ -114,32 +125,12 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
     case Cmd::LOG_DATA_REQUEST:
         Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Synchronizer::process_data, &log_sync_, &data_dev, msg_id);
         break;
-    case Cmd::LOG_PACK_VALUES:
-        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Sync_Values::process_pack, &log_sync_.values_, msg_id);
-        break;
-    case Cmd::LOG_PACK_EVENTS:
-        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Sync_Events::process_pack, &log_sync_.events_, msg_id);
+    case Cmd::LOG_PACK:
+        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Synchronizer::process_pack, &log_sync_, &data_dev, msg_id);
         break;
 
     case Cmd::GROUP_STATUSES:
         Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Structure_Synchronizer::insert_statuses, &structure_sync_);
-        break;
-
-    case Cmd::SET_MODE:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::mode_changed);
-        break;
-    case Cmd::ADD_STATUS:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::status_added);
-        break;
-    case Cmd::REMOVE_STATUS:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::status_removed);
-        break;
-    case Cmd::SET_DIG_PARAM_VALUES:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::dig_param_values_changed);
         break;
 
     case Cmd::MODIFY_SCHEME:
@@ -152,6 +143,18 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
         }
         break;
 
+    case Cmd::STREAM_TOGGLE:
+        send_answer(cmd, msg_id);
+        apply_parse(data_dev, &Protocol::stream_toggled);
+        break;
+    case Cmd::STREAM_PARAM:
+        send_answer(cmd, msg_id);
+        apply_parse(data_dev, &Protocol::stream_param);
+        break;
+    case Cmd::STREAM_DATA:
+        apply_parse(data_dev, &Protocol::stream_data);
+        break;
+
     default:
         break;
     }
@@ -159,7 +162,7 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
 
 void Protocol::process_answer_message(uint8_t msg_id, uint8_t cmd, QIODevice& /*data_dev*/)
 {
-    qDebug().noquote() << title() << "unprocess answer" << int(msg_id) << int(cmd) << static_cast<Cmd::Command_Type>(cmd) << QDateTime::currentMSecsSinceEpoch();
+    qDebug().noquote() << title() << "unprocess answer" << msg_id << int(cmd) << static_cast<Cmd::Command_Type>(cmd) << QDateTime::currentMSecsSinceEpoch();
 }
 
 void Protocol::process_unauthorized_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
@@ -249,35 +252,25 @@ void Protocol::set_time_offset(const QDateTime& scheme_time, const QTimeZone& ti
                               Q_ARG(Scheme_Info, *this), Q_ARG(QTimeZone, timeZone), Q_ARG(qint64, offset));
 
     qDebug().noquote() << title() << "setTimeOffset" << time().offset
-              << (time().zone.isValid() ? time().zone.id().constData()/*displayName(QTimeZone::GenericTime).toStdString()*/ : "invalid");
+                       << (time().zone.isValid() ? time().zone.id().constData()/*displayName(QTimeZone::GenericTime).toStdString()*/ : "invalid");
 }
 
-void Protocol::mode_changed(uint32_t /*user_id*/, uint32_t mode_id, uint32_t group_id)
+void Protocol::stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state)
 {
-    db()->deffered_set_mode(id(), mode_id, group_id);
-    QMetaObject::invokeMethod(work_object()->dbus_, "dig_mode_item_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, mode_id), Q_ARG(uint32_t, group_id));
+    QMetaObject::invokeMethod(work_object()->dbus_, "stream_toggled", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, dev_item_id), Q_ARG(bool, state));
 }
 
-void Protocol::status_added(const DIG_Status &item)
+void Protocol::stream_param(uint32_t dev_item_id, const QByteArray &data)
 {
-    structure_sync()->add_status(item);
-    QMetaObject::invokeMethod(work_object()->dbus_, "status_inserted", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, item.group_id()), Q_ARG(uint32_t, item.status_id()), Q_ARG(QStringList, item.args()));
+    QMetaObject::invokeMethod(work_object()->dbus_, "stream_param", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, dev_item_id), Q_ARG(QByteArray, data));
 }
 
-void Protocol::status_removed(uint32_t group_id, uint32_t status_id)
+void Protocol::stream_data(uint32_t dev_item_id, const QByteArray &data)
 {
-    structure_sync()->del_status(DIG_Status{0, group_id, status_id});
-    QMetaObject::invokeMethod(work_object()->dbus_, "status_removed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, group_id), Q_ARG(uint32_t, status_id));
-}
-
-void Protocol::dig_param_values_changed(uint32_t /*user_id*/, const QVector<DIG_Param_Value>& pack)
-{
-    db()->deffered_save_dig_param_value(id(), pack);
-    QMetaObject::invokeMethod(work_object()->dbus_, "dig_param_values_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(QVector<DIG_Param_Value>, pack));
+    QMetaObject::invokeMethod(work_object()->dbus_, "stream_data", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, dev_item_id), Q_ARG(QByteArray, data));
 }
 
 #if 0
@@ -397,5 +390,5 @@ private:
 #endif
 
 } // namespace Server
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das

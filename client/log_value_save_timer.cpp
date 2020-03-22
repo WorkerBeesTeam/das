@@ -17,7 +17,7 @@
 
 namespace Das {
 
-using namespace Helpz::Database;
+using namespace Helpz::DB;
 
 Log_Value_Save_Timer::Log_Value_Save_Timer(Worker *worker) :
     prj_(worker->prj()), worker_(worker)
@@ -34,9 +34,12 @@ Log_Value_Save_Timer::Log_Value_Save_Timer(Worker *worker) :
     connect(&param_values_timer_, &QTimer::timeout, this, &Log_Value_Save_Timer::send_param_pack);
     param_values_timer_.setSingleShot(true);
 
+    connect(&status_pack_timer_, &QTimer::timeout, this, &Log_Value_Save_Timer::send_status_pack);
+    status_pack_timer_.setSingleShot(true);
+
     const int now_msecs = QTime::currentTime().msecsSinceStartOfDay();
 
-    const QVector<Save_Timer> save_timers = Database::Helper::get_save_timer_vect();
+    const QVector<Save_Timer> save_timers = DB::Helper::get_save_timer_vect();
     for (const Save_Timer &save_timer : save_timers)
     {
         if (save_timer.interval() > 0)
@@ -57,10 +60,10 @@ Log_Value_Save_Timer::Log_Value_Save_Timer(Worker *worker) :
             this, &Log_Value_Save_Timer::add_log_event_item, Qt::QueuedConnection);
     connect(prj_, &Scripted_Scheme::param_value_changed,
             this, &Log_Value_Save_Timer::add_param_value, Qt::QueuedConnection);
-    connect(prj_, &Scripted_Scheme::status_added,
-            this, &Log_Value_Save_Timer::status_added, Qt::QueuedConnection);
-    connect(prj_, &Scripted_Scheme::status_removed,
-            this, &Log_Value_Save_Timer::status_removed, Qt::QueuedConnection);
+    connect(prj_, &Scripted_Scheme::status_changed,
+            this, &Log_Value_Save_Timer::status_changed, Qt::QueuedConnection);
+    connect(prj_, &Scripted_Scheme::dig_mode_available,
+            this, &Log_Value_Save_Timer::dig_mode_changed, Qt::QueuedConnection);
 }
 
 Log_Value_Save_Timer::~Log_Value_Save_Timer()
@@ -70,29 +73,26 @@ Log_Value_Save_Timer::~Log_Value_Save_Timer()
     save_to_db(value_pack_);
     save_to_db(event_pack_);
     save_to_db(param_pack_);
+    save_to_db(status_pack_);
 }
 
 QVector<Device_Item_Value> Log_Value_Save_Timer::get_unsaved_values() const
 {
     QVector<Device_Item_Value> value_vect;
     for (auto it: waited_item_values_)
-    {
         value_vect.push_back(it.second);
-    }
     return value_vect;
 }
 
 void Log_Value_Save_Timer::add_log_value_item(const Log_Value_Item &item)
 {
-    auto waited_it = waited_item_values_.find(item.item_id());
-    if (waited_it == waited_item_values_.end())
+    if (!item.is_big_value())
     {
-        waited_item_values_.emplace(item.item_id(), Device_Item_Value{item.item_id(), item.raw_value(), item.value()});
-    }
-    else
-    {
-        waited_it->second.set_raw(item.raw_value());
-        waited_it->second.set_display(item.value());
+        auto waited_it = waited_item_values_.find(item.item_id());
+        if (waited_it == waited_item_values_.end())
+            waited_item_values_.emplace(item.item_id(), Device_Item_Value{item});
+        else
+            waited_it->second = item;
     }
 
     if (!item_values_timer_.isActive() || (item.need_to_save() && item_values_timer_.remainingTime() > 500))
@@ -148,23 +148,32 @@ void Log_Value_Save_Timer::add_log_event_item(const Log_Event_Item &item)
 
 void Log_Value_Save_Timer::add_param_value(const DIG_Param_Value &param_value)
 {
-    param_pack_.push_back(param_value);
-    if (!param_values_timer_.isActive())
-        param_values_timer_.start(5);
+    param_pack_.push_back(reinterpret_cast<const Log_Param_Item&>(param_value));
+    param_values_timer_.start(5);
 }
 
-void Log_Value_Save_Timer::status_added(uint32_t group_id, uint32_t info_id, const QStringList& args, uint32_t user_id)
+void Log_Value_Save_Timer::status_changed(const DIG_Status &status)
 {
-    auto proto = worker_->net_protocol();
-    if (proto)
-        proto->send_status_added(group_id, info_id, args, user_id);
+    status_pack_.push_back(reinterpret_cast<const Log_Status_Item&>(status));
+
+    if (!status_pack_timer_.isActive())
+        status_pack_timer_.start(250);
 }
 
-void Log_Value_Save_Timer::status_removed(uint32_t group_id, uint32_t info_id, uint32_t user_id)
+void Log_Value_Save_Timer::dig_mode_changed(const DIG_Mode &mode)
 {
-    auto proto = worker_->net_protocol();
-    if (proto)
-        proto->send_status_removed(group_id, info_id, user_id);
+    DB::Helper::set_mode(mode);
+
+    const Log_Mode_Item& log_mode = reinterpret_cast<const Log_Mode_Item&>(mode);
+
+    std::shared_ptr<QVector<Log_Mode_Item>> pack = std::make_shared<QVector<Log_Mode_Item>>(QVector<Log_Mode_Item>{log_mode});
+//    pack->
+
+    const QVector<DIG_Mode>& mode_pack = reinterpret_cast<QVector<DIG_Mode>&>(*pack);
+    QMetaObject::invokeMethod(worker_->dbus(), "dig_mode_changed", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Mode>, mode_pack));
+
+    send(Log_Type::LOG_MODE, pack);
 }
 
 void Log_Value_Save_Timer::save_item_values()
@@ -173,28 +182,42 @@ void Log_Value_Save_Timer::save_item_values()
         return;
 
     Table table = db_table<Device_Item_Value>();
-    table.field_names().erase(table.field_names().begin(), table.field_names().begin() + 2);
-    table.field_names().removeLast(); // remove scheme_id
+
+    using T = Device_Item_Value;
+    QStringList field_names{
+        table.field_names().at(T::COL_timestamp_msecs),
+        table.field_names().at(T::COL_user_id),
+        table.field_names().at(T::COL_raw_value),
+        table.field_names().at(T::COL_value)
+    };
+
+    table.field_names() = std::move(field_names);
 
     Base& db = Base::get_thread_local_instance();
 
-    uint32_t scheme_id = Database::Schemed_Model::default_scheme_id();
-    const QString where = Database::Helper::get_default_suffix() + " AND device_item_id = ";
+    uint32_t scheme_id = DB::Schemed_Model::default_scheme_id();
+    const QString where = DB::Helper::get_default_suffix() + " AND item_id = ";
 
-    QVariantList values{QVariant(), QVariant()};
+    QVariantList values{QVariant(), QVariant(), QVariant(), QVariant()};
     for (auto it: waited_item_values_)
     {
-        values.front() = it.second.raw_to_db();
-        values.back() = it.second.display_to_db();
+        const Device_Item_Value& value = it.second;
+        if (value.is_big_value())
+            continue;
 
-        const QSqlQuery q = db.update(table, values, where + QString::number(it.second.device_item_id()));
+        values.front() = value.timestamp_msecs();
+        values[1] = value.user_id();
+        values[2] = value.raw_value_to_db();
+        values.back() = value.value_to_db();
+
+        const QSqlQuery q = db.update(table, values, where + QString::number(value.item_id()));
         if (!q.isActive() || q.numRowsAffected() <= 0)
         {
             Table ins_table = db_table<Device_Item_Value>();
             ins_table.field_names().removeFirst(); // remove id
 
-            QVariantList ins_values{it.second.device_item_id()};
-            ins_values += values;
+            QVariantList ins_values = values;
+            ins_values.insert(2, value.item_id()); // after user_id
             ins_values.push_back(scheme_id);
 
             if (!db.insert(ins_table, ins_values))
@@ -212,11 +235,10 @@ void Log_Value_Save_Timer::send_value_pack()
     std::shared_ptr<QVector<Log_Value_Item>> pack = std::make_shared<QVector<Log_Value_Item>>(std::move(value_pack_));
     value_pack_.clear();
 
-    send(Ver_2_4::Cmd::LOG_PACK_VALUES, pack);
-
     QMetaObject::invokeMethod(worker_->dbus(), "device_item_values_available", Qt::QueuedConnection,
                               Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<Log_Value_Item>, *pack));
-//    emit worker_->dbus()->device_item_values_available(worker_->scheme_info(), *pack);
+
+    send(Log_Type::LOG_VALUE, pack);
 }
 
 void Log_Value_Save_Timer::send_event_pack()
@@ -224,20 +246,39 @@ void Log_Value_Save_Timer::send_event_pack()
     std::shared_ptr<QVector<Log_Event_Item>> pack = std::make_shared<QVector<Log_Event_Item>>(std::move(event_pack_));
     event_pack_.clear();
 
-    send(Ver_2_4::Cmd::LOG_PACK_EVENTS, pack);
-
     QMetaObject::invokeMethod(worker_->dbus(), "event_message_available", Qt::QueuedConnection,
                               Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<Log_Event_Item>, *pack));
-//    emit worker_->dbus()->event_message_available(worker_->scheme_info(), *pack);
+
+    send(Log_Type::LOG_EVENT, pack);
 }
 
 void Log_Value_Save_Timer::send_param_pack()
 {
-    std::shared_ptr<QVector<DIG_Param_Value>> pack = std::make_shared<QVector<DIG_Param_Value>>(std::move(param_pack_));
+    std::shared_ptr<QVector<Log_Param_Item>> pack = std::make_shared<QVector<Log_Param_Item>>(std::move(param_pack_));
     param_pack_.clear();
 
-    set_dig_param_values(0, std::move(pack));
-//    send(Ver_2_4::Cmd::SET_DIG_PARAM_VALUES, std::move(pack));
+    if (pack->empty())
+        return;
+
+    save_dig_param_values(pack);
+
+    const QVector<DIG_Param_Value>& param_pack = reinterpret_cast<QVector<DIG_Param_Value>&>(*pack);
+    QMetaObject::invokeMethod(worker_->dbus(), "dig_param_values_changed", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Param_Value>, param_pack));
+
+    send(Log_Type::LOG_PARAM, pack);
+}
+
+void Log_Value_Save_Timer::send_status_pack()
+{
+    std::shared_ptr<QVector<Log_Status_Item>> pack = std::make_shared<QVector<Log_Status_Item>>(std::move(status_pack_));
+    status_pack_.clear();
+
+    const QVector<DIG_Status>& status_pack = reinterpret_cast<QVector<DIG_Status>&>(*pack);
+    QMetaObject::invokeMethod(worker_->dbus(), "status_changed", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Status>, status_pack));
+
+    send(Log_Type::LOG_STATUS, pack);
 }
 
 void Log_Value_Save_Timer::stop()
@@ -246,6 +287,7 @@ void Log_Value_Save_Timer::stop()
     value_pack_timer_.stop();
     event_pack_timer_.stop();
     param_values_timer_.stop();
+    status_pack_timer_.stop();
 
     //timer_.stop();
     for (QTimer *timer : timers_list_)
@@ -262,7 +304,8 @@ void Log_Value_Save_Timer::process_items(uint32_t timer_id)
     //    if (timer_.interval() != (period_ * 1000))
 //        timer_.setInterval(period_ * 1000);
 
-    Log_Value_Item pack_item{QDateTime::currentDateTimeUtc().toMSecsSinceEpoch(), 0, true};
+    Log_Value_Item pack_item{QDateTime::currentDateTimeUtc().toMSecsSinceEpoch()};
+    pack_item.set_need_to_save(true);
 
     Device_Item_Type_Manager* typeMng = &prj_->device_item_type_mng_;
 
@@ -307,30 +350,39 @@ void Log_Value_Save_Timer::process_items(uint32_t timer_id)
     }
 
     if (!pack->empty())
-        send(Ver_2_4::Cmd::LOG_PACK_VALUES, std::move(pack));
+        send(LOG_VALUE, std::move(pack));
 }
 
-void Log_Value_Save_Timer::set_dig_param_values(uint32_t user_id, std::shared_ptr<QVector<DIG_Param_Value>> pack)
+void Log_Value_Save_Timer::save_dig_param_values(std::shared_ptr<QVector<Log_Param_Item>> pack)
 {
     if (pack->empty())
         return;
 
-    QString dbg_msg = "Params changed:";
-    const QString dbg_template = "\n %1: \"%2\"";
-
     Base& db = Base::get_thread_local_instance();
     Table table = db_table<DIG_Param_Value>();
-    table.field_names().erase(table.field_names().begin(), table.field_names().begin() + 2);
-    table.field_names().removeLast(); // remove scheme_id
 
-    uint32_t scheme_id = Database::Schemed_Model::default_scheme_id();
-    const QString where = Database::Helper::get_default_suffix() + " AND group_param_id = ";
-    QVariantList values{QVariant()};
+    using T = DIG_Param_Value;
+    QStringList field_names{
+        table.field_names().at(T::COL_timestamp_msecs),
+        table.field_names().at(T::COL_user_id),
+        table.field_names().at(T::COL_value)
+    };
 
-    for (const DIG_Param_Value& item: *pack)
+    table.field_names() = std::move(field_names);
+
+    uint32_t scheme_id = DB::Schemed_Model::default_scheme_id();
+    const QString where = DB::Helper::get_default_suffix() + " AND group_param_id = ";
+    QVariantList values{QVariant(), QVariant(), QVariant()};
+
+    auto dbg = qDebug(Service::Log()).nospace() << pack->front().user_id() << "|Params changed:";
+
+    for (const Log_Param_Item& item: *pack)
     {
-        dbg_msg += dbg_template.arg(item.group_param_id()).arg(item.value().left(16));
-        values.front() = item.value();
+        dbg << '\n' << item.group_param_id() << ": " << item.value().left(16);
+
+        values.front() = item.timestamp_msecs();
+        values[1] = item.user_id();
+        values.back() = item.value();
 
         const QSqlQuery q = db.update(table, values, where + QString::number(item.group_param_id()));
         if (!q.isActive() || q.numRowsAffected() <= 0)
@@ -338,22 +390,16 @@ void Log_Value_Save_Timer::set_dig_param_values(uint32_t user_id, std::shared_pt
             Table table = db_table<DIG_Param_Value>();
             table.field_names().removeFirst();
 
-            if (!db.insert(table, {item.group_param_id(), item.value(), scheme_id}))
+            const QVariantList ins_values{ item.timestamp_msecs(), item.user_id(), item.group_param_id(),
+                                           item.value(), scheme_id };
+
+            if (!db.insert(table, ins_values))
             {
+                dbg << " failed";
                 // TODO: do something
             }
         }
     }
-
-    Log_Event_Item event { QDateTime::currentDateTimeUtc().toMSecsSinceEpoch(), user_id, false, QtDebugMsg, Service::Log().categoryName(), dbg_msg};
-    worker_->add_event_message(std::move(event));
-
-    QMetaObject::invokeMethod(worker_->dbus(), "dig_param_values_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Param_Value>, *pack));
-
-    auto proto = worker_->net_protocol();
-    if (proto)
-        proto->send_dig_param_values(user_id, *pack);
 }
 
 //struct Log_PK_Increaser
@@ -370,8 +416,11 @@ void Log_Value_Save_Timer::set_dig_param_values(uint32_t user_id, std::shared_pt
 //    return log_increaser;
 //}
 
+template<typename T> void send_pack_timeout(Ver::Client::Protocol& /*proto*/) {}
+template<> void send_pack_timeout<Log_Status_Item>(Ver::Client::Protocol& proto) { proto.send_statuses(); }
+
 template<typename T>
-void Log_Value_Save_Timer::send(uint16_t cmd, std::shared_ptr<QVector<T> > pack)
+void Log_Value_Save_Timer::send(Log_Type_Wrapper log_type, std::shared_ptr<QVector<T> > pack)
 {
     if (!pack || pack->empty())
         return;
@@ -382,7 +431,7 @@ void Log_Value_Save_Timer::send(uint16_t cmd, std::shared_ptr<QVector<T> > pack)
         if (item.timestamp_msecs() == 0)
         {
             qWarning() << "Attempt to save log with zero timestamp";
-            item.set_timestamp_msecs(QDateTime::currentDateTimeUtc().toMSecsSinceEpoch());
+            item.set_current_timestamp();
         }
 
 //        if (increaser.last_log_pk_ + increaser.log_pk_increase_ >= item.timestamp_msecs())
@@ -405,11 +454,11 @@ void Log_Value_Save_Timer::send(uint16_t cmd, std::shared_ptr<QVector<T> > pack)
     auto proto = worker_->net_protocol();
     if (proto)
     {
-        proto->send(cmd)
+        proto->send(Ver::Cmd::LOG_PACK)
                 .timeout([this, pack]()
         {
             save_to_db(*pack);
-        }, std::chrono::seconds(11), std::chrono::seconds(5)) << *pack;
+        }, std::chrono::seconds(11), std::chrono::seconds(5)) << log_type << *pack;
     }
     else
     {

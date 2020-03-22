@@ -19,7 +19,7 @@ typedef QGuiApplication App_Type;
 #include <plus/das/database.h>
 #include <plus/das/scheme_info.h>
 
-#include "checker.h"
+#include "checker_manager.h"
 #include "Network/client_protocol_latest.h"
 #include "Scripts/scripted_scheme.h"
 
@@ -41,7 +41,7 @@ public:
 
     const Scheme_Info& scheme_info() const;
 
-    Helpz::Database::Thread* db_pending();
+    Helpz::DB::Thread* db_pending();
 
     static std::unique_ptr<QSettings> settings();
 
@@ -49,7 +49,7 @@ public:
 
     Worker_Structure_Synchronizer* structure_sync();
 
-    std::shared_ptr<Ver_2_4::Client::Protocol> net_protocol();
+    std::shared_ptr<Ver::Client::Protocol> net_protocol();
 
     static void store_connection_id(const QUuid& connection_id);
     Client::Dbus_Object *dbus() const;
@@ -70,9 +70,7 @@ signals:
 //    void change(const Log_Value_Item& item, bool immediately);
 
     void mode_changed(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
-
-    void status_added(uint32_t group_id, uint32_t info_id, const QStringList& args, uint32_t user_id);
-    void status_removed(uint32_t group_id, uint32_t info_id, uint32_t user_id);
+    void status_changed(const DIG_Status& status);
 public slots:
     void restart_service_object(uint32_t user_id = 0);
     bool stop_scripts(uint32_t user_id = 0);
@@ -89,24 +87,25 @@ public slots:
     void save_server_auth_data(const QString& login, const QString& password);
     void save_server_data(const QUuid &devive_uuid, const QString& login, const QString& password);
 
-    bool set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
+    void set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
+    void set_scheme_name(uint32_t user_id, const QString& name);
 
     void update_plugin_param_names(const QVector<Plugin_Type>& plugins);
 public slots:
     void connection_state_changed(Device_Item *item, bool value);
 private:
-    friend class Ver_2_4::Client::Protocol;
+    friend class Ver::Client::Protocol;
     friend class Client::Protocol_Base;
     std::shared_ptr<Helpz::DTLS::Client_Thread> net_thread_;
-    std::unique_ptr<Helpz::Database::Thread> db_pending_thread_;
+    std::unique_ptr<Helpz::DB::Thread> db_pending_thread_;
     Worker_Structure_Synchronizer* structure_sync_;
 
     using Scripts_Thread = Helpz::SettingsThreadHelper<Scripted_Scheme, Worker*, Helpz::ConsoleReader*, QString, bool, bool>;
     Scripts_Thread::Type* scheme_thread_;
     Scripted_Scheme* prj_;
 
-    friend class Checker;
-    using Checker_Thread = Helpz::SettingsThreadHelper<Checker, Worker*, QStringList>;
+    friend class Checker::Manager;
+    using Checker_Thread = Helpz::SettingsThreadHelper<Checker::Manager, Worker*/*, QStringList*/>;
     Checker_Thread::Type* checker_th_;
 
     using Log_Value_Save_Timer_Thread = Helpz::ParamThread<Log_Value_Save_Timer, Worker*>;

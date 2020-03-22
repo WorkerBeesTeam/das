@@ -43,7 +43,7 @@ void WebSocketClient::sendGroupMode(uint32_t group_id, uint32_t mode_id)
 {
     QByteArray data;
     QDataStream ds(&data, QIODevice::WriteOnly);
-    ds << static_cast<quint8>(WS_CHANGE_DIG_MODE_ITEM)
+    ds << static_cast<quint8>(WS_CHANGE_DIG_MODE)
        << ServerApiCall::instance()->prj()->id()
        << mode_id << group_id;
 
@@ -127,7 +127,7 @@ void WebSocketClient::onBinaryMessageReceived(const QByteArray &message)
             case WS_EVENT_LOG:
                 Helpz::apply_parse(msg, &WebSocketClient::logEventReceived, this);
                 break;
-            case WS_DIG_MODE_ITEM:
+            case WS_DIG_MODE:
                 Helpz::apply_parse(msg, &Proto_Scheme::set_mode, prj);
                 break;
             case WS_CHANGE_DIG_PARAM_VALUES:

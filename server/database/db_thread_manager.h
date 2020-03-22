@@ -7,26 +7,26 @@
 #include "db_scheme.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class Thread_Manager
 {
 public:
-    Thread_Manager(Helpz::Database::Connection_Info info);
+    Thread_Manager(Helpz::DB::Connection_Info info);
     ~Thread_Manager();
 
-    Helpz::Database::Thread* thread();
-    Helpz::Database::Thread* log_thread();
+    Helpz::DB::Thread* thread();
+    Helpz::DB::Thread* log_thread();
     std::shared_ptr<global> get_db();
 private:
     boost::shared_mutex mutex_;
     std::map<std::thread::id, std::shared_ptr<global>> db_list_;
 
-    Helpz::Database::Thread db_thread_;
-    Helpz::Database::Thread db_log_thread_;
+    Helpz::DB::Thread db_thread_;
+    Helpz::DB::Thread db_log_thread_;
 };
 
-} // namespace Database
+} // namespace DB
 } // namespace Das
 
 #endif // DAS_DB_THREAD_MANAGER_H

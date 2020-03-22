@@ -5,7 +5,7 @@
 #include "base_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 struct DAS_LIBRARY_SHARED_EXPORT DIG_Param_Type : public QObject, public Titled_Type {
 private:
@@ -60,10 +60,10 @@ QDataStream& operator>>(QDataStream& ds, DIG_Param_Type& param);
 
 struct DAS_LIBRARY_SHARED_EXPORT DIG_Param_Type_Manager : public Titled_Type_Manager<DIG_Param_Type> {};
 
-} // namespace Database
+} // namespace DB
 
-using DIG_Param_Type = Database::DIG_Param_Type;
-using DIG_Param_Type_Manager = Database::DIG_Param_Type_Manager;
+using DIG_Param_Type = DB::DIG_Param_Type;
+using DIG_Param_Type_Manager = DB::DIG_Param_Type_Manager;
 
 } // namespace Das
 

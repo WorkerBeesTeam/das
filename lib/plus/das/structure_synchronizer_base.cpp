@@ -1,4 +1,5 @@
 #include <QCryptographicHash>
+#include <QMetaEnum>
 
 #include <Helpz/net_protocol.h>
 #include <Helpz/db_builder.h>
@@ -15,20 +16,35 @@ namespace Das {
 Q_LOGGING_CATEGORY(Struct_Log, "struct")
 Q_LOGGING_CATEGORY(Struct_Detail_Log, "struct.detail", QtInfoMsg)
 
-namespace Ver_2_4 {
+namespace Ver {
 
-Uncheck_Foreign::Uncheck_Foreign(Helpz::Database::Base *p) : p_(p) { p->exec("SET foreign_key_checks=0;"); }
+Uncheck_Foreign::Uncheck_Foreign(Helpz::DB::Base *p) : p_(p) { p->exec("SET foreign_key_checks=0;"); }
 Uncheck_Foreign::~Uncheck_Foreign() { p_->exec("SET foreign_key_checks=1;"); }
 
 // ------------------------------------------------------------------------------------------------------
 
-Structure_Synchronizer_Base::Structure_Synchronizer_Base(Helpz::Database::Thread *db_thread) :
+Structure_Synchronizer_Base::Structure_Synchronizer_Base(Helpz::DB::Thread *db_thread) :
     modified_(false), db_thread_(db_thread)
 {
 }
 
 Structure_Synchronizer_Base::~Structure_Synchronizer_Base()
 {
+}
+
+/*static*/ QString Structure_Synchronizer_Base::type_name(uint8_t struct_type)
+{
+    static QMetaEnum meta_enum = QMetaEnum::fromType<Structure_Type>();
+
+    uint8_t flags = struct_type & ST_FLAGS;
+    struct_type &= ~ST_FLAGS;
+
+    QString text = QString::number(struct_type) /*+ " flags " + QString::number(flags)*/ + ' ' + meta_enum.valueToKey(struct_type);
+    if (flags & ST_ITEM_FLAG)
+        text += " is_items";
+    if (flags & ST_HASH_FLAG)
+        text += " is_hash";
+    return text;
 }
 
 bool Structure_Synchronizer_Base::modified() const
@@ -45,24 +61,24 @@ void Structure_Synchronizer_Base::process_modify_message(uint32_t user_id, uint8
 {
     if (!is_can_modify(struct_type))
     {
-        qCWarning(Struct_Log) << "Attempt to modify" << int(struct_type) << "user" << user_id << "scheme" << scheme_id;
+        qCWarning(Struct_Log).noquote().nospace() << user_id << "|[" << type_name(struct_type) << "] Attempt to modify. scheme" << scheme_id;
         return;
     }
 
     using T = Structure_Synchronizer_Base;
-    auto v = Helpz::Network::Protocol::DATASTREAM_VERSION;
+    auto v = Helpz::Net::Protocol::DATASTREAM_VERSION;
 
     switch (struct_type)
     {
     case ST_DEVICE:                Helpz::apply_parse(*data_dev, v, &T::modify<Device>                         ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_PLUGIN_TYPE:           Helpz::apply_parse(*data_dev, v, &T::modify<Plugin_Type>                    ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
-    case ST_DEVICE_ITEM:           Helpz::apply_parse(*data_dev, v, &T::modify<Database::Device_Item>          ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_DEVICE_ITEM:           Helpz::apply_parse(*data_dev, v, &T::modify<DB::Device_Item>          ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_DEVICE_ITEM_TYPE:      Helpz::apply_parse(*data_dev, v, &T::modify<Device_Item_Type>               ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_SAVE_TIMER:            Helpz::apply_parse(*data_dev, v, &T::modify<Save_Timer>                     ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_SECTION:               Helpz::apply_parse(*data_dev, v, &T::modify<Section>                        ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
-    case ST_DEVICE_ITEM_GROUP:     Helpz::apply_parse(*data_dev, v, &T::modify<Database::Device_Item_Group>    ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_DEVICE_ITEM_GROUP:     Helpz::apply_parse(*data_dev, v, &T::modify<DB::Device_Item_Group>    ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_DIG_TYPE:              Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Type>                       ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
-    case ST_DIG_MODE:              Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Mode>                       ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_DIG_MODE_TYPE:         Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Mode_Type>                  ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_DIG_PARAM_TYPE:        Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Param_Type>                 ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_DIG_STATUS_TYPE:       Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Status_Type>                ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_DIG_STATUS_CATEGORY:   Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Status_Category>            ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
@@ -76,7 +92,7 @@ void Structure_Synchronizer_Base::process_modify_message(uint32_t user_id, uint8
     case ST_USER_GROUP:            Helpz::apply_parse(*data_dev, v, &T::modify<User_Groups>                    ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
 
     case ST_DEVICE_ITEM_VALUE:     Helpz::apply_parse(*data_dev, v, &T::modify<Device_Item_Value>              ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
-    case ST_DIG_MODE_ITEM:         Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Mode_Item>                  ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_DIG_MODE:              Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Mode>                       ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_DIG_PARAM_VALUE:       Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Param_Value>                ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
 
     default:
@@ -86,31 +102,31 @@ void Structure_Synchronizer_Base::process_modify_message(uint32_t user_id, uint8
     }
 }
 
-QByteArray Structure_Synchronizer_Base::get_structure_hash(uint8_t struct_type, Helpz::Database::Base& db, uint32_t scheme_id)
+QByteArray Structure_Synchronizer_Base::get_structure_hash(uint8_t struct_type, Helpz::DB::Base& db, uint32_t scheme_id)
 {
     QBuffer buffer;
     buffer.open(QIODevice::ReadWrite);
     QDataStream ds(&buffer);
-    ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+    ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
     add_structure_data(struct_type, ds, db, scheme_id);
 
     return QCryptographicHash::hash(buffer.buffer(), QCryptographicHash::Sha1);
 }
 
-QByteArray Structure_Synchronizer_Base::get_structure_hash_for_all(Helpz::Database::Base& db, uint32_t scheme_id)
+QByteArray Structure_Synchronizer_Base::get_structure_hash_for_all(Helpz::DB::Base& db, uint32_t scheme_id)
 {
     std::vector<uint8_t> struct_type_array = get_main_table_types();
     QBuffer buffer;
     buffer.open(QIODevice::ReadWrite);
     QDataStream ds(&buffer);
-    ds.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+    ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
     for (const uint8_t struct_type: struct_type_array)
         add_structure_data(struct_type, ds, db, scheme_id);
 
     return QCryptographicHash::hash(buffer.buffer(), QCryptographicHash::Sha1);
 }
 
-Helpz::Database::Thread *Structure_Synchronizer_Base::db_thread() const
+Helpz::DB::Thread *Structure_Synchronizer_Base::db_thread() const
 {
     return db_thread_;
 }
@@ -126,7 +142,7 @@ std::vector<uint8_t> Structure_Synchronizer_Base::get_main_table_types() const
         ST_SECTION,
         ST_DEVICE_ITEM_GROUP,
         ST_DIG_TYPE,
-        ST_DIG_MODE,
+        ST_DIG_MODE_TYPE,
         ST_DIG_PARAM_TYPE,
         ST_DIG_STATUS_TYPE,
         ST_DIG_STATUS_CATEGORY,
@@ -156,12 +172,12 @@ bool Structure_Synchronizer_Base::is_can_modify(uint8_t /*struct_type*/) const
 
 void Structure_Synchronizer_Base::fill_suffix(uint8_t /*struct_type*/, QString &/*where_str*/) {}
 
-void Structure_Synchronizer_Base::add_structure_data(uint8_t struct_type, QDataStream& ds, Helpz::Database::Base& db, uint32_t scheme_id)
+void Structure_Synchronizer_Base::add_structure_data(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, uint32_t scheme_id)
 {
     add_structure_template(struct_type, ds, db, scheme_id);
 }
 
-void Structure_Synchronizer_Base::add_structure_items_data(uint8_t struct_type, const QVector<uint32_t>& id_vect, QDataStream& ds, Helpz::Database::Base& db, uint32_t scheme_id)
+void Structure_Synchronizer_Base::add_structure_items_data(uint8_t struct_type, const QVector<uint32_t>& id_vect, QDataStream& ds, Helpz::DB::Base& db, uint32_t scheme_id)
 {
     if (id_vect.isEmpty())
     {
@@ -173,7 +189,7 @@ void Structure_Synchronizer_Base::add_structure_items_data(uint8_t struct_type, 
     }
 }
 
-QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_type(uint8_t struct_type, Helpz::Database::Base& db, uint32_t scheme_id)
+QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_type(uint8_t struct_type, Helpz::DB::Base& db, uint32_t scheme_id)
 {
     switch (struct_type)
     {
@@ -184,7 +200,7 @@ QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_
     case ST_SECTION:               return get_structure_hash_map<Section>                 (struct_type, db, scheme_id); break;
     case ST_DEVICE_ITEM_GROUP:     return get_structure_hash_map<Device_item_Group>       (struct_type, db, scheme_id); break;
     case ST_DIG_TYPE:              return get_structure_hash_map<DIG_Type>                (struct_type, db, scheme_id); break;
-    case ST_DIG_MODE:              return get_structure_hash_map<DIG_Mode>                (struct_type, db, scheme_id); break;
+    case ST_DIG_MODE_TYPE:         return get_structure_hash_map<DIG_Mode_Type>           (struct_type, db, scheme_id); break;
     case ST_DIG_PARAM:             return get_structure_hash_map<DIG_Param>               (struct_type, db, scheme_id); break;
     case ST_DIG_PARAM_TYPE:        return get_structure_hash_map<DIG_Param_Type>          (struct_type, db, scheme_id); break;
     case ST_DIG_STATUS_TYPE:       return get_structure_hash_map<DIG_Status_Type>         (struct_type, db, scheme_id); break;
@@ -199,7 +215,7 @@ QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_
     case ST_USER_GROUP:            return get_structure_hash_map<User_Groups>             (struct_type, db, scheme_id); break;
 
     case ST_DEVICE_ITEM_VALUE:     return get_structure_hash_map<Device_Item_Value>       (struct_type, db, scheme_id); break;
-    case ST_DIG_MODE_ITEM:         return get_structure_hash_map<DIG_Mode_Item>           (struct_type, db, scheme_id); break;
+    case ST_DIG_MODE:              return get_structure_hash_map<DIG_Mode>                (struct_type, db, scheme_id); break;
     case ST_DIG_PARAM_VALUE:       return get_structure_hash_map<DIG_Param_Value>         (struct_type, db, scheme_id); break;
 
     default:
@@ -212,9 +228,10 @@ QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_
 template<typename T>
 QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, const QVector<uint32_t>& id_vect, uint32_t scheme_id)
 {
-    QString suffix = Helpz::Database::db_get_items_list_suffix<T>(id_vect, Database::Scheme_Table_Helper<T>::pk_num);
+    using Helper = DB::Scheme_Table_Helper<T>;
+    QString suffix = Helpz::DB::db_get_items_list_suffix<T>(id_vect, Helper::pk_num);
 
-    if (Database::has_scheme_id<T>())
+    if (DB::has_scheme_id<T>())
     {
         if (suffix.isEmpty())
             suffix = "WHERE";
@@ -225,16 +242,21 @@ QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, con
     }
 
     fill_suffix(struct_type, suffix);
+
+    if (Helper::pk_num != 0)
+    {
+        suffix += " ORDER BY " + T::table_column_names().at(Helper::pk_num);
+    }
     return suffix;
 }
 
 template<typename T>
-QVector<T> Structure_Synchronizer_Base::get_db_list(uint8_t struct_type, Helpz::Database::Base& db, uint32_t scheme_id, const QVector<uint32_t>& id_vect)
+QVector<T> Structure_Synchronizer_Base::get_db_list(uint8_t struct_type, Helpz::DB::Base& db, uint32_t scheme_id, const QVector<uint32_t>& id_vect)
 {
-    return Helpz::Database::db_build_list<T>(db, get_db_list_suffix<T>(struct_type, id_vect, scheme_id));
+    return Helpz::DB::db_build_list<T>(db, get_db_list_suffix<T>(struct_type, id_vect, scheme_id));
 }
 
-void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QDataStream& ds, Helpz::Database::Base& db, uint32_t scheme_id, const QVector<uint32_t>& id_vect)
+void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, uint32_t scheme_id, const QVector<uint32_t>& id_vect)
 {
     switch (struct_type)
     {
@@ -246,7 +268,7 @@ void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QD
     case ST_SECTION:               ds << get_db_list<Section>              (struct_type, db, scheme_id, id_vect); break;
     case ST_DEVICE_ITEM_GROUP:     ds << get_db_list<Device_item_Group>    (struct_type, db, scheme_id, id_vect); break;
     case ST_DIG_TYPE:              ds << get_db_list<DIG_Type>             (struct_type, db, scheme_id, id_vect); break;
-    case ST_DIG_MODE:              ds << get_db_list<DIG_Mode>             (struct_type, db, scheme_id, id_vect); break;
+    case ST_DIG_MODE_TYPE:         ds << get_db_list<DIG_Mode_Type>        (struct_type, db, scheme_id, id_vect); break;
     case ST_DIG_PARAM_TYPE:        ds << get_db_list<DIG_Param_Type>       (struct_type, db, scheme_id, id_vect); break;
     case ST_DIG_STATUS_TYPE:       ds << get_db_list<DIG_Status_Type>      (struct_type, db, scheme_id, id_vect); break;
     case ST_DIG_STATUS_CATEGORY:   ds << get_db_list<DIG_Status_Category>  (struct_type, db, scheme_id, id_vect); break;
@@ -260,7 +282,7 @@ void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QD
     case ST_USER_GROUP:            ds << get_db_list<User_Groups>          (struct_type, db, scheme_id, id_vect); break;
 
     case ST_DEVICE_ITEM_VALUE:     ds << get_db_list<Device_Item_Value>    (struct_type, db, scheme_id, id_vect); break;
-    case ST_DIG_MODE_ITEM:         ds << get_db_list<DIG_Mode_Item>        (struct_type, db, scheme_id, id_vect); break;
+    case ST_DIG_MODE:              ds << get_db_list<DIG_Mode>             (struct_type, db, scheme_id, id_vect); break;
     case ST_DIG_PARAM_VALUE:       ds << get_db_list<DIG_Param_Value>      (struct_type, db, scheme_id, id_vect); break;
 
     default:
@@ -270,9 +292,9 @@ void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QD
 }
 
 template<typename T>
-QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map(uint8_t struct_type, Helpz::Database::Base& db, uint32_t scheme_id)
+QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map(uint8_t struct_type, Helpz::DB::Base& db, uint32_t scheme_id)
 {
-    using Helper = Database::Scheme_Table_Helper<T>;
+    using Helper = DB::Scheme_Table_Helper<T>;
     using PK_Type = typename Helper::PK_Type;
 
     QMap<uint32_t, uint16_t> hash_map;
@@ -281,12 +303,12 @@ QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map(uin
     QDataStream ds(&data, QIODevice::WriteOnly);
 
     QString suffix;
-    if (Database::has_scheme_id<T>())
+    if (DB::has_scheme_id<T>())
             suffix = "WHERE scheme_id = " + QString::number(scheme_id);
 
     fill_suffix(struct_type, suffix);
 
-    QVector<T> items = Helpz::Database::db_build_list<T>(db, suffix);
+    QVector<T> items = Helpz::DB::db_build_list<T>(db, suffix);
     for (const T& item: items)
     {
         ds << item;
@@ -306,7 +328,7 @@ template<typename T>
 void Structure_Synchronizer_Base::modify(QVector<T>&& upd_vect, QVector<T>&& insrt_vect, QVector<uint32_t>&& del_vect, uint32_t user_id,
                                     uint8_t struct_type, uint32_t scheme_id, std::function<std::shared_ptr<Bad_Fix>()> get_bad_fix)
 {
-    db_thread_->add([=](Helpz::Database::Base* db) mutable
+    db_thread_->add([=](Helpz::DB::Base* db) mutable
     {
         auto start_point = std::chrono::system_clock::now();
 
@@ -335,12 +357,12 @@ void Structure_Synchronizer_Base::modify(QVector<T>&& upd_vect, QVector<T>&& ins
                     self->modified_ = true;
                 }
 
-                qCInfo(Struct_Log).nospace() << user_id << "|modify " << static_cast<Structure_Type>(struct_type) << ' '
+                qCInfo(Struct_Log).noquote().nospace() << user_id << "|[" << type_name(struct_type) << "] modify "
                                              << upd_vect.size() << " update, " << insrt_vect.size() << " insert, " << del_vect.size() << " del";
 
                 QByteArray buffer;
                 QDataStream data_stream(&buffer, QIODevice::WriteOnly);
-                data_stream.setVersion(Helpz::Network::Protocol::DATASTREAM_VERSION);
+                data_stream.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
                 data_stream << user_id << struct_type << upd_vect << insrt_vect << del_vect;
                 self->send_modify_response(struct_type, buffer, user_id);
             }
@@ -356,13 +378,13 @@ void Structure_Synchronizer_Base::modify(QVector<T>&& upd_vect, QVector<T>&& ins
 }
 
 template<class T>
-bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::Database::Base& db,
+bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::Base& db,
                                           const QVector<T>& update_vect,
                                           QVector<T>& insert_vect,
                                           const QVector<uint32_t>& delete_vect, uint32_t scheme_id)
 {
-    using namespace Helpz::Database;
-    using Helper = Database::Scheme_Table_Helper<T>;
+    using namespace Helpz::DB;
+    using Helper = DB::Scheme_Table_Helper<T>;
     using PK_Type = typename Helper::PK_Type;
 
     Table table = db_table<T>();
@@ -370,7 +392,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::Datab
     Uncheck_Foreign uncheck_foreign(&db);
 
     // DELETE
-    if (!Database::db_delete_rows<T>(db, delete_vect, scheme_id))
+    if (!DB::db_delete_rows<T>(db, delete_vect, scheme_id))
     {
         qWarning() << "modify_table: Failed delete row in" << table.name() << "scheme_id" << scheme_id;
         return false;
@@ -388,7 +410,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::Datab
     if (id_vect.size())
     {
         int compare_column_count = table.field_names().size();
-        if (Database::has_scheme_id<T>())
+        if (DB::has_scheme_id<T>())
             --compare_column_count;
 
         std::vector<Update_Info> update_list;
@@ -447,7 +469,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::Datab
         if (!update_list.empty())
         {
             const QString where = table.field_names().at(Helper::pk_num) + "=?" +
-                    (Database::has_scheme_id<T>() ? " AND scheme_id=" + QString::number(scheme_id) : QString());
+                    (DB::has_scheme_id<T>() ? " AND scheme_id=" + QString::number(scheme_id) : QString());
 
             Table upd_table{table.name(), {}, {}};
 
@@ -477,7 +499,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::Datab
 
     for (T& item: insert_vect)
     {
-        if constexpr (Database::has_scheme_id<T>())
+        if constexpr (DB::has_scheme_id<T>())
             item.set_scheme_id(scheme_id);
 
         values = T::to_variantlist(item);
@@ -498,5 +520,5 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::Datab
     return true;
 }
 
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das

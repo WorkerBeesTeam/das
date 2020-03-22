@@ -25,7 +25,7 @@ class JWT_Helper;
 
 Q_DECLARE_LOGGING_CATEGORY(WebSockLog)
 
-namespace Network {
+namespace Net {
 
 struct Websocket_Client
 {
@@ -47,7 +47,8 @@ class WebSocket : public QObject
 {
     Q_OBJECT
 public:
-    explicit WebSocket(std::shared_ptr<JWT_Helper> jwt_helper, quint16 port, const QString &certFilePath = QString(), const QString &keyFilePath = QString(),
+    explicit WebSocket(std::shared_ptr<JWT_Helper> jwt_helper, const QString &address, quint16 port,
+                       const QString &certFilePath = QString(), const QString &keyFilePath = QString(),
                        QObject *parent = nullptr);
     ~WebSocket();
 
@@ -56,23 +57,30 @@ public:
 signals:
     void closed();
 
-    void through_command(std::shared_ptr<Network::Websocket_Client> client, uint32_t scheme_id, quint8 cmd, const QByteArray& data);
+    void through_command(std::shared_ptr<Net::Websocket_Client> client, uint32_t scheme_id, quint8 cmd, const QByteArray& data);
+
+    void stream_stoped(uint32_t scheme_id, uint32_t dev_item_id);
 
 public slots:
     void sendDevice_ItemValues(const Scheme_Info& scheme, const QVector<Log_Value_Item>& pack);
-    void sendModeChanged(const Scheme_Info& scheme, uint32_t mode_id, uint32_t group_id);
+    void send_dig_mode_pack(const Scheme_Info& scheme, const QVector<DIG_Mode>& pack);
+    void sendModeChanged(const Scheme_Info& scheme, const DIG_Mode &mode);
     void send_dig_param_values_changed(const Scheme_Info& scheme, const QVector<DIG_Param_Value> &pack);
     void send_connection_state(const Scheme_Info& scheme, uint8_t connection_state);
     void sendEventMessage(const Scheme_Info& scheme, const QVector<Log_Event_Item>& event_pack);
 
-    void sendStatusInserted(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id, const QStringList& args);
-    void sendStatusRemoved(const Scheme_Info& scheme, uint32_t group_id, uint32_t info_id);
+    void send_dig_status_changed(const Scheme_Info& scheme, const QVector<DIG_Status> &pack);
+    void send_dig_status(const Scheme_Info &scheme, const DIG_Status& status);
     void send_structure_changed(const Scheme_Info& scheme, const QByteArray& data);
     void send_time_info(const Scheme_Info& scheme, const QTimeZone& tz, qint64 time_offset);
     void send_ip_address(const Scheme_Info& scheme, const QString& ip_address);
 
+    void send_stream_toggled(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, bool state);
+    void send_stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
+    void send_stream_id_data(uint32_t scheme_id, uint32_t dev_item_id, const QByteArray& data);
+
     void send(const Scheme_Info &scheme, const QByteArray& data) const;
-    void send_to_client(std::shared_ptr<Network::Websocket_Client> client, const QByteArray& data) const;
+    void send_to_client(std::shared_ptr<Net::Websocket_Client> client, const QByteArray& data) const;
 private slots:
     void originAuthentication(QWebSocketCorsAuthenticator *pAuthenticator);
     void acceptError(QAbstractSocket::SocketError socketError);
@@ -85,15 +93,27 @@ private slots:
 private:
     bool auth(const QByteArray& token, Websocket_Client& client);
 
+    bool stream_toggle(uint32_t dev_item_id, bool state, QWebSocket *socket, uint32_t scheme_id);
+    void stream_stop(uint32_t scheme_id, uint32_t dev_item_id, uint32_t user_id = 0);
+
     QWebSocketServer *server_;
 
+    struct Stream_Item
+    {
+        uint32_t scheme_id_;
+        uint32_t dev_item_id_;
+
+        bool operator<(const Stream_Item& o) const;
+    };
+
+    std::map<Stream_Item, std::set<QWebSocket*>> client_uses_stream_;
     QMap<QWebSocket*, std::shared_ptr<Websocket_Client>> client_map_;
     mutable QMutex clients_mutex_;
 
     std::shared_ptr<JWT_Helper> jwt_helper_;
 };
 
-} // namespace Network
+} // namespace Net
 } // namespace Das
 
 #endif // DAS_NETWORK_WEBSOCKET_H

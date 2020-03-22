@@ -5,7 +5,7 @@
 #include "base_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 struct DAS_LIBRARY_SHARED_EXPORT DIG_Status_Type : public Titled_Type
 {
@@ -28,10 +28,10 @@ QDataStream& operator>>(QDataStream& ds, DIG_Status_Type& item);
 
 struct DAS_LIBRARY_SHARED_EXPORT Status_Manager : public Titled_Type_Manager<DIG_Status_Type> {};
 
-} // namespace Database
+} // namespace DB
 
-using DIG_Status_Type = Database::DIG_Status_Type;
-using Status_Manager = Database::Status_Manager;
+using DIG_Status_Type = DB::DIG_Status_Type;
+using Status_Manager = DB::Status_Manager;
 
 } // namespace Das
 

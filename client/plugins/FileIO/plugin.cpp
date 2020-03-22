@@ -53,7 +53,7 @@ void FileIO_Plugin::initialize(Device *dev)
     }
 }
 
-void FileIO_Plugin::configure(QSettings *settings, Scheme *scheme)
+void FileIO_Plugin::configure(QSettings *settings)
 {
     using Helpz::Param;
     auto [initializer, prefix] = Helpz::SettingsHelper(
@@ -65,7 +65,7 @@ void FileIO_Plugin::configure(QSettings *settings, Scheme *scheme)
     prefix_ = prefix;
     set_initializer(initializer);
 
-    for (Device* dev: scheme->devices())
+    for (Device* dev: scheme()->devices())
     {
         if (dev->checker_type()->checker == this)
         {
@@ -83,8 +83,10 @@ bool FileIO_Plugin::check(Device* dev)
 
     const QString prefix = prefix_ + dev->param("prefix").toString();
 
-    std::map<Device_Item*, QVariant> device_items_values;
+    std::map<Device_Item*, Device::Data_Item> device_items_values;
     std::vector<Device_Item*> device_items_disconected;
+
+    const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
 
     for (Device_Item* item: dev->items())
     {
@@ -99,7 +101,10 @@ bool FileIO_Plugin::check(Device* dev)
                 device_items_disconected.push_back(item);
             }
             else
-                device_items_values.emplace(item, QString::fromUtf8(bytes));
+            {
+                Device::Data_Item data_item{0, timestamp_msecs, QString::fromUtf8(bytes)};
+                device_items_values.emplace(item, std::move(data_item));
+            }
 
             file_.close();
         }
@@ -112,7 +117,8 @@ bool FileIO_Plugin::check(Device* dev)
     if (!device_items_values.empty())
     {
         QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
-                                  QArgument<std::map<Device_Item*, QVariant>>("std::map<Device_Item*, QVariant>", device_items_values), Q_ARG(bool, true));
+                                  QArgument<std::map<Device_Item*, Device::Data_Item>>
+                                  ("std::map<Device_Item*, Device::Data_Item>", device_items_values), Q_ARG(bool, true));
     }
 
     if (!device_items_disconected.empty())
@@ -136,6 +142,9 @@ void FileIO_Plugin::write(std::vector<Write_Cache_Item>& items)
     if (items.empty())
         return;
 
+    std::map<Device_Item*, Device::Data_Item> device_items_values;
+    const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
+
     for (const Write_Cache_Item& item: items)
     {
         const QString prefix = prefix_ + item.dev_item_->device()->param("prefix").toString();
@@ -147,9 +156,16 @@ void FileIO_Plugin::write(std::vector<Write_Cache_Item>& items)
             file_.waitForBytesWritten(3000);
             file_.close();
 
-            QMetaObject::invokeMethod(item.dev_item_, "set_raw_value", Qt::QueuedConnection,
-                                      Q_ARG(const QVariant&, item.raw_data_), Q_ARG(bool, false), Q_ARG(uint32_t, item.user_id_));
+            Device::Data_Item data_item{item.user_id_, timestamp_msecs, item.raw_data_};
+            device_items_values.emplace(item.dev_item_, std::move(data_item));
         }
+    }
+
+    if (!device_items_values.empty())
+    {
+        Device* dev = device_items_values.begin()->first->device();
+        QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
+                                  QArgument<std::map<Device_Item*, Device::Data_Item>>("std::map<Device_Item*, Device::Data_Item>", device_items_values), Q_ARG(bool, true));
     }
 }
 

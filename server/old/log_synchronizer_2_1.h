@@ -35,18 +35,18 @@ public:
     void init_last_time();
     void check(qint64 request_time);
 protected:
-    Helpz::Database::Thread* log_thread();
-    QString log_insert_sql(const std::shared_ptr<Database::global>& db_ptr, const QString &name) const;
+    Helpz::DB::Thread* log_thread();
+    QString log_insert_sql(const std::shared_ptr<DB::global>& db_ptr, const QString &name) const;
 
     virtual QString t_str() const = 0;
-    virtual Helpz::Database::Table get_log_table(const std::shared_ptr<Database::global>& db_ptr, const QString& name) const = 0;
+    virtual Helpz::DB::Table get_log_table(const std::shared_ptr<DB::global>& db_ptr, const QString& name) const = 0;
     virtual QString get_param_name() const = 0;
     virtual void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) = 0;
 private:
     void check_next();
     void request_log_range_count();
     bool process_log_range_count(uint32_t remote_count, bool just_check = false);
-    void save_sync_time(const std::shared_ptr<Database::global>& db_ptr);
+    void save_sync_time(const std::shared_ptr<DB::global>& db_ptr);
     void request_log_data();
     void process_log_data(QIODevice& data_dev);
 
@@ -64,7 +64,7 @@ public:
     void process_pack(const QVector<Log_Value_Item>& pack);
 private:
     QString t_str() const override;
-    Helpz::Database::Table get_log_table(const std::shared_ptr<Database::global>& db_ptr, const QString& name) const override;
+    Helpz::DB::Table get_log_table(const std::shared_ptr<DB::global>& db_ptr, const QString& name) const override;
     QString get_param_name() const override;
     void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) override;
 };
@@ -77,7 +77,7 @@ public:
     void process_pack(const QVector<Log_Event_Item>& pack);
 private:
     QString t_str() const override;
-    Helpz::Database::Table get_log_table(const std::shared_ptr<Database::global>& db_ptr, const QString& name) const override;
+    Helpz::DB::Table get_log_table(const std::shared_ptr<DB::global>& db_ptr, const QString& name) const override;
     QString get_param_name() const override;
     void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) override;
 };

@@ -1,7 +1,7 @@
 #include "device_item_group.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 Device_Item_Group::Device_Item_Group(uint32_t id, const QString& title, uint32_t section_id, uint32_t type_id, uint32_t parent_id) :
     id_(id), section_id_(section_id), type_id_(type_id), parent_id_(parent_id), title_(title)
@@ -33,5 +33,5 @@ QDataStream& operator<<(QDataStream& ds, const Device_Item_Group& group)
     return ds << group.id() << group.title() << group.section_id() << group.type_id() << group.parent_id();
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

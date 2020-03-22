@@ -16,12 +16,12 @@
 #include "db_scheme.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
-using namespace Helpz::Database;
+using namespace Helpz::DB;
 
-scheme::scheme(const QString &name, Helpz::Database::Thread* db_thread) :
-    Base(Helpz::Database::Connection_Info::common(), name),
+scheme::scheme(const QString &name, Helpz::DB::Thread* db_thread) :
+    Base(Helpz::DB::Connection_Info::common(), name),
     db_thread_(db_thread)
 {}
 
@@ -47,40 +47,14 @@ QDateTime scheme::dateFromMsec(qint64 date_ms, const QTimeZone &tz) {
                 QDateTime::fromMSecsSinceEpoch(date_ms, tz) :
                 QDateTime::fromMSecsSinceEpoch(date_ms);
 }
-*/
 
-
-
-void scheme::deffered_set_mode(uint32_t scheme_id, uint32_t mode_id, uint32_t group_id)
+void scheme::deffered_set_mode(const DIG_Mode& mode)
 {
-    db_thread_->add([scheme_id, mode_id, group_id](Base* db)
-    {
-        Table table = db_table<DIG_Mode_Item>();
-        table.field_names().erase(table.field_names().begin(), table.field_names().begin() + 2);
-        table.field_names().removeLast(); // remove scheme_id
-
-        QVariantList values{mode_id};
-
-        const QString where = "scheme_id = " + QString::number(scheme_id) + " AND group_id = " + QString::number(group_id);
-        const QSqlQuery q = db->update(table, values, where);
-        if (!q.isActive() || q.numRowsAffected() <= 0)
-        {
-            table = db_table<DIG_Mode_Item>();
-            table.field_names().removeFirst(); // remove id
-
-            QVariantList ins_values{ group_id, mode_id, scheme_id };
-            if (!db->insert(table, ins_values))
-            {
-                // TODO: do something
-            }
-        }
-    });
 }
 
-/*
 void scheme::deffered_save_status(uint32_t scheme_id, uint32_t group_id, uint32_t info_id, const QStringList &args)
 {
-    Helpz::Database::Table table = {db_table_name<DIG_Status>(db_name(scheme_id)), {}, {"group_id", "status_id", "args"}};
+    Helpz::DB::Table table = {db_table_name<DIG_Status>(db_name(scheme_id)), {}, {"group_id", "status_id", "args"}};
     QString sql = insert_query(table, 3);
 
     std::vector<QVariantList> values_pack{{group_id, info_id, args.join(';')}};
@@ -93,7 +67,6 @@ void scheme::deffered_remove_status(uint32_t scheme_id, uint32_t group_id, uint3
     std::vector<QVariantList> values_pack;
     db_thread_->add_pending_query(std::move(sql), std::move(values_pack));
 }
-*/
 
 void scheme::deffered_save_dig_param_value(uint32_t scheme_id, const QVector<DIG_Param_Value> &pack)
 {    
@@ -101,34 +74,9 @@ void scheme::deffered_save_dig_param_value(uint32_t scheme_id, const QVector<DIG
 
     db_thread_->add([scheme_id, pack](Base* db)
     {
-        Table table = db_table<DIG_Param_Value>();
-        table.field_names().erase(table.field_names().begin(), table.field_names().begin() + 2);
-        table.field_names().removeLast(); // remove scheme_id
-
-        const QString where = "scheme_id = " + QString::number(scheme_id) + " AND group_param_id = ";
-        QVariantList values{QVariant()};
-
-        for(const DIG_Param_Value& item: pack)
-        {
-            values.front() = item.value();
-
-            const QSqlQuery q = db->update(table, values, where + QString::number(item.group_param_id()));
-            if (!q.isActive() || q.numRowsAffected() <= 0)
-            {
-                Table ins_table = db_table<DIG_Param_Value>();
-                ins_table.field_names().removeFirst(); // remove id
-
-                QVariantList ins_values{ item.group_param_id(), item.value(), scheme_id };
-                if (!db->insert(ins_table, ins_values))
-                {
-                    // TODO: do something
-                }
-            }
-        }
     });
 }
 
-/*
 Code_Item scheme::get_code_info(uint32_t scheme_id, uint32_t code_id)
 {
     auto q = select({db_table_name<Code_Item>(db_name(scheme_id)), {}, {"id", "name", "global_id"}}, "WHERE id=" + QString::number(code_id));
@@ -188,14 +136,14 @@ void scheme::deferred_clear_status(uint32_t scheme_id)
 
 // -----------------------------------------------------------------------------------
 
-/*static*/ std::shared_ptr<global> global::open(const QString &name, Helpz::Database::Thread* db_thread)
+/*static*/ std::shared_ptr<global> global::open(const QString &name, Helpz::DB::Thread* db_thread)
 {
     std::stringstream s; s << std::this_thread::get_id();
 
     return std::make_shared<global>(name + '_' + QString::fromStdString(s.str()), db_thread);
 }
 
-global::global(const QString &name, Helpz::Database::Thread* db_thread) :
+global::global(const QString &name, Helpz::DB::Thread* db_thread) :
     scheme(name, db_thread)
 {}
 
@@ -276,7 +224,7 @@ void global::check_auth(const Authentication_Info &auth_info, Server::Protocol_B
             info_out->set_name(query.value(1).toString());
 //            info_out->set_scheme_title(query.value(2).toString());
 
-            std::shared_ptr<Helpz::Network::Protocol_Writer> writer = info_out->writer();
+            std::shared_ptr<Helpz::Net::Protocol_Writer> writer = info_out->writer();
             if (writer)
                 writer->set_title(info_out->title() + " (" + info_out->name() + ')');
 
@@ -321,5 +269,5 @@ void global::check_auth(const Authentication_Info &auth_info, Server::Protocol_B
                                     static_cast<uint>(hash.size()));
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

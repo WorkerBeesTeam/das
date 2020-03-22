@@ -15,7 +15,7 @@
 #include "base_synchronizer.h"
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Server {
 
 using namespace Das::Server;
@@ -31,9 +31,9 @@ public:
     void check();
     void process_log_data(QIODevice& data_dev, uint8_t msg_id);
 protected:
-    Helpz::Database::Thread* log_thread();
+    Helpz::DB::Thread* log_thread();
 
-    virtual QString get_param_name() const = 0;
+    virtual QString get_param_name() const { return {}; }
     virtual void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) = 0;
 private:
     void request_log_range_count();
@@ -66,6 +66,33 @@ private:
     void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) override;
 };
 
+class Log_Sync_Params final : public Log_Sync_Item
+{
+public:
+    Log_Sync_Params(Protocol_Base *protocol);
+
+    void process_pack(QVector<Log_Param_Item> &&pack, uint8_t msg_id);
+    void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) override;
+};
+
+class Log_Sync_Statuses final : public Log_Sync_Item
+{
+public:
+    Log_Sync_Statuses(Protocol_Base *protocol);
+
+    void process_pack(QVector<Log_Status_Item> &&pack, uint8_t msg_id);
+    void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) override;
+};
+
+class Log_Sync_Modes final : public Log_Sync_Item
+{
+public:
+    Log_Sync_Modes(Protocol_Base *protocol);
+
+    void process_pack(QVector<Log_Mode_Item> &&pack, uint8_t msg_id);
+    void fill_log_data(QIODevice& data_dev, QString& sql, QVariantList& values_pack, int& row_count) override;
+};
+
 class Log_Synchronizer
 {
 public:
@@ -74,15 +101,19 @@ public:
     void check();
 
     void process_data(Log_Type_Wrapper type_id, QIODevice* data_dev, uint8_t msg_id);
+    void process_pack(Log_Type_Wrapper type_id, QIODevice* data_dev, uint8_t msg_id);
     Log_Sync_Item* log_sync_item(uint8_t type_id);
     void request_log_data(uint8_t type_id);
 
     Log_Sync_Values values_;
     Log_Sync_Events events_;
+    Log_Sync_Params params_;
+    Log_Sync_Statuses statuses_;
+    Log_Sync_Modes modes_;
 };
 
 } // namespace Server
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das
 
 #endif // DAS_LOG_SYNCHRONIZER_H

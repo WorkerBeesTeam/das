@@ -12,24 +12,33 @@ namespace Das {
 
 class Scripted_Scheme;
 
-namespace Ver_2_4 {
+namespace Ver {
 namespace Client {
 
 using namespace Das::Client;
 
+struct Config
+{
+    uint32_t stream_timeout_;
+};
+
 class Protocol : public Protocol_Base
 {
 public:
-    Protocol(Worker* worker, const Authentication_Info &auth_info);
+    Protocol(Worker* worker, const Authentication_Info &auth_info, const Config& config);
     virtual ~Protocol();
 
     Log_Sender& log_sender();
     Structure_Synchronizer& structure_sync();
 
-    void send_mode(uint32_t user_id, uint mode_id, uint32_t group_id);
-    void send_status_added(uint32_t group_id, uint32_t info_id, const QStringList& args, uint32_t);
-    void send_status_removed(uint32_t group_id, uint32_t info_id, uint32_t);
-    void send_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack);
+    void send_statuses();
+
+    void send_stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state);
+    void send_stream_param(uint32_t dev_item_id, const QByteArray& data);
+    void send_stream_data(uint32_t dev_item_id, const QByteArray& data);
+//    void send_mode(const DIG_Mode &mode);
+//    void send_status_changed(const DIG_Status &status);
+//    void send_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack);
 
 //    bool modify_scheme(uint32_t user_id, quint8 struct_type, QIODevice* data_dev);
 private:
@@ -37,17 +46,17 @@ private:
 
     void restart(uint32_t user_id);
     void write_to_item(uint32_t user_id, uint32_t item_id, const QVariant& raw_data);
-    void set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
-    void set_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack);
+    void set_dig_param_values(uint32_t user_id, const QVector<DB::DIG_Param_Value_Base> &pack);
     void exec_script_command(uint32_t user_id, const QString& script, bool is_function, const QVariantList& arguments);
 
-    void send_scheme_structure(uint8_t struct_type, uint8_t msg_id, QIODevice* data_dev, Helpz::Network::Protocol* protocol);
+    void send_scheme_structure(uint8_t struct_type, uint8_t msg_id, QIODevice* data_dev, Helpz::Net::Protocol* protocol);
 
     void ready_write() override;
     void process_message(uint8_t msg_id, uint8_t cmd, QIODevice& data_dev) override;
     void process_answer_message(uint8_t msg_id, uint8_t cmd, QIODevice& data_dev) override;
 
     void parse_script_command(uint32_t user_id, const QString& script, QIODevice* data_dev);
+    void toggle_stream(uint32_t user_id, uint32_t dev_item_id, bool state);
     void process_item_file(QIODevice &data_dev);
 
     void start_authentication();
@@ -57,12 +66,14 @@ private:
 
     Scripted_Scheme* prj_;
 
+    const Config conf_;
+
     Log_Sender log_sender_;
     Structure_Synchronizer structure_sync_;
 };
 
 } // namespace Client
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das
 
 #endif // DAS_PROTOCOL_LATEST_H

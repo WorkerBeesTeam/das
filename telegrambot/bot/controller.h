@@ -17,25 +17,19 @@
     #define REPORT_MIME "application/vnd.ms-excel"
 #endif
 
-#include <plus/das/scheme_info.h>
+#include "bot_base.h"
+#include "scheme_item.h"
 
 namespace Das {
-namespace DBus {
-class Interface;
-} // namespace DBus
+namespace Bot {
 
-struct Scheme_Item : public Scheme_Info
+class Controller : public QThread, public Bot_Base
 {
-    using Scheme_Info::Scheme_Info;
-    QString title_;
-};
-
-class Bot : public QThread {
     Q_OBJECT
 public:
-    Bot(Das::DBus::Interface* dbus_iface, const std::string& token,
+    Controller(Das::DBus::Interface* dbus_iface, const std::string& token,
         const std::string& webhook_url, uint16_t port = 8443, const std::string& webhook_cert = {});
-    ~Bot();
+    ~Controller();
 
     void stop();
     void send_message(int64_t chat_id, const std::string& text) const;
@@ -45,7 +39,7 @@ protected:
     void run() override;
     void anyMessage(TgBot::Message::Ptr message);
 
-    void process_directory(uint32_t user_id, const std::vector<std::string> &cmd, TgBot::Message::Ptr message);
+    std::string process_directory(uint32_t user_id, TgBot::Message::Ptr message, const std::string& msg_data, int32_t tg_user_id);
     // Helpers
     std::map<uint32_t, std::string> list_schemes_names(uint32_t user_id, uint32_t page_number, const std::string &search_text) const;
     std::string getReportFilepathForUser(TgBot::User::Ptr user) const;
@@ -60,9 +54,6 @@ protected:
     void sendSchemeMenu(TgBot::Message::Ptr message, const Scheme_Item& scheme) const;
     void send_authorization_message(const TgBot::Message &msg) const;
 
-    static std::vector<TgBot::InlineKeyboardButton::Ptr> makeInlineButtonRow(const std::string& data, const std::string& text);
-    static TgBot::InlineKeyboardButton::Ptr makeInlineButton(const std::string& data, const std::string& text);
-
     // Chat methods
     void find(uint32_t user_id, TgBot::Message::Ptr message) const;
     void list(uint32_t user_id, TgBot::Message::Ptr message) const;
@@ -72,6 +63,7 @@ protected:
 
     // Inline button query methods
     void status(const Scheme_Item& scheme, TgBot::Message::Ptr message);
+    void elements(uint32_t user_id, const Scheme_Item& scheme, TgBot::Message::Ptr message, std::vector<std::string>::const_iterator begin, const std::vector<std::string>& cmd, const std::string& msg_data);
     void restart(uint32_t user_id, const Scheme_Item& scheme, TgBot::Message::Ptr message);
     void sub_1_list(const Scheme_Item& scheme, TgBot::Message::Ptr message);
     void menu_sub_list(const Scheme_Item& scheme, TgBot::Message::Ptr message, const std::string& action);
@@ -96,9 +88,17 @@ private:
 
     const uint32_t schemes_per_page_ = 5;
 
-    Das::DBus::Interface* dbus_iface_;
+    struct Waited_Item {
+        int32_t tg_user_id_;
+        int64_t time_;
+        std::string data_;
+        Scheme_Item scheme_;
+    };
+
+    std::map<int64_t, Waited_Item> waited_map_;
 };
 
+} // namespace Bot
 } // namespace Das
 
 #endif // DAS_BOT_H

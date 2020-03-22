@@ -5,7 +5,7 @@
 #include "base_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Device_Item_Type : public Titled_Type
 {
@@ -21,6 +21,7 @@ public:
         RT_HOLDING_REGISTERS,
         RT_FILE,
         RT_SIMPLE_BUTTON,
+        RT_VIDEO_STREAM,
     };
 
     enum Save_Algorithm {
@@ -57,10 +58,10 @@ struct DAS_LIBRARY_SHARED_EXPORT Device_Item_Type_Manager : public Titled_Type_M
     uint32_t save_timer_id(uint type_id) const;
 };
 
-} // namespace Database
+} // namespace DB
 
-using Device_Item_Type = Database::Device_Item_Type;
-using Device_Item_Type_Manager = Database::Device_Item_Type_Manager;
+using Device_Item_Type = DB::Device_Item_Type;
+using Device_Item_Type_Manager = DB::Device_Item_Type_Manager;
 
 } // namespace Das
 

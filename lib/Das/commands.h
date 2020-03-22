@@ -8,7 +8,7 @@ namespace Das {
     Q_NAMESPACE
 #endif
 
-namespace Ver_2_4 {
+namespace Ver { // For protocol versioning
 #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
     Q_NAMESPACE
 #endif
@@ -19,7 +19,7 @@ namespace Cmd {
 #endif
 
     enum Command_Type {
-        AUTH = 16, // Helpz::Network::Cmd::USER_COMMAND,
+        AUTH = 16, // Helpz::Net::Cmd::USER_COMMAND,
         NO_AUTH,
 
         VERSION,
@@ -29,8 +29,7 @@ namespace Cmd {
         WRITE_TO_ITEM,
         WRITE_TO_ITEM_FILE,
         SET_MODE,           // if inform ?
-        ADD_STATUS,         // if inform ?
-        REMOVE_STATUS,      // if inform ?
+        CHANGE_STATUS,      // if inform ?
         SET_DIG_PARAM_VALUES,   // if inform ?
         EXEC_SCRIPT_COMMAND,
 
@@ -38,11 +37,16 @@ namespace Cmd {
         MODIFY_SCHEME,
 
         LOG_DATA_REQUEST, // LogType[1] log_type
-        LOG_PACK_VALUES,    // if inform ?
-        LOG_PACK_EVENTS,    // if inform ?
+        LOG_PACK, // LogType[1] log_type
 
         DEVICE_ITEM_VALUES,
         GROUP_STATUSES,
+
+        STREAM_TOGGLE,
+        STREAM_PARAM,
+        STREAM_DATA,
+
+        SET_SCHEME_NAME,
 
         /*
             cmdCreateDevice,
@@ -69,7 +73,7 @@ enum Structure_Type
     ST_SECTION,
     ST_DEVICE_ITEM_GROUP,
     ST_DIG_TYPE,
-    ST_DIG_MODE,
+    ST_DIG_MODE_TYPE,
     ST_DIG_PARAM_TYPE,
     ST_DIG_STATUS_TYPE,
     ST_DIG_STATUS_CATEGORY,
@@ -83,7 +87,7 @@ enum Structure_Type
     ST_USER_GROUP,
 
     ST_DEVICE_ITEM_VALUE,
-    ST_DIG_MODE_ITEM,
+    ST_DIG_MODE,
     ST_DIG_PARAM_VALUE,
 
     ST_COUNT,
@@ -95,7 +99,7 @@ enum Structure_Type
 Q_ENUM_NS(Structure_Type)
 #endif
 
-} // namespace Ver_2_4
+} // namespace Ver
 
 enum WebSockCmd : uint8_t {
     WS_UNKNOWN,
@@ -104,14 +108,14 @@ enum WebSockCmd : uint8_t {
 
     WS_CONNECTION_STATE,
     WS_WRITE_TO_DEV_ITEM,
-    WS_CHANGE_DIG_MODE_ITEM,
+    WS_CHANGE_DIG_MODE,
     WS_CHANGE_DIG_PARAM_VALUES,
     WS_EXEC_SCRIPT,
     WS_RESTART,
 
     WS_DEV_ITEM_VALUES,
     WS_EVENT_LOG,
-    WS_DIG_MODE_ITEM,
+    WS_DIG_MODE,
 
     WS_STRUCT_MODIFY,
 
@@ -119,6 +123,9 @@ enum WebSockCmd : uint8_t {
     WS_GROUP_STATUS_REMOVED,
     WS_TIME_INFO,
     WS_IP_ADDRESS,
+
+    WS_STREAM_TOGGLE,
+    WS_STREAM_DATA,
 
     WEB_SOCK_CMD_COUNT
 };

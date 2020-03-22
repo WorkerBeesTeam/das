@@ -14,10 +14,10 @@
 #include "structure_synchronizer.h"
 
 namespace Das {
-namespace Ver_2_4 {
+namespace Ver {
 namespace Server {
 
-using namespace Helpz::Database;
+using namespace Helpz::DB;
 
 Structure_Synchronizer::Structure_Synchronizer(Protocol_Base *protocol) :
     Base_Synchronizer(protocol),
@@ -36,12 +36,11 @@ Structure_Synchronizer::~Structure_Synchronizer()
 
     db_thread()->add([devitem_value_vect, status_set, s_id](Base* db)
     {
-        QVariantList values;
-
         auto table = db_table<DIG_Status>();
         db->del(table.name(), "scheme_id=" + QString::number(s_id));
         if (!status_set.empty())
         {
+            QVariantList values;
             table.field_names().removeFirst();
 
             const QString sql = "INSERT INTO " + table.name() + '(' + table.field_names().join(',') + ") VALUES "
@@ -49,6 +48,8 @@ Structure_Synchronizer::~Structure_Synchronizer()
 
             for (const DIG_Status& status: status_set)
             {
+                values.push_back(status.timestamp_msecs());
+                values.push_back(status.user_id());
                 values.push_back(status.group_id());
                 values.push_back(status.status_id());
                 values.push_back(status.args_to_db());
@@ -87,7 +88,7 @@ void Structure_Synchronizer::check(bool custom_only, bool force_clean)
             if (it != struct_type_array.end())
             {
                 struct_type_array.erase(it);
-                if (custom_only || !force_clean)
+//                if (custom_only || !force_clean)
                 {
                     continue;
                 }
@@ -199,21 +200,23 @@ void Structure_Synchronizer::change_devitem_value(const Device_Item_Value &value
     change_devitem_value_no_block(value);
 }
 
-void Structure_Synchronizer::add_status(const DIG_Status &item)
+void Structure_Synchronizer::change_status(const QVector<Log_Status_Item> &pack)
 {
     std::lock_guard lock(data_mutex_);
-    auto it = status_set_.find(item);
-    if (it != status_set_.end())
+    for (const Log_Status_Item& status: pack)
     {
-        status_set_.erase(it);
-    }
-    status_set_.insert(item);
-}
+        for (auto it = status_set_.begin(); it != status_set_.end(); ++it)
+        {
+            if (it->group_id() == status.group_id() && it->status_id() == status.status_id())
+            {
+                status_set_.erase(it);
+                break;
+            }
+        }
 
-void Structure_Synchronizer::del_status(const DIG_Status &item)
-{
-    std::lock_guard lock(data_mutex_);
-    status_set_.erase(item);
+        if (!status.is_removed())
+            status_set_.insert(status);
+    }
 }
 
 QVector<DIG_Status> Structure_Synchronizer::insert_statuses(const QVector<DIG_Status> &statuses)
@@ -241,11 +244,17 @@ QVector<DIG_Status> Structure_Synchronizer::insert_statuses(const QVector<DIG_St
 
 void Structure_Synchronizer::change_devitem_value_no_block(const Device_Item_Value &value)
 {
+    if (value.is_big_value())
+        return;
+
     auto it = std::lower_bound(devitem_value_vect_.begin(), devitem_value_vect_.end(), value, devitem_value_compare);
-    if (it != devitem_value_vect_.end() && it->device_item_id() == value.device_item_id())
+    if (it != devitem_value_vect_.end() && it->item_id() == value.item_id())
     {
-        it->set_raw(value.raw());
-        it->set_display(value.display());
+        Device_Item_Value& item = *it;
+        item.set_raw_value(value.raw_value());
+        item.set_value(value.value());
+        item.set_timestamp_msecs(value.timestamp_msecs());
+        item.set_user_id(value.user_id());
     }
     else
     {
@@ -255,7 +264,7 @@ void Structure_Synchronizer::change_devitem_value_no_block(const Device_Item_Val
 
 /*static*/bool Structure_Synchronizer::devitem_value_compare(const Device_Item_Value &value1, const Device_Item_Value &value2)
 {
-    return value1.device_item_id() < value2.device_item_id();
+    return value1.item_id() < value2.item_id();
 }
 
 void Structure_Synchronizer::insert_devitem_values(QVector<Device_Item_Value> &&value_vect)
@@ -267,9 +276,7 @@ void Structure_Synchronizer::insert_devitem_values(QVector<Device_Item_Value> &&
     }
 
     if (value_vect.empty())
-    {
         return;
-    }
 
     std::sort(value_vect.begin(), value_vect.end(), devitem_value_compare);
 
@@ -306,26 +313,39 @@ bool Structure_Synchronizer::clear_devitem_values_with_save()
         return;
 
     Table table = db_table<Device_Item_Value>();
-    table.field_names().erase(table.field_names().begin(), table.field_names().begin() + 2);
-    table.field_names().removeLast(); // remove scheme_id
 
-    const QString where = "scheme_id = " + QString::number(scheme_id) + " AND device_item_id = ";
+    using T = Device_Item_Value;
+    QStringList field_names{
+        table.field_names().at(T::COL_timestamp_msecs),
+        table.field_names().at(T::COL_user_id),
+        table.field_names().at(T::COL_raw_value),
+        table.field_names().at(T::COL_value)
+    };
 
-    QVariantList values{QVariant(), QVariant()};
+    table.field_names() = std::move(field_names);
+
+    const QString where = "scheme_id = " + QString::number(scheme_id) + " AND item_id = ";
+
+    QVariantList values{QVariant(), QVariant(), QVariant(), QVariant()};
 
     for (const Device_Item_Value& value: value_vect)
     {
-        values.front() = value.raw_to_db();
-        values.back() = value.display_to_db();
+        if (value.is_big_value())
+            continue;
 
-        const QSqlQuery q = db->update(table, values, where + QString::number(value.device_item_id()));
+        values.front() = value.timestamp_msecs();
+        values[1] = value.user_id();
+        values[2] = value.raw_value_to_db();
+        values.back() = value.value_to_db();
+
+        const QSqlQuery q = db->update(table, values, where + QString::number(value.item_id()));
         if (!q.isActive() || q.numRowsAffected() <= 0)
         {
             Table ins_table = db_table<Device_Item_Value>();
             ins_table.field_names().removeFirst(); // remove id
 
-            QVariantList ins_values{value.device_item_id()};
-            ins_values += values;
+            QVariantList ins_values = values;
+            ins_values.insert(2, value.item_id()); // after user_id
             ins_values.push_back(scheme_id);
 
             if (!db->insert(ins_table, ins_values))
@@ -364,47 +384,47 @@ void Structure_Synchronizer::send_modify_response(uint8_t /*struct_type*/, const
                               Q_ARG(Scheme_Info, *protocol_), Q_ARG(QByteArray, buffer));
 }
 
-Helpz::Network::Protocol_Sender Structure_Synchronizer::send_scheme_request(uint8_t struct_type)
+Helpz::Net::Protocol_Sender Structure_Synchronizer::send_scheme_request(uint8_t struct_type)
 {
     if (!struct_sync_timeout_)
     {
         struct_wait_set_.insert(struct_type);
     }
 
-    Helpz::Network::Protocol_Sender sender = std::move(protocol_->send(Cmd::GET_SCHEME)
-            .answer([this](QIODevice& data_dev)
+    Helpz::Net::Protocol_Sender sender = protocol_->send(Cmd::GET_SCHEME);
+
+    sender.answer([this](QIODevice& data_dev)
     {
         apply_parse(data_dev, &Structure_Synchronizer::process_scheme, &data_dev);
     })
-            .timeout([this, struct_type]()
+    .timeout([this, struct_type]()
     {
         struct_sync_timeout_ = true;
         struct_wait_set_.clear();
 
-        uint8_t flags = struct_type & ST_FLAGS;
-        uint8_t st_type = struct_type & ~ST_FLAGS;
-        qCWarning(Struct_Log).noquote() << title() << "[" << static_cast<Structure_Type>(st_type) << "] Timeout. flags:" << flags;
+        qCWarning(Struct_Log).noquote() << title() << '[' << type_name(struct_type) << "] Timeout";
+
         protocol()->set_connection_state(CS_CONNECTED_SYNC_TIMEOUT | (modified() ? CS_CONNECTED_MODIFIED : 0));
 
+        uint8_t st_type = struct_type & ~ST_FLAGS;
         send_scheme_request(st_type | ST_HASH_FLAG);
-    }, std::chrono::seconds(55), std::chrono::seconds(17)));
+    }, std::chrono::seconds(7), std::chrono::seconds(3));
 
     sender << struct_type;
 
+    qCDebug(Struct_Detail_Log).noquote() << title() << '[' << type_name(struct_type) << "] REQ GET_SCHEME";
     return sender;
 }
 
 void Structure_Synchronizer::process_scheme(uint8_t struct_type, QIODevice* data_dev)
 {
-//    qCDebug(Struct_Log) << title().c_str() << "process_scheme" << static_cast<Structure_Type>(struct_type & ~ST_HASH_FLAG) << "hash"
+//    qCDebug(Struct_Log).noquote() << title() << '[' << type_name(struct_type) << "] process_scheme";
 //             << bool(struct_type & ST_HASH_FLAG) << "size" << data_dev->size();
 
     uint8_t flags = struct_type & ST_FLAGS;
     struct_type &= ~ST_FLAGS;
 
-    qCDebug(Struct_Detail_Log).noquote() << title() << "GET_SCHEME"
-                                         << static_cast<Structure_Type>(struct_type)
-                                         << "flags:" << int(flags);
+    qCDebug(Struct_Detail_Log).noquote() << title() << '[' << type_name(struct_type) << "] GET_SCHEME";
 
     struct_wait_set_.erase(struct_type);
     struct_wait_set_.erase(struct_type | flags);
@@ -426,7 +446,7 @@ void Structure_Synchronizer::process_scheme(uint8_t struct_type, QIODevice* data
     }
     else
     {
-        qCWarning(Struct_Log).noquote() << title() << "need_to_use_parent_table" << struct_type << "flags" << flags;
+        qCWarning(Struct_Log).noquote() << title() << '[' << type_name(struct_type) << "] need_to_use_parent_table";
     }
 
     if (!struct_sync_timeout_ && struct_wait_set_.empty())
@@ -500,7 +520,7 @@ void Structure_Synchronizer::process_scheme_items_hash(QMap<uint32_t,uint16_t>&&
         }
 
         if (!insert_id_vect.isEmpty() || !update_id_vect.isEmpty() || !del_id_vect.isEmpty())
-            qCDebug(Struct_Log).noquote() << scheme->title() << "[" << static_cast<Structure_Type>(struct_type) << "] Check items hash. is_cant_edit:" << is_cant_edit
+            qCDebug(Struct_Log).noquote() << scheme->title() << '[' << type_name(struct_type) << "] Check items hash. is_cant_edit:" << is_cant_edit
                                << "diffrents: update_id_vect" << update_id_vect.size() << "insert_id_vect" << insert_id_vect.size() << "del_id_vect" << del_id_vect.size();
 
         if (is_cant_edit)
@@ -510,7 +530,7 @@ void Structure_Synchronizer::process_scheme_items_hash(QMap<uint32_t,uint16_t>&&
             // del_id_vect      - send data from db_name to client for insert
             if (!insert_id_vect.isEmpty() || !update_id_vect.isEmpty() || !del_id_vect.isEmpty())
             {
-                Helpz::Network::Protocol_Sender sender = scheme->send(Cmd::MODIFY_SCHEME);
+                Helpz::Net::Protocol_Sender sender = scheme->send(Cmd::MODIFY_SCHEME);
                 sender.timeout(nullptr, std::chrono::seconds(13));
                 sender << uint32_t(0) << struct_type;
                 self->add_structure_items_data(struct_type, update_id_vect, sender, *db, s_id);
@@ -581,7 +601,7 @@ void Structure_Synchronizer::process_scheme_hash(const QByteArray& client_hash, 
         {
             if (client_hash != self->get_structure_hash(struct_type, *db, s_id))
             {
-                qCDebug(Struct_Log).noquote() << scheme->title() << '[' << static_cast<Structure_Type>(struct_type) << "] Hash is diffrent. scheme_id:" << s_id;
+                qCDebug(Struct_Log).noquote() << scheme->title() << '[' << type_name(struct_type) << "] Hash is diffrent. scheme_id:" << s_id;
                 self->send_scheme_request(struct_type | ST_FLAGS);
             }
             else
@@ -595,7 +615,7 @@ void Structure_Synchronizer::process_scheme_hash(const QByteArray& client_hash, 
 
             if (client_hash != self->get_structure_hash_for_all(*db, s_id))
             {
-                qCDebug(Struct_Log).noquote() << scheme->title() << '[' << static_cast<Structure_Type>(struct_type) << "] Common hash is diffrent. scheme_id:" << s_id;
+                qCDebug(Struct_Log).noquote() << scheme->title() << '[' << type_name(struct_type) << "] Common hash is diffrent. scheme_id:" << s_id;
                 for (const uint8_t struct_type_item: struct_type_array)
                 {
                     self->send_scheme_request(struct_type_item | ST_FLAGS);
@@ -629,13 +649,13 @@ void Structure_Synchronizer::process_scheme_data(uint8_t struct_type, QIODevice*
     {
     case ST_DEVICE:                apply_parse(*data_dev, &T::sync_table<Device>                       , s_id, delete_if_not_exist); break;
     case ST_PLUGIN_TYPE:           apply_parse(*data_dev, &T::sync_table<Plugin_Type>                  , s_id, delete_if_not_exist); break;
-    case ST_DEVICE_ITEM:           apply_parse(*data_dev, &T::sync_table<Database::Device_Item>        , s_id, delete_if_not_exist); break;
+    case ST_DEVICE_ITEM:           apply_parse(*data_dev, &T::sync_table<DB::Device_Item>        , s_id, delete_if_not_exist); break;
     case ST_DEVICE_ITEM_TYPE:      apply_parse(*data_dev, &T::sync_table<Device_Item_Type>             , s_id, delete_if_not_exist); break;
     case ST_SAVE_TIMER:            apply_parse(*data_dev, &T::sync_table<Save_Timer>                   , s_id, delete_if_not_exist); break;
     case ST_SECTION:               apply_parse(*data_dev, &T::sync_table<Section>                      , s_id, delete_if_not_exist); break;
-    case ST_DEVICE_ITEM_GROUP:     apply_parse(*data_dev, &T::sync_table<Database::Device_Item_Group>  , s_id, delete_if_not_exist); break;
+    case ST_DEVICE_ITEM_GROUP:     apply_parse(*data_dev, &T::sync_table<DB::Device_Item_Group>  , s_id, delete_if_not_exist); break;
     case ST_DIG_TYPE:              apply_parse(*data_dev, &T::sync_table<DIG_Type>                     , s_id, delete_if_not_exist); break;
-    case ST_DIG_MODE:              apply_parse(*data_dev, &T::sync_table<DIG_Mode>                     , s_id, delete_if_not_exist); break;
+    case ST_DIG_MODE_TYPE:         apply_parse(*data_dev, &T::sync_table<DIG_Mode_Type>                , s_id, delete_if_not_exist); break;
     case ST_DIG_PARAM_TYPE:        apply_parse(*data_dev, &T::sync_table<DIG_Param_Type>               , s_id, delete_if_not_exist); break;
     case ST_DIG_STATUS_TYPE:       apply_parse(*data_dev, &T::sync_table<DIG_Status_Type>              , s_id, delete_if_not_exist); break;
     case ST_DIG_STATUS_CATEGORY:   apply_parse(*data_dev, &T::sync_table<DIG_Status_Category>          , s_id, delete_if_not_exist); break;
@@ -649,7 +669,7 @@ void Structure_Synchronizer::process_scheme_data(uint8_t struct_type, QIODevice*
 //    case ST_USER_GROUP:            apply_parse(*data_dev, &T::sync_table<User_Groups>                  , s_id, delete_if_not_exist); break;
 
     case ST_DEVICE_ITEM_VALUE:     apply_parse(*data_dev, &T::sync_table<Device_Item_Value>            , s_id, delete_if_not_exist); break;
-    case ST_DIG_MODE_ITEM:         apply_parse(*data_dev, &T::sync_table<DIG_Mode_Item>                , s_id, delete_if_not_exist); break;
+    case ST_DIG_MODE:              apply_parse(*data_dev, &T::sync_table<DIG_Mode>                     , s_id, delete_if_not_exist); break;
     case ST_DIG_PARAM_VALUE:       apply_parse(*data_dev, &T::sync_table<DIG_Param_Value>              , s_id, delete_if_not_exist); break;
 
     default:
@@ -665,30 +685,30 @@ bool Structure_Synchronizer::remove_scheme_rows(Base& db, uint8_t struct_type, c
 
     switch (struct_type)
     {
-    case ST_DEVICE:                return Database::db_delete_rows<Device>                     (db, delete_vect, s_id); break;
-    case ST_PLUGIN_TYPE:           return Database::db_delete_rows<Plugin_Type>                (db, delete_vect, s_id); break;
-    case ST_DEVICE_ITEM:           return Database::db_delete_rows<Database::Device_Item>      (db, delete_vect, s_id); break;
-    case ST_DEVICE_ITEM_TYPE:      return Database::db_delete_rows<Device_Item_Type>           (db, delete_vect, s_id); break;
-    case ST_SAVE_TIMER:            return Database::db_delete_rows<Save_Timer>                 (db, delete_vect, s_id); break;
-    case ST_SECTION:               return Database::db_delete_rows<Section>                    (db, delete_vect, s_id); break;
-    case ST_DEVICE_ITEM_GROUP:     return Database::db_delete_rows<Database::Device_Item_Group>(db, delete_vect, s_id); break;
-    case ST_DIG_TYPE:              return Database::db_delete_rows<DIG_Type>                   (db, delete_vect, s_id); break;
-    case ST_DIG_MODE:              return Database::db_delete_rows<DIG_Mode>                   (db, delete_vect, s_id); break;
-    case ST_DIG_PARAM_TYPE:        return Database::db_delete_rows<DIG_Param_Type>             (db, delete_vect, s_id); break;
-    case ST_DIG_STATUS_TYPE:       return Database::db_delete_rows<DIG_Status_Type>            (db, delete_vect, s_id); break;
-    case ST_DIG_STATUS_CATEGORY:   return Database::db_delete_rows<DIG_Status_Category>        (db, delete_vect, s_id); break;
-    case ST_DIG_PARAM:             return Database::db_delete_rows<DIG_Param>                  (db, delete_vect, s_id); break;
-    case ST_SIGN_TYPE:             return Database::db_delete_rows<Sign_Type>                  (db, delete_vect, s_id); break;
-    case ST_CODES:                 return Database::db_delete_rows<Code_Item>                  (db, delete_vect, s_id); break;
-    case ST_TRANSLATION:           return Database::db_delete_rows<Translation>                (db, delete_vect, s_id); break;
-//    case ST_AUTH_GROUP:            return Database::db_delete_rows<Auth_Group>                 (db, delete_vect, s_id); break;
-//    case ST_AUTH_GROUP_PERMISSION: return Database::db_delete_rows<Auth_Group_Permission>      (db, delete_vect, s_id); break;
-//    case ST_USER:                  return Database::db_delete_rows<User>                       (db, delete_vect, s_id); break;
-//    case ST_USER_GROUP:            return Database::db_delete_rows<User_Groups>                (db, delete_vect, s_id); break;
+    case ST_DEVICE:                return DB::db_delete_rows<Device>                     (db, delete_vect, s_id); break;
+    case ST_PLUGIN_TYPE:           return DB::db_delete_rows<Plugin_Type>                (db, delete_vect, s_id); break;
+    case ST_DEVICE_ITEM:           return DB::db_delete_rows<DB::Device_Item>      (db, delete_vect, s_id); break;
+    case ST_DEVICE_ITEM_TYPE:      return DB::db_delete_rows<Device_Item_Type>           (db, delete_vect, s_id); break;
+    case ST_SAVE_TIMER:            return DB::db_delete_rows<Save_Timer>                 (db, delete_vect, s_id); break;
+    case ST_SECTION:               return DB::db_delete_rows<Section>                    (db, delete_vect, s_id); break;
+    case ST_DEVICE_ITEM_GROUP:     return DB::db_delete_rows<DB::Device_Item_Group>(db, delete_vect, s_id); break;
+    case ST_DIG_TYPE:              return DB::db_delete_rows<DIG_Type>                   (db, delete_vect, s_id); break;
+    case ST_DIG_MODE_TYPE:         return DB::db_delete_rows<DIG_Mode_Type>              (db, delete_vect, s_id); break;
+    case ST_DIG_PARAM_TYPE:        return DB::db_delete_rows<DIG_Param_Type>             (db, delete_vect, s_id); break;
+    case ST_DIG_STATUS_TYPE:       return DB::db_delete_rows<DIG_Status_Type>            (db, delete_vect, s_id); break;
+    case ST_DIG_STATUS_CATEGORY:   return DB::db_delete_rows<DIG_Status_Category>        (db, delete_vect, s_id); break;
+    case ST_DIG_PARAM:             return DB::db_delete_rows<DIG_Param>                  (db, delete_vect, s_id); break;
+    case ST_SIGN_TYPE:             return DB::db_delete_rows<Sign_Type>                  (db, delete_vect, s_id); break;
+    case ST_CODES:                 return DB::db_delete_rows<Code_Item>                  (db, delete_vect, s_id); break;
+    case ST_TRANSLATION:           return DB::db_delete_rows<Translation>                (db, delete_vect, s_id); break;
+//    case ST_AUTH_GROUP:            return DB::db_delete_rows<Auth_Group>                 (db, delete_vect, s_id); break;
+//    case ST_AUTH_GROUP_PERMISSION: return DB::db_delete_rows<Auth_Group_Permission>      (db, delete_vect, s_id); break;
+//    case ST_USER:                  return DB::db_delete_rows<User>                       (db, delete_vect, s_id); break;
+//    case ST_USER_GROUP:            return DB::db_delete_rows<User_Groups>                (db, delete_vect, s_id); break;
 
-    case ST_DEVICE_ITEM_VALUE:     return Database::db_delete_rows<Device_Item_Value>          (db, delete_vect, s_id); break;
-    case ST_DIG_MODE_ITEM:         return Database::db_delete_rows<DIG_Mode_Item>              (db, delete_vect, s_id); break;
-    case ST_DIG_PARAM_VALUE:       return Database::db_delete_rows<DIG_Param_Value>            (db, delete_vect, s_id); break;
+    case ST_DEVICE_ITEM_VALUE:     return DB::db_delete_rows<Device_Item_Value>          (db, delete_vect, s_id); break;
+    case ST_DIG_MODE:              return DB::db_delete_rows<DIG_Mode>                   (db, delete_vect, s_id); break;
+    case ST_DIG_PARAM_VALUE:       return DB::db_delete_rows<DIG_Param_Value>            (db, delete_vect, s_id); break;
 
     default:
         qWarning(Struct_Log) << "remove_scheme_rows unknown type: " << int(struct_type);
@@ -839,16 +859,13 @@ bool Structure_Synchronizer::is_can_modify(uint8_t struct_type) const
 //    void insert(const QVector<T>& /*items*/) {}
 //};
 
-//struct Scheme_Table_Helper<>
-//struct Scheme_Table_Helper<>
-
 template<class T>
 bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, bool delete_if_not_exist)
 {
 #pragma GCC warning "Check if Code_Item::global_id exist and used for scheme_group"
 //    Sync_Process_Helper<T> sync_proc_helpher(this);
 
-    using Helper = Database::Scheme_Table_Helper<T>;
+    using Helper = DB::Scheme_Table_Helper<T>;
     using PK_Type = typename Helper::PK_Type;
 
     PK_Type id_value;
@@ -857,12 +874,12 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, 
 
     Table table = db_table<T>();
 
-    std::shared_ptr<Database::global> db_ptr = db();
+    std::shared_ptr<DB::global> db_ptr = db();
     {
         int compare_column_count = table.field_names().size();
 
         QString suffix;
-        if (Database::has_scheme_id<T>())
+        if (DB::has_scheme_id<T>())
         {
             suffix = "WHERE scheme_id=" + QString::number(scheme_id);
             --compare_column_count;
@@ -929,7 +946,7 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, 
 
     if (delete_if_not_exist && !delete_vect.isEmpty())
     {
-        if (!Database::db_delete_rows<T>(*db_ptr.get(), delete_vect, scheme_id))
+        if (!DB::db_delete_rows<T>(*db_ptr.get(), delete_vect, scheme_id))
         {
             qWarning() << "sync_table: Failed delete row in" << table.name() << "scheme_id" << scheme_id;
             return false;
@@ -939,7 +956,7 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, 
     if (!update_list.empty())
     {
         const QString where = table.field_names().at(Helper::pk_num) + "=?" +
-                (Database::has_scheme_id<T>() ? " AND scheme_id=" + QString::number(scheme_id) : QString());
+                (DB::has_scheme_id<T>() ? " AND scheme_id=" + QString::number(scheme_id) : QString());
 
         Table upd_table{table.name(), {}, {}};
 
@@ -964,7 +981,7 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, 
         QVariantList values;
         for (T& item: items)
         {
-            if constexpr (Database::has_scheme_id<T>())
+            if constexpr (DB::has_scheme_id<T>())
                 item.set_scheme_id(scheme_id);
 
             values = T::to_variantlist(item);
@@ -983,5 +1000,5 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, 
 }
 
 } // namespace Server
-} // namespace Ver_2_4
+} // namespace Ver
 } // namespace Das

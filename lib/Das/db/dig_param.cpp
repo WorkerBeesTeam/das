@@ -1,7 +1,7 @@
 #include "dig_param.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 DIG_Param::DIG_Param(uint32_t id, uint32_t param_id, uint32_t group_id, uint32_t parent_id) :
     id_(id), param_id_(param_id), group_id_(group_id), parent_id_(parent_id)
@@ -58,5 +58,5 @@ QDataStream &operator>>(QDataStream &ds, DIG_Param &item)
     return ds >> item.id_ >> item.param_id_ >> item.group_id_ >> item.parent_id_;
 }
 
-} // namespace Database
+} // namespace DB
 } // namespace Das

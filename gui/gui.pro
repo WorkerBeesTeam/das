@@ -1,6 +1,6 @@
 TEMPLATE = app
 TARGET = DasModern
-QT += qml quick quickcontrols2 sql network websockets
+QT += qml quick quickcontrols2 websockets
 
 CONFIG += link_pkgconfig qml_debug
 

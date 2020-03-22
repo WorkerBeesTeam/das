@@ -5,7 +5,7 @@
 #include "base_type.h"
 
 namespace Das {
-namespace Database {
+namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT DIG_Type : public Titled_Type
 {
@@ -28,10 +28,10 @@ QDataStream& operator>>(QDataStream& ds, DIG_Type& item);
 
 struct DAS_LIBRARY_SHARED_EXPORT DIG_Type_Manager : public Titled_Type_Manager<DIG_Type> {};
 
-} // namespace Database
+} // namespace DB
 
-using DIG_Type = Database::DIG_Type;
-using DIG_Type_Manager = Database::DIG_Type_Manager;
+using DIG_Type = DB::DIG_Type;
+using DIG_Type_Manager = DB::DIG_Type_Manager;
 
 } // namespace Das
 
