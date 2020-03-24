@@ -2,6 +2,8 @@
 #include <string>
 #include <algorithm>
 
+#include <filesystem>
+
 #include <boost/algorithm/string.hpp>
 
 #include <QDebug>
@@ -26,6 +28,7 @@
 #include "db/tg_user.h"
 #include "db/tg_subscriber.h"
 
+#include "user_menu/connection_state.h"
 #include "elements.h"
 #include "controller.h"
 
@@ -35,11 +38,19 @@ namespace Bot {
 using namespace std;
 using namespace Helpz::DB;
 
-Controller::Controller(DBus::Interface *dbus_iface, const string &token, const string& webhook_url, uint16_t port, const string &webhook_cert) :
+Controller::Controller(DBus::Interface *dbus_iface, const string &token, const string& webhook_url, uint16_t port, const string &webhook_cert, const string &templates_path) :
     QThread(), Bot_Base(dbus_iface),
     stop_flag_(false), port_(port), bot_(nullptr), server_(nullptr), token_(token),
     webhook_url_(webhook_url), webhook_cert_(webhook_cert)
 {
+    try
+    {
+        fill_templates(templates_path);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Bot: Fail init templates " << e.what() << std::endl;
+    }
 }
 
 Controller::~Controller()
@@ -320,7 +331,22 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
         if (cmd.size() >= 3)
         {
             const string &action = cmd.at(2);
-            if (action == "status")
+            if (action == "user_menu")
+            {
+                if (cmd.size() < 4)
+                    throw std::runtime_error("Unknown user_menu argument count: " + to_string(cmd.size()));
+
+                uint32_t index = stoul(cmd.at(3));
+                if (index < user_menu_set_.size())
+                {
+                    auto it = user_menu_set_.begin();
+                    std::advance(it, index);
+
+                    const std::string text = it->get_text(user_id, scheme);
+                    send_message(message->chat->id, text);
+                }
+            }
+            else if (action == "status")
                 status(scheme, message);
             else if (action == "elem")
             {
@@ -511,18 +537,15 @@ void Controller::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
         Q_ARG(uint32_t, scheme.id()));
 
     Base& db = Base::get_thread_local_instance();
-    QString group_title, sql, status_text, status_sql,
-            text = '*' + scheme.title_ + "*\n";
+    QString sql, status_text, status_sql;
 
-    if ((scheme_status.connection_state_ & ~CS_FLAGS) >= CS_CONNECTED_JUST_NOW)
-        text += "🚀 На связи!\n";
-    else
-    {
-        text += "💢 Не подключен!\n";
+    std::string text = '*' + scheme.title_.toStdString() + "*\n";
 
+    text += User_Menu::Connection_State::to_string(scheme_status.connection_state_) + '\n';
+
+    if ((scheme_status.connection_state_ & ~CS_FLAGS) < CS_CONNECTED_JUST_NOW)
         scheme_status.status_set_ =
                 db_build_list<DIG_Status, std::set>(db, "WHERE scheme_id = " + QString::number(scheme.id()));
-    }
 
     if (!scheme_status.status_set_.empty())
     {
@@ -552,16 +575,16 @@ void Controller::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
                                          DIG_Status_Type::COL_category_id
                                      });
 
-        std::map<uint32_t, QString> group_title_map;
+        std::string group_title;
+        std::map<uint32_t, std::string> group_title_map;
         QSqlQuery q = db.exec(sql);
         while(q.next())
         {
-            group_title = q.value(2).toString();
-            if (group_title.isEmpty())
-            {
-                group_title = q.value(3).toString();
-            }
-            group_title.insert(0, q.value(1).toString() + ' ');
+            group_title = q.value(2).toString().toStdString();
+            if (group_title.empty())
+                group_title = q.value(3).toString().toStdString();
+
+            group_title.insert(0, q.value(1).toString().toStdString() + ' ');
             group_title_map.emplace(q.value(0).toUInt(), group_title);
         }
 
@@ -585,11 +608,11 @@ void Controller::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
             for (const QString& arg: status.args())
                 status_text = status_text.arg(arg);
 
-            text += ' ' + group_it->second + ": " + status_text;
+            text += ' ' + group_it->second + ": " + status_text.toStdString();
         }
     }
 
-    send_message(message->chat->id, text.toStdString());
+    send_message(message->chat->id, text);
 }
 
 void Controller::elements(uint32_t user_id, const Scheme_Item &scheme, TgBot::Message::Ptr message,
@@ -788,6 +811,11 @@ void Controller::sendSchemeMenu(TgBot::Message::Ptr message, const Scheme_Item& 
     TgBot::InlineKeyboardMarkup::Ptr keyboard(new TgBot::InlineKeyboardMarkup);
 
     const string base_data = "scheme." + to_string(scheme.id());
+
+    int i = 0;
+    for (const User_Menu::Item& item: user_menu_set_)
+        keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".user_menu." + std::to_string(i++), item.name()));
+
     keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".status", "Состояние"));
     keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".elem", "Элементы"));
 //    keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".menu_sub_1", "Под меню 1")),
@@ -853,6 +881,15 @@ void Controller::finished()
 {
     qDebug() << "finished";
     bot_->getApi().deleteWebhook();
+}
+
+void Controller::fill_templates(const std::string &templates_path)
+{
+    namespace fs = std::filesystem;
+
+    for(auto& p: fs::directory_iterator(templates_path))
+        if (fs::is_regular_file(p.path()))
+            user_menu_set_.emplace(p.path(), dbus_iface_);
 }
 
 Scheme_Item Controller::get_scheme(uint32_t user_id, const string &scheme_id) const

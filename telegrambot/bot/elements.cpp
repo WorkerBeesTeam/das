@@ -9,6 +9,7 @@
 
 #include <dbus/dbus_interface.h>
 
+#include "user_menu/dig_mode.h"
 #include "elements.h"
 
 namespace Das {
@@ -274,14 +275,7 @@ void Elements::fill_group_mode(uint32_t dig_id)
     {
         mode_btn_base = msg_data_;
 
-        const QString mode_sql = "WHERE scheme_id = " + QString::number(scheme_.id()) + " AND group_id = " + QString::number(dig_id);
-        Base& db = Base::get_thread_local_instance();
-        const QVector<DB::DIG_Mode> dig_mode_vect = db_build_list<DB::DIG_Mode>(db, mode_sql);
-        if (!dig_mode_vect.empty())
-        {
-            const DB::DIG_Mode& mode = dig_mode_vect.front();
-            mode_id = mode.mode_id();
-        }
+        mode_id = User_Menu::DIG_Mode::get_mode_id(scheme_.id(), dig_id);
     }
     else
     {
