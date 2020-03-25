@@ -369,7 +369,7 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
                 else if (elements.text_.empty())
                     bot_->getApi().editMessageReplyMarkup(message->chat->id, message->messageId, "", elements.keyboard_);
                 else
-                    bot_->getApi().editMessageText(elements.text_, message->chat->id, message->messageId, "", "", false, elements.keyboard_);
+                    bot_->getApi().editMessageText(elements.text_, message->chat->id, message->messageId, "", "Markdown", false, elements.keyboard_);
             }
 
             else if (action == "menu_sub_1")

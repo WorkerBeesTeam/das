@@ -31,7 +31,9 @@ void Elements::generate_answer()
     back_data_ = msg_data_.substr(0, msg_data_.size() - cmd_.back().size() - 1);
     scheme_suffix_ = "WHERE scheme_id = " + QString::number(scheme_.parent_id_or_id());
 
-    text_ = scheme_.title_.toStdString();
+    text_ = '*';
+    text_ += scheme_.title_.toStdString();
+    text_ += '*';
 
     if (cmd_.size() <= 3)
         fill_sections();
