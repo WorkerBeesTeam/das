@@ -86,7 +86,7 @@ void Elements::fill_section(uint32_t sct_id)
     else
     {
         uint32_t dig_id = stoi(*begin_++);
-        fill_group(sct_id, dig_id);
+        fill_group(dig_id);
     }
 }
 
@@ -96,36 +96,59 @@ void Elements::fill_groups(uint32_t sct_id)
 
     Scheme_Status scheme_status;
 
-    std::future<void> scheme_status_task = std::async(std::launch::async, [this, &scheme_status]() -> void
-    {
-        QMetaObject::invokeMethod(dbus_iface_, "get_scheme_status", Qt::BlockingQueuedConnection,
-            Q_RETURN_ARG(Scheme_Status, scheme_status),
-            Q_ARG(uint32_t, scheme_.id()));
-    });
-
-    std::string btn_text;
+    QMetaObject::invokeMethod(dbus_iface_, "get_scheme_status", Qt::BlockingQueuedConnection,
+        Q_RETURN_ARG(Scheme_Status, scheme_status),
+        Q_ARG(uint32_t, scheme_.id()));
 
     Base& db = Base::get_thread_local_instance();
-    QSqlQuery q = db.exec(get_group_sql(sct_id));
 
-    scheme_status_task.get();
+    if ((scheme_status.connection_state_ & ~CS_FLAGS) < CS_CONNECTED_JUST_NOW)
+        scheme_status.status_set_ =
+                db_build_list<DIG_Status, std::set>(db, "WHERE scheme_id = " + QString::number(scheme_.id()));
 
+    QString status_id_sql;
+    std::map<uint32_t, QString> status_id_map;
+    for (const DIG_Status& status: scheme_status.status_set_)
+    {
+        QString& status_id_sep = status_id_map[status.group_id()];
+        status_id_sep += QString::number(status.status_id());
+        status_id_sep += ',';
+    }
+    for (auto& it: status_id_map)
+    {
+        QString& status_id_sep = it.second;
+        status_id_sep.remove(status_id_sep.size() - 1, 1);
+
+        status_id_sql += "(dig.id=";
+        status_id_sql += QString::number(it.first);
+        status_id_sql += " AND dst1.id IN(";
+        status_id_sql += status_id_sep;
+        status_id_sql += "))OR";
+    }
+    if (status_id_sql.isEmpty())
+        status_id_sql = '0';
+    else
+        status_id_sql.remove(status_id_sql.size() - 2, 2);
+
+    const QString sql =
+            "SELECT dig.id, IF(dig.title IS NULL OR dig.title = '', dt.title, dig.title) as title, dst.category_id "
+            "FROM das_device_item_group dig "
+            "LEFT JOIN das_dig_type dt ON dt.id = dig.type_id "
+            "LEFT JOIN das_dig_status_type dst ON dst.id = ("
+            "SELECT dst1.id FROM das_dig_status_type dst1 WHERE "
+            + status_id_sql +
+            " ORDER BY dst1.category_id DESC LIMIT 1"
+            ") WHERE dig.scheme_id = " + QString::number(scheme_.parent_id_or_id())
+            + " AND dig.section_id = " + QString::number(sct_id);
+
+    QSqlQuery q = db.exec(sql);
+
+    std::string btn_text;
     while (q.next())
     {
         const DB::Device_Item_Group group(q.value(0).toUInt(), q.value(1).toString());
 
-        btn_text.clear();
-
-        for (const DIG_Status& status: scheme_status.status_set_)
-        {
-            if (status.group_id() == group.id())
-            {
-                QSqlQuery status_q = db.exec("SELECT category_id FROM das_dig_status_type WHERE id = " + QString::number(status.status_id()));
-                if (status_q.next())
-                    btn_text = default_status_category_emoji(status_q.value(0).toUInt());
-                break;
-            }
-        }
+        btn_text = default_status_category_emoji(q.value(2).toUInt());
 
         if (!btn_text.empty())
             btn_text += ' ';
@@ -136,17 +159,17 @@ void Elements::fill_groups(uint32_t sct_id)
     }
 }
 
-void Elements::fill_group(uint32_t sct_id, uint32_t dig_id)
+void Elements::fill_group(uint32_t dig_id)
 {
     if (cmd_.size() == 5)
-        fill_group_info(sct_id, dig_id);
+        fill_group_info(dig_id);
     else if (*begin_ == "mode")
         fill_group_mode(dig_id);
     else if (*begin_ == "param")
         fill_group_param(dig_id);
 }
 
-void Elements::fill_group_info(uint32_t sct_id, uint32_t dig_id)
+void Elements::fill_group_info(uint32_t dig_id)
 {
     Scheme_Status scheme_status;
 
@@ -157,14 +180,21 @@ void Elements::fill_group_info(uint32_t sct_id, uint32_t dig_id)
             Q_ARG(uint32_t, scheme_.id()));
     });
 
+
+    QString sql =
+            "SELECT IF(dig.title IS NULL OR dig.title = '', dt.title, dig.title) as title FROM das_device_item_group dig "
+            "LEFT JOIN das_dig_type dt ON dt.id = dig.type_id "
+            "WHERE dig.scheme_id = " + QString::number(scheme_.parent_id_or_id())
+            + " AND dig.id = " + QString::number(dig_id);
+
     Base& db = Base::get_thread_local_instance();
-    QSqlQuery q = db.exec(get_group_sql(sct_id) + " AND dig.id = " + QString::number(dig_id));
+    QSqlQuery q = db.exec(sql);
     text_ += " - ";
     if (q.next())
-        text_ += q.value(1).toString().toStdString();
+        text_ += q.value(0).toString().toStdString();
     text_ += ':';
 
-    const QString dev_item_sql =
+    sql =
             "SELECT IF(di.name IS NULL OR di.name = '', dit.title, di.name) as title, dv.value, s.name FROM das_device_item di "
             "LEFT JOIN das_device_item_type dit ON dit.id = di.type_id "
             "LEFT JOIN das_device_item_value dv ON dv.item_id = di.id AND dv.scheme_id = "
@@ -175,7 +205,7 @@ void Elements::fill_group_info(uint32_t sct_id, uint32_t dig_id)
             " AND di.group_id = "
             + QString::number(dig_id) +
             " ORDER BY di.device_id ASC";
-    q = db.exec(dev_item_sql);
+    q = db.exec(sql);
 
     QString dev_item_text;
     while(q.next())
@@ -354,15 +384,6 @@ void Elements::fill_group_param(uint32_t dig_id)
         text += q.value(3).toString().toStdString();
         keyboard_->inlineKeyboard.push_back(makeInlineButtonRow(data, text));
     }
-}
-
-QString Elements::get_group_sql(uint32_t sct_id) const
-{
-    return  "SELECT dig.id, IF(dig.title IS NULL OR dig.title = '', dt.title, dig.title) as title "
-            "FROM das_device_item_group dig "
-            "LEFT JOIN das_dig_type dt ON dt.id = dig.type_id "
-            "WHERE dig.scheme_id = " + QString::number(scheme_.parent_id_or_id())
-            + " AND dig.section_id = " + QString::number(sct_id);
 }
 
 } // namespace Bot

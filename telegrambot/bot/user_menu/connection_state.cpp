@@ -24,10 +24,21 @@ std::string Connection_State::get_value() const
 
 std::string Connection_State::to_string(uint8_t state)
 {
+    std::string text = get_emoji(state);
+    text += ' ';
     if ((state & ~CS_FLAGS) >= CS_CONNECTED_JUST_NOW)
-        return "🚀 На связи!";
+        text += "На связи!";
     else
-        return "💢 Не подключен!";
+        text += "Не подключен!";
+    return text;
+}
+
+std::string Connection_State::get_emoji(uint8_t state)
+{
+    if ((state & ~CS_FLAGS) >= CS_CONNECTED_JUST_NOW)
+        return "🚀";
+    else
+        return "💢";
 }
 
 } // namespace User_Menu

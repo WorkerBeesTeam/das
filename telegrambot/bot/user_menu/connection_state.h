@@ -15,6 +15,7 @@ public:
     std::string get_value() const override;
 
     static std::string to_string(uint8_t state);
+    static std::string get_emoji(uint8_t state);
 };
 
 } // namespace User_Menu

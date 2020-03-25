@@ -712,7 +712,7 @@ void Controller::sub_2(const Scheme_Item& scheme, TgBot::Message::Ptr message, c
 map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t page_number, const string &search_text) const
 {
     QString search_cond;
-    const QString sql = "SELECT s.id, s.title FROM das_scheme s "
+    const QString sql = "SELECT s.id, s.title, s.parent_id FROM das_scheme s "
             "LEFT JOIN das_scheme_groups sg ON sg.scheme_id = s.id "
             "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.scheme_group_id "
             "WHERE sgu.user_id = %1%4 GROUP BY s.id LIMIT %2, %3";
@@ -725,8 +725,45 @@ map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t 
 
     map<uint32_t, string> res;
 
+    const QString status_sql = "SELECT category_id FROM das_dig_status_type WHERE scheme_id = %1 AND id IN (%2) ORDER BY category_id DESC LIMIT 1";
+
+    QString status_id_sep;
+    Scheme_Status scheme_status;
+    uint32_t scheme_id, parent_id;
+    std::string name;
     while (q.next())
-        res.emplace(q.value(0).toUInt(), q.value(1).toString().toStdString());
+    {
+        scheme_id = q.value(0).toUInt();
+
+        QMetaObject::invokeMethod(dbus_iface_, "get_scheme_status", Qt::BlockingQueuedConnection,
+            Q_RETURN_ARG(Scheme_Status, scheme_status),
+            Q_ARG(uint32_t, scheme_id));
+
+        name = User_Menu::Connection_State::get_emoji(scheme_status.connection_state_);
+
+        if ((scheme_status.connection_state_ & ~CS_FLAGS) < CS_CONNECTED_JUST_NOW)
+            scheme_status.status_set_ =
+                    db_build_list<DIG_Status, std::set>(db, "WHERE scheme_id = " + QString::number(scheme_id));
+
+        status_id_sep.clear();
+        for (const DIG_Status& status: scheme_status.status_set_)
+        {
+            status_id_sep += QString::number(status.status_id());
+            status_id_sep += ',';
+        }
+        if (!status_id_sep.isEmpty())
+        {
+            status_id_sep.remove(status_id_sep.size() - 1, 1);
+            parent_id = q.value(2).isNull() ? scheme_id : q.value(2).toUInt();
+            QSqlQuery status_q = db.exec(status_sql.arg(parent_id).arg(status_id_sep));
+            if (status_q.next())
+                name += default_status_category_emoji(status_q.value(0).toUInt());
+        }
+
+        name += ' ';
+        name += q.value(1).toString().toStdString();
+        res.emplace(scheme_id, name);
+    }
     return res;
 }
 
@@ -761,13 +798,13 @@ uint32_t Controller::get_authorized_user_id(uint32_t user_id, int64_t chat_id, b
 void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint32_t current_page,
                               TgBot::Message::Ptr msg_to_update, const string &search_text) const
 {
-    TgBot::InlineKeyboardMarkup::Ptr keyboard(new TgBot::InlineKeyboardMarkup);
+    TgBot::InlineKeyboardMarkup::Ptr keyboard = std::make_shared<TgBot::InlineKeyboardMarkup>();
 
     map<uint32_t, string> schemes_map = list_schemes_names(user_id, current_page, search_text);
 
     for (const auto &scheme: schemes_map)
     {
-        TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
+        TgBot::InlineKeyboardButton::Ptr button = std::make_shared<TgBot::InlineKeyboardButton>();
         button->text = scheme.second;
         button->callbackData = string("scheme.") + to_string(scheme.first);
 
@@ -777,7 +814,7 @@ void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint
     vector<TgBot::InlineKeyboardButton::Ptr> row;
     if (current_page > 0)
     {
-        TgBot::InlineKeyboardButton::Ptr prev_page_button(new TgBot::InlineKeyboardButton);
+        TgBot::InlineKeyboardButton::Ptr prev_page_button = std::make_shared<TgBot::InlineKeyboardButton>();
         prev_page_button->text = "<<<";	// TODO: here you can change text of "previous page" button
         prev_page_button->callbackData = string("page.prev.") + to_string(current_page) + '.' + search_text;
         row.push_back(prev_page_button);
@@ -785,7 +822,7 @@ void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint
 
     if (schemes_map.size() >= schemes_per_page_)
     {
-        TgBot::InlineKeyboardButton::Ptr next_page_button(new TgBot::InlineKeyboardButton);
+        TgBot::InlineKeyboardButton::Ptr next_page_button = std::make_shared<TgBot::InlineKeyboardButton>();
         next_page_button->text = ">>>";	// TODO: here you can change text of "next page" button
         next_page_button->callbackData = string("page.next.") + to_string(current_page) + '.' + search_text;
         row.push_back(next_page_button);
