@@ -52,6 +52,23 @@ std::future<std::shared_ptr<Helpz::DTLS::Server_Node>> Work_Object::find_client_
     return future;
 }
 
+void Work_Object::save_connection_state_to_log(uint32_t scheme_id, const std::chrono::system_clock::time_point &time_point, bool state)
+{
+    auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(time_point.time_since_epoch());
+
+    Log_Event_Item item{msec.count(), 0, false,
+                state ? Log_Event_Item::ET_INFO : Log_Event_Item::ET_WARNING, "server",
+                (state ? QString() : "DIS") + "CONNECTED"};
+    item.set_scheme_id(scheme_id);
+
+    auto values = Log_Event_Item::to_variantlist(item);
+
+    db_thread_mng_->log_thread()->add([values](Helpz::DB::Base* db)
+    {
+        db->insert(Helpz::DB::db_table<Log_Event_Item>(), values);
+    });
+}
+
 void Work_Object::init_database(QSettings* s)
 {
     db_conn_info_ = Helpz::SettingsHelper(

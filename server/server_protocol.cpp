@@ -200,6 +200,8 @@ void Protocol::auth(const Authentication_Info &info, bool modified, uint8_t msg_
     {
         work_object()->server_thread_->server()->remove_copy(this);
 
+        work_object()->save_connection_state_to_log(id(), std::chrono::system_clock::now(), /*state=*/true);
+
         structure_sync_.set_modified(modified);
         set_connection_state(CS_CONNECTED_JUST_NOW | (modified ? CS_CONNECTED_MODIFIED : 0));
 
