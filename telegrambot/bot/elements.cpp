@@ -245,6 +245,10 @@ void Elements::fill_group_info(uint32_t dig_id)
 
     scheme_status_task.get();
 
+    if ((scheme_status.connection_state_ & ~CS_FLAGS) < CS_CONNECTED_JUST_NOW)
+        scheme_status.status_set_ =
+                db_build_list<DIG_Status, std::set>(db, "WHERE scheme_id = " + QString::number(scheme_.id()));
+
     if (!scheme_status.status_set_.empty())
     {
         QString status_text;
