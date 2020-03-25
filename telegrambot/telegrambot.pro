@@ -16,6 +16,7 @@ VER_MAJ = 1
 VER_MIN = 4
 include(../common.pri)
 
+LIBS += -lstdc++fs
 LIBS += -L$$DESTDIR -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzDBMeta -lHelpzDB -lboost_thread
 
 # LIBS += -L$${OUT_PWD}/SMTPEmail -lSMTPEmail
@@ -41,7 +42,17 @@ SOURCES += main.cpp \
     bot/controller.cpp \
     bot/elements.cpp \
     bot/menu_item.cpp \
-    bot/bot_base.cpp
+    bot/bot_base.cpp \
+    bot/user_menu/item.cpp \
+    bot/user_menu/data_item.cpp \
+    bot/user_menu/connection_state.cpp \
+    bot/user_menu/dig_name.cpp \
+    bot/user_menu/dig_mode.cpp \
+    bot/user_menu/dig_param.cpp \
+    bot/user_menu/device_item.cpp \
+    bot/user_menu/id_data_item.cpp \
+    bot/user_menu/named_data_item.cpp \
+    bot/user_menu/device_item_value_normalizer.cpp
 
 HEADERS += \
     db/tg_auth.h \
@@ -55,7 +66,17 @@ HEADERS += \
     bot/elements.h \
     bot/controller.h \
     bot/menu_item.h \
-    bot/bot_base.h
+    bot/bot_base.h \
+    bot/user_menu/item.h \
+    bot/user_menu/data_item.h \
+    bot/user_menu/connection_state.h \
+    bot/user_menu/dig_name.h \
+    bot/user_menu/dig_mode.h \
+    bot/user_menu/dig_param.h \
+    bot/user_menu/device_item.h \
+    bot/user_menu/id_data_item.h \
+    bot/user_menu/named_data_item.h \
+    bot/user_menu/device_item_value_normalizer.h
 
 unix {
     target.path = /opt/das

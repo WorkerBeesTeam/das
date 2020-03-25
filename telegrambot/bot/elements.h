@@ -20,12 +20,10 @@ private:
     void fill_sections();
     void fill_section(uint32_t sct_id);
     void fill_groups(uint32_t sct_id);
-    void fill_group(uint32_t sct_id, uint32_t dig_id);
-    void fill_group_info(uint32_t sct_id, uint32_t dig_id);
+    void fill_group(uint32_t dig_id);
+    void fill_group_info(uint32_t dig_id);
     void fill_group_mode(uint32_t dig_id);
     void fill_group_param(uint32_t dig_id);
-
-    QString get_group_sql(uint32_t sct_id) const;
 
     const std::string msg_data_;
     std::string back_data_;
