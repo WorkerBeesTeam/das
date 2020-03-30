@@ -21,6 +21,8 @@ public:
     Protocol(Work_Object* work_object);
     ~Protocol();
 
+    void disable_sync();
+
     Structure_Synchronizer* structure_sync();
     Log_Synchronizer* log_sync();
 
@@ -47,7 +49,7 @@ private:
     void stream_param(uint32_t dev_item_id, const QByteArray& data);
     void stream_data(uint32_t dev_item_id, const QByteArray& data);
 
-    bool is_copy_;
+    bool is_copy_, disable_sync_;
     Log_Synchronizer log_sync_;
     Structure_Synchronizer structure_sync_;
 

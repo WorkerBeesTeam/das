@@ -649,11 +649,11 @@ void Structure_Synchronizer::process_scheme_data(uint8_t struct_type, QIODevice*
     {
     case ST_DEVICE:                apply_parse(*data_dev, &T::sync_table<Device>                       , s_id, delete_if_not_exist); break;
     case ST_PLUGIN_TYPE:           apply_parse(*data_dev, &T::sync_table<Plugin_Type>                  , s_id, delete_if_not_exist); break;
-    case ST_DEVICE_ITEM:           apply_parse(*data_dev, &T::sync_table<DB::Device_Item>        , s_id, delete_if_not_exist); break;
+    case ST_DEVICE_ITEM:           apply_parse(*data_dev, &T::sync_table<DB::Device_Item>              , s_id, delete_if_not_exist); break;
     case ST_DEVICE_ITEM_TYPE:      apply_parse(*data_dev, &T::sync_table<Device_Item_Type>             , s_id, delete_if_not_exist); break;
     case ST_SAVE_TIMER:            apply_parse(*data_dev, &T::sync_table<Save_Timer>                   , s_id, delete_if_not_exist); break;
     case ST_SECTION:               apply_parse(*data_dev, &T::sync_table<Section>                      , s_id, delete_if_not_exist); break;
-    case ST_DEVICE_ITEM_GROUP:     apply_parse(*data_dev, &T::sync_table<DB::Device_Item_Group>  , s_id, delete_if_not_exist); break;
+    case ST_DEVICE_ITEM_GROUP:     apply_parse(*data_dev, &T::sync_table<DB::Device_Item_Group>        , s_id, delete_if_not_exist); break;
     case ST_DIG_TYPE:              apply_parse(*data_dev, &T::sync_table<DIG_Type>                     , s_id, delete_if_not_exist); break;
     case ST_DIG_MODE_TYPE:         apply_parse(*data_dev, &T::sync_table<DIG_Mode_Type>                , s_id, delete_if_not_exist); break;
     case ST_DIG_PARAM_TYPE:        apply_parse(*data_dev, &T::sync_table<DIG_Param_Type>               , s_id, delete_if_not_exist); break;
@@ -663,6 +663,11 @@ void Structure_Synchronizer::process_scheme_data(uint8_t struct_type, QIODevice*
     case ST_SIGN_TYPE:             apply_parse(*data_dev, &T::sync_table<Sign_Type>                    , s_id, delete_if_not_exist); break;
     case ST_CODES:                 apply_parse(*data_dev, &T::sync_table<Code_Item>                    , s_id, delete_if_not_exist); break;
     case ST_TRANSLATION:           apply_parse(*data_dev, &T::sync_table<Translation>                  , s_id, delete_if_not_exist); break;
+    case ST_NODE:                  apply_parse(*data_dev, &T::sync_table<DB::Node>                     , s_id, delete_if_not_exist); break;
+    case ST_DISABLED_PARAM:        apply_parse(*data_dev, &T::sync_table<DB::Disabled_Param>           , s_id, delete_if_not_exist); break;
+    case ST_DISABLED_STATUS:       apply_parse(*data_dev, &T::sync_table<DB::Disabled_Status>          , s_id, delete_if_not_exist); break;
+    case ST_CHART:                 apply_parse(*data_dev, &T::sync_table<DB::Chart>                    , s_id, delete_if_not_exist); break;
+    case ST_CHART_ITEM:            apply_parse(*data_dev, &T::sync_table<DB::Chart_Item>               , s_id, delete_if_not_exist); break;
 //    case ST_AUTH_GROUP:            apply_parse(*data_dev, &T::sync_table<Auth_Group>                   , s_id, delete_if_not_exist); break;
 //    case ST_AUTH_GROUP_PERMISSION: apply_parse(*data_dev, &T::sync_table<Auth_Group_Permission>        , s_id, delete_if_not_exist); break;
 //    case ST_USER:                  apply_parse(*data_dev, &T::sync_table<User>                         , s_id, delete_if_not_exist); break;
@@ -687,11 +692,11 @@ bool Structure_Synchronizer::remove_scheme_rows(Base& db, uint8_t struct_type, c
     {
     case ST_DEVICE:                return DB::db_delete_rows<Device>                     (db, delete_vect, s_id); break;
     case ST_PLUGIN_TYPE:           return DB::db_delete_rows<Plugin_Type>                (db, delete_vect, s_id); break;
-    case ST_DEVICE_ITEM:           return DB::db_delete_rows<DB::Device_Item>      (db, delete_vect, s_id); break;
+    case ST_DEVICE_ITEM:           return DB::db_delete_rows<DB::Device_Item>            (db, delete_vect, s_id); break;
     case ST_DEVICE_ITEM_TYPE:      return DB::db_delete_rows<Device_Item_Type>           (db, delete_vect, s_id); break;
     case ST_SAVE_TIMER:            return DB::db_delete_rows<Save_Timer>                 (db, delete_vect, s_id); break;
     case ST_SECTION:               return DB::db_delete_rows<Section>                    (db, delete_vect, s_id); break;
-    case ST_DEVICE_ITEM_GROUP:     return DB::db_delete_rows<DB::Device_Item_Group>(db, delete_vect, s_id); break;
+    case ST_DEVICE_ITEM_GROUP:     return DB::db_delete_rows<DB::Device_Item_Group>      (db, delete_vect, s_id); break;
     case ST_DIG_TYPE:              return DB::db_delete_rows<DIG_Type>                   (db, delete_vect, s_id); break;
     case ST_DIG_MODE_TYPE:         return DB::db_delete_rows<DIG_Mode_Type>              (db, delete_vect, s_id); break;
     case ST_DIG_PARAM_TYPE:        return DB::db_delete_rows<DIG_Param_Type>             (db, delete_vect, s_id); break;
@@ -701,6 +706,11 @@ bool Structure_Synchronizer::remove_scheme_rows(Base& db, uint8_t struct_type, c
     case ST_SIGN_TYPE:             return DB::db_delete_rows<Sign_Type>                  (db, delete_vect, s_id); break;
     case ST_CODES:                 return DB::db_delete_rows<Code_Item>                  (db, delete_vect, s_id); break;
     case ST_TRANSLATION:           return DB::db_delete_rows<Translation>                (db, delete_vect, s_id); break;
+    case ST_NODE:                  return DB::db_delete_rows<DB::Node>                   (db, delete_vect, s_id); break;
+    case ST_DISABLED_PARAM:        return DB::db_delete_rows<DB::Disabled_Param>         (db, delete_vect, s_id); break;
+    case ST_DISABLED_STATUS:       return DB::db_delete_rows<DB::Disabled_Status>        (db, delete_vect, s_id); break;
+    case ST_CHART:                 return DB::db_delete_rows<DB::Chart>                  (db, delete_vect, s_id); break;
+    case ST_CHART_ITEM:            return DB::db_delete_rows<DB::Chart_Item>             (db, delete_vect, s_id); break;
 //    case ST_AUTH_GROUP:            return DB::db_delete_rows<Auth_Group>                 (db, delete_vect, s_id); break;
 //    case ST_AUTH_GROUP_PERMISSION: return DB::db_delete_rows<Auth_Group_Permission>      (db, delete_vect, s_id); break;
 //    case ST_USER:                  return DB::db_delete_rows<User>                       (db, delete_vect, s_id); break;

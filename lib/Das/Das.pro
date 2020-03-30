@@ -55,7 +55,11 @@ SOURCES += \
     db/device_item.cpp \
     db/device_extra_params.cpp \
     db/save_timer.cpp \
-    checker_interface.cpp
+    checker_interface.cpp \
+    db/node.cpp \
+    db/disabled_param.cpp \
+    db/disabled_status.cpp \
+    db/chart.cpp
 
 HEADERS +=\
     db/auth_group.h \
@@ -102,7 +106,11 @@ HEADERS +=\
     db/device_item.h \
     db/device_extra_params.h \
     db/save_timer.h \
-    checker_interface.h
+    checker_interface.h \
+    db/node.h \
+    db/disabled_param.h \
+    db/disabled_status.h \
+    db/chart.h
 
 DESTDIR = $${OUT_PWD}/../..
 

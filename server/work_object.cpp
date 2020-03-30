@@ -1,5 +1,7 @@
 #include <future>
 
+#include <botan/parsing.h>
+
 #include <QCoreApplication>
 
 #include <Helpz/db_connection_info.h>
@@ -94,32 +96,47 @@ void Work_Object::init_server(QSettings* s)
     {
         for (const std::string& proto: client_protos)
         {
-            if (proto == "das/2.4")
+            const std::vector<std::string> proto_arr = Botan::split_on(proto, '/');
+            if (proto_arr.size() != 2 || proto_arr.front() != "das")
+                continue;
+
+            const std::string& ver_str = proto_arr.back();
+
+            if (ver_str == "2.5")
             {
                 *choose_out = proto;
                 return std::make_shared<Ver::Server::Protocol>(this);
             }
-            else if (true) {}
-            else if (proto == "das/2.1" && (choose_out->empty() || proto == "das/2.0"))
+            else if (ver_str == "2.4")
             {
                 *choose_out = proto;
             }
-            else if (choose_out->empty() && proto == "das/2.0")
+            else if (true) {}
+            else if (ver_str == "2.1" && (choose_out->empty() || ver_str == "2.0"))
+            {
+                *choose_out = proto;
+            }
+            else if (choose_out->empty() && ver_str == "2.0")
             {
                 *choose_out = proto;
             }
         }
 
-        if (*choose_out == "das/2.1")
+        if (*choose_out == "das/2.4")
         {
-//            return std::make_shared<Ver_2_1::Server::Protocol>(this);
+            auto ptr = std::make_shared<Ver::Server::Protocol>(this);
+            ptr->disable_sync();
+            return ptr;
         }
         else if (*choose_out == "das/2.0")
         {
 //            return std::make_shared<Ver_2_0::Server::Protocol>(this);
         }
 
-        std::cerr << "Unsuported protocol" << std::endl;
+        std::cerr << "Unsuported protocol:";
+        for (const std::string& proto: client_protos)
+            std::cerr << ' ' << proto;
+        std::cerr << std::endl;
         return nullptr;
     };
 

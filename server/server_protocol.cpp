@@ -19,6 +19,7 @@ namespace Server {
 Protocol::Protocol(Work_Object* work_object) :
     Protocol_Base{ work_object },
     is_copy_(false),
+    disable_sync_(false),
     log_sync_(this),
     structure_sync_(this)
 {
@@ -33,6 +34,11 @@ Protocol::~Protocol()
     }
 }
 
+void Protocol::disable_sync()
+{
+    disable_sync_ = true;
+}
+
 Structure_Synchronizer* Protocol::structure_sync()
 {
     return &structure_sync_;
@@ -45,7 +51,7 @@ Log_Synchronizer *Protocol::log_sync()
 
 int Protocol::protocol_version() const
 {
-    return 204;
+    return 205;
 }
 
 void Protocol::send_file(uint32_t user_id, uint32_t dev_item_id, const QString& file_name, const QString& file_path)
@@ -81,7 +87,8 @@ void Protocol::send_file(uint32_t user_id, uint32_t dev_item_id, const QString& 
 
 void Protocol::synchronize(bool full)
 {
-    structure_sync_.check(full ? structure_sync_.modified() : true, true);
+    if (!disable_sync_)
+        structure_sync_.check(full ? structure_sync_.modified() : true, true);
 }
 
 void Protocol::set_scheme_name(uint32_t user_id, const QString &name)
@@ -99,7 +106,7 @@ void Protocol::lost_msg_detected(uint8_t /*msg_id*/, uint8_t /*expected*/)
     set_connection_state(connection_state() | CS_CONNECTED_WITH_LOSSES);
 
     const auto now = std::chrono::system_clock::now();
-    if (now - last_sync_time_ > std::chrono::seconds(7))
+    if (!disable_sync_ && now - last_sync_time_ > std::chrono::seconds(7))
     {
         last_sync_time_ = now;
         log_sync_.check();
@@ -208,8 +215,11 @@ void Protocol::auth(const Authentication_Info &info, bool modified, uint8_t msg_
         send(Cmd::VERSION).answer([this](QIODevice& data_dev) { print_version(data_dev); });
         send(Cmd::TIME_INFO).answer([this](QIODevice& data_dev) { apply_parse(data_dev, &Protocol::set_time_offset); });
 
-        structure_sync_.check(modified);
-        log_sync_.check();
+        if (!disable_sync_)
+        {
+            structure_sync_.check(modified);
+            log_sync_.check();
+        }
 
         if (!work_object()->recently_connected_.remove(id()))
         {

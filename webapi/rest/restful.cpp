@@ -16,7 +16,7 @@
 #include <QLoggingCategory>
 
 #define PICOJSON_USE_INT64
-#include <plus/jwt-cpp/include/jwt-cpp/picojson.h>
+#include <picojson/picojson.h>
 
 #include <Helpz/db_base.h>
 #include <Helpz/db_builder.h>

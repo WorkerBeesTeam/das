@@ -8,7 +8,7 @@
 #include <QRegularExpression>
 #include <QTimer>
 
-#include <botan-2/botan/parsing.h>
+#include <botan/parsing.h>
 
 #include <Helpz/consolereader.h>
 #include <Helpz/dtls_client.h>
@@ -275,8 +275,8 @@ void Worker::init_network_client(QSettings* s)
     if (!auth_info)
         return;
 
-#define DAS_PROTOCOL_LATEST "das/2.4"
-#define DAS_PROTOCOL_SUPORTED DAS_PROTOCOL_LATEST",das/2.3"
+#define DAS_PROTOCOL_LATEST "das/2.5"
+#define DAS_PROTOCOL_SUPORTED DAS_PROTOCOL_LATEST",das/2.4"
 
     const QString default_dir = qApp->applicationDirPath() + '/';
     auto [ tls_policy_file, host, port, protocols, recpnnect_interval_sec ]
@@ -305,7 +305,7 @@ void Worker::init_network_client(QSettings* s)
             std::vector<std::string> proto_arr = Botan::split_on(app_protocol, '/');
             if (proto_arr.size() == 2)
             {
-                if (std::atof(proto_arr.back().c_str()) <= 2.2)
+                if (std::stof(proto_arr.back()) <= 2.2)
                 {
 //                    ptr->use_repeated_flag_ = false;
                 }

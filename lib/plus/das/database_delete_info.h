@@ -13,6 +13,10 @@
 #include <Das/section.h>
 #include <Das/log/log_pack.h>
 
+#include <Das/db/node.h>
+#include <Das/db/disabled_param.h>
+#include <Das/db/disabled_status.h>
+#include <Das/db/chart.h>
 #include <Das/db/dig_param.h>
 #include <Das/db/dig_param_value.h>
 #include <Das/db/dig_status.h>
@@ -40,7 +44,7 @@ template<>
 inline Delete_Info_List db_delete_info< User >(const QString& db_name)
 {
     return {
-        { Helpz::DB::db_table_name<User_Groups>(db_name), "user_id", {} },
+        { Helpz::DB::db_table_name<User_Groups>(db_name), "user_id" }
     };
 }
 
@@ -48,8 +52,18 @@ template<>
 inline Delete_Info_List db_delete_info< Auth_Group >(const QString& db_name)
 {
     return {
-        { Helpz::DB::db_table_name<User_Groups>(db_name), "group_id", {} },
-        { Helpz::DB::db_table_name<Auth_Group_Permission>(db_name), "group_id", {} },
+        { Helpz::DB::db_table_name<User_Groups>(db_name), "group_id" },
+        { Helpz::DB::db_table_name<Auth_Group_Permission>(db_name), "group_id" },
+        { Helpz::DB::db_table_name<Disabled_Param>(db_name), "group_id" },
+        { Helpz::DB::db_table_name<Disabled_Status>(db_name), "group_id" }
+    };
+}
+
+template<>
+inline Delete_Info_List db_delete_info< Node >(const QString& db_name)
+{
+    return {
+        { Helpz::DB::db_table_name<Node>(db_name), "parent_id", {}, true }
     };
 }
 
@@ -57,9 +71,10 @@ template<>
 inline Delete_Info_List db_delete_info< Device_Item >(const QString& db_name)
 {
     return {
-        { Helpz::DB::db_table_name<Log_Value_Item>(db_name), "item_id", {} },
-        { Helpz::DB::db_table_name<Device_Item_Value>(db_name), "item_id", {} },
-        { Helpz::DB::db_table_name<Device_Item>(db_name), "parent_id", {}, true }
+        { Helpz::DB::db_table_name<Log_Value_Item>(db_name), "item_id" },
+        { Helpz::DB::db_table_name<Device_Item_Value>(db_name), "item_id" },
+        { Helpz::DB::db_table_name<Device_Item>(db_name), "parent_id", {}, true },
+        { Helpz::DB::db_table_name<Chart_Item>(db_name), "item_id" }
     };
 }
 
@@ -83,7 +98,7 @@ template<>
 inline Delete_Info_List db_delete_info< Save_Timer >(const QString& db_name)
 {
     return {
-        { Helpz::DB::db_table_name<Device_Item_Type>(db_name), "save_timer_id", {}, true },
+        { Helpz::DB::db_table_name<Device_Item_Type>(db_name), "save_timer_id", {}, true }
     };
 }
 
@@ -91,7 +106,8 @@ template<>
 inline Delete_Info_List db_delete_info< DIG_Param >(const QString& db_name)
 {
     return {
-        { Helpz::DB::db_table_name<DIG_Param_Value>(db_name), "group_param_id", {} },
+        { Helpz::DB::db_table_name<DIG_Param_Value>(db_name), "group_param_id" },
+        { Helpz::DB::db_table_name<Chart_Item>(db_name), "param_id" }
     };
 }
 
@@ -102,10 +118,10 @@ template<>
 inline Delete_Info_List db_delete_info<Device_Item_Group>(const QString& db_name)
 {
     return {
-        { Helpz::DB::db_table_name<DIG_Mode>(db_name), "group_id", {} },
+        { Helpz::DB::db_table_name<DIG_Mode>(db_name), "group_id" },
         { Helpz::DB::db_table_name<DIG_Param>(db_name), "group_id", db_delete_info<DIG_Param>(db_name) },
-        { Helpz::DB::db_table_name<DIG_Status>(db_name), "group_id", {} },
-        { Helpz::DB::db_table_name<Device_Item>(db_name), "group_id", {}, true },
+        { Helpz::DB::db_table_name<DIG_Status>(db_name), "group_id" },
+        { Helpz::DB::db_table_name<Device_Item>(db_name), "group_id", {}, true }
     };
 }
 
@@ -121,7 +137,8 @@ template<>
 inline Delete_Info_List db_delete_info<DIG_Param_Type>(const QString& db_name)
 {
     return {
-        { Helpz::DB::db_table_name<DIG_Param>(db_name), "param_id", db_delete_info<DIG_Param>(db_name) }
+        { Helpz::DB::db_table_name<DIG_Param>(db_name), "param_id", db_delete_info<DIG_Param>(db_name) },
+        { Helpz::DB::db_table_name<Disabled_Param>(db_name), "param_id" }
     };
 }
 
@@ -129,7 +146,8 @@ template<>
 inline Delete_Info_List db_delete_info<DIG_Status_Type>(const QString& db_name)
 {
     return {
-        { Helpz::DB::db_table_name<DIG_Status>(db_name), "status_id", {} }
+        { Helpz::DB::db_table_name<DIG_Status>(db_name), "status_id" },
+        { Helpz::DB::db_table_name<Disabled_Status>(db_name), "status_id" }
     };
 }
 
@@ -173,7 +191,15 @@ inline Delete_Info_List db_delete_info<DIG_Type>(const QString& db_name)
         { Helpz::DB::db_table_name<DIG_Mode_Type>(db_name), "group_type_id", {}, true },
         { Helpz::DB::db_table_name<Device_Item_Type>(db_name), "group_type_id", db_delete_info<Device_Item_Type>(db_name) },
         { Helpz::DB::db_table_name<DIG_Param_Type>(db_name), "group_type_id", db_delete_info<DIG_Param_Type>(db_name) },
-        { Helpz::DB::db_table_name<DIG_Status_Type>(db_name), "group_type_id", db_delete_info<DIG_Status_Type>(db_name) },
+        { Helpz::DB::db_table_name<DIG_Status_Type>(db_name), "group_type_id", db_delete_info<DIG_Status_Type>(db_name) }
+    };
+}
+
+template<>
+inline Delete_Info_List db_delete_info<Chart>(const QString& db_name)
+{
+    return {
+        { Helpz::DB::db_table_name<Chart_Item>(db_name), "chart_id" }
     };
 }
 

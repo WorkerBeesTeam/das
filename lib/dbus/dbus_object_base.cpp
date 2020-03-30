@@ -47,7 +47,7 @@ Object_Base::~Object_Base()
 
 uint16_t Object_Base::cmd_from_web_command(quint8 cmd, int proto_version) const
 {
-    if (proto_version != 204)
+    if (proto_version != 205)
     {
         qCWarning(DBusLog) << "cmd_from_web_command proto version:" << proto_version;
 //        return 0;
