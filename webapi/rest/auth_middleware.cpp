@@ -18,6 +18,24 @@ thread_local User thread_local_user;
 
 /*static*/ const User& Auth_Middleware::get_thread_local_user() { return thread_local_user; }
 
+void Auth_Middleware::check_permission(const std::string &permission)
+{
+    const std::string sql =
+            "SELECT COUNT(*) FROM das_user u "
+            "LEFT JOIN das_user_groups ug ON ug.user_id = u.id "
+            "LEFT JOIN auth_group_permissions gp ON gp.group_id = ug.group_id "
+            "LEFT JOIN auth_permission p ON p.id = gp.permission_id "
+            "WHERE u.id = ? AND p.codename = ?";
+
+    const uint32_t user_id = get_thread_local_user().id_;
+
+    using namespace Helpz::DB;
+    Base& db = Base::get_thread_local_instance();
+    QSqlQuery q = db.exec(QString::fromStdString(sql), {user_id, QString::fromStdString(permission)});
+    if (!q.next() || q.value(0).toUInt() == 0)
+        throw served::request_error(served::status_4XX::FORBIDDEN, "You don't have permission for this");
+}
+
 Auth_Middleware::Auth_Middleware(std::shared_ptr<JWT_Helper> jwt_helper, const std::vector<std::string>& exclude_path) :
     exclude_path_vect_(exclude_path), jwt_helper_(jwt_helper)
 {

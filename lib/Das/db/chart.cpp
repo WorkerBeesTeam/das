@@ -3,8 +3,8 @@
 namespace Das {
 namespace DB {
 
-Chart_Item::Chart_Item(uint32_t id, uint32_t chart_id, const QString &color, uint32_t item_id, uint32_t param_id) :
-    Base_Type(id, color),
+Chart_Item::Chart_Item(uint32_t id, uint32_t chart_id, const QString &color, uint32_t item_id, uint32_t param_id, uint32_t scheme_id) :
+    Base_Type(id, color, scheme_id),
     chart_id_(chart_id), item_id_(item_id), param_id_(param_id)
 {
 }
