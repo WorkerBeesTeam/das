@@ -26,6 +26,7 @@
 
 #include "db/tg_auth.h"
 #include "db/tg_user.h"
+#include "db/tg_chat.h"
 #include "db/tg_subscriber.h"
 
 #include "user_menu/connection_state.h"
@@ -431,7 +432,7 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
         const QString sql =
                 "SELECT sg.id, tgs.id FROM das_scheme_group sg "
                 "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.id "
-                "LEFt join das_tg_subscriber tgs ON tgs.group_id = sg.id AND tgs.chat_id = %1 "
+                "LEFT JOIN das_tg_subscriber tgs ON tgs.group_id = sg.id AND tgs.chat_id = %1 "
                 "WHERE sgu.user_id = %2 AND sg.id = %3 ORDER BY sg.id";
 
         Base& db = Base::get_thread_local_instance();
@@ -441,6 +442,8 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
 
         if (q.value(1).isNull())
         {
+            db.insert(db_table<DB::Tg_Chat>(), DB::Tg_Chat::to_variantlist(DB::Tg_Chat{message->chat->id, tg_user_id}));
+
             Table table = db_table<Tg_Subscriber>();
             table.field_names().removeAt(0);
             if (!db.insert(table, {(qint64)message->chat->id, group_id}))
@@ -890,6 +893,8 @@ void Controller::send_authorization_message(const TgBot::Message& msg) const
         send_message(chat_id, "Ошибка во время добавления пользователя");
         return;
     }
+
+    db.insert(db_table<DB::Tg_Chat>(), DB::Tg_Chat::to_variantlist(DB::Tg_Chat{chat_id, tg_user.id()}));
 
     QByteArray data;
     QDataStream ds(&data, QIODevice::WriteOnly);

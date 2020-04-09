@@ -32,6 +32,7 @@ LIBS += \
 
 SOURCES += main.cpp \
     db/tg_auth.cpp \
+    db/tg_chat.cpp \
     db/tg_subscriber.cpp \
     db/tg_user.cpp \
     worker.cpp \
@@ -56,6 +57,7 @@ SOURCES += main.cpp \
 
 HEADERS += \
     db/tg_auth.h \
+    db/tg_chat.h \
     db/tg_subscriber.h \
     db/tg_user.h \
     worker.h \

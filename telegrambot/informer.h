@@ -49,7 +49,15 @@ private:
 
     struct Prepared_Data
     {
-        QString title_, text_;
+        std::string title_;
+
+        struct Data_Item
+        {
+            std::string text_;
+            std::set<int64_t> disabled_chats_;
+        };
+
+        std::vector<Data_Item> items_;
         std::set<int64_t> chat_set_;
     };
 
@@ -58,8 +66,8 @@ private:
     void run();
     std::shared_ptr<Data> pop_data();
     void process_data(Data* data);
-    QString get_scheme_title(uint32_t scheme_id);
-    QString get_status_text(Data* data) const;
+    std::string get_scheme_title(uint32_t scheme_id);
+    std::map<uint32_t, std::string> get_status_text(Data* data) const;
     void send_message(const std::map<uint32_t, Prepared_Data>& prepared_data_map);
 
     bool break_flag_, skip_connected_event_;

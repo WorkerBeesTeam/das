@@ -26,19 +26,17 @@ namespace Das {
         it = std::find(sct_vect.begin(), sct_vect.end(), q.value(0).toUInt());
         if (it == sct_vect.end())
         {
-            it = sct_vect.emplace(sct_vect.end(), Status_Helper::Section{q.value(0).toUInt(), q.value(1).toString(), {}});
+            it = sct_vect.emplace(sct_vect.end(), Status_Helper::Section{q.value(0).toUInt(), q.value(1).toString().toStdString(), {}});
         }
 
         group_it = std::find(it->group_vect_.begin(), it->group_vect_.end(), q.value(2).toUInt());
         if (group_it == it->group_vect_.end())
         {
-            sql = q.value(3).toString();
-            if (sql.isEmpty())
-            {
-                sql = q.value(4).toString();
-            }
+            std::string name = q.value(3).toString().toStdString();
+            if (name.empty())
+                name = q.value(4).toString().toStdString();
 
-            group_it = it->group_vect_.emplace(it->group_vect_.end(), Status_Helper::Section::Group{q.value(2).toUInt(), sql, {}});
+            group_it = it->group_vect_.emplace(it->group_vect_.end(), Status_Helper::Section::Group{q.value(2).toUInt(), name, {}});
         }
     }
 
@@ -50,7 +48,7 @@ namespace Das {
     if (!info.inform)
         return;
 
-    QString icon, message;
+    std::string icon;
     if (is_up)
     {
         icon = "🆙";
@@ -67,7 +65,7 @@ namespace Das {
         }
     }
 
-    message = info.text();
+    QString message = info.text();
     for (const QString& arg: item.args())
     {
         if (!arg.isEmpty())
@@ -83,7 +81,7 @@ namespace Das {
         {
             if (group.id_ == item.group_id())
             {
-                group.status_text_vect_.push_back(std::make_pair(icon, message));
+                group.status_vect_.push_back(Status_Helper::Section::Group::Status{info.id(), icon, message.toStdString()});
             }
         }
     }
