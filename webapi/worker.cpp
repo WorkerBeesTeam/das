@@ -16,7 +16,7 @@
 //--------
 #include <plus/das/jwt_helper.h>
 
-#include "rest/restful.h"
+#include "rest/rest.h"
 
 #include "dbus_handler.h"
 #include "worker.h"

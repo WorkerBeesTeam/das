@@ -10,13 +10,13 @@
 
 namespace Das {
 
-Video_Stream::Video_Stream(const QString &device_path) :
+Video_Stream::Video_Stream(const QString &device_path, uint32_t width, uint32_t height) :
     convert_data_(nullptr)
 {
     if (!open_device(device_path))
         throw std::runtime_error("Failed open device");
 
-    const std::string error = start();
+    const std::string error = start(width, height);
     if (!error.empty())
     {
         stop();
@@ -48,6 +48,16 @@ const QByteArray &Video_Stream::get_frame()
     return data_;
 }
 
+uint32_t Video_Stream::width() const
+{
+    return dest_format_.fmt.pix.width;
+}
+
+uint32_t Video_Stream::height() const
+{
+    return dest_format_.fmt.pix.height;
+}
+
 bool Video_Stream::open_device(const QString &device_path)
 {
     v4l2_ = new v4l2;
@@ -76,9 +86,9 @@ void Video_Stream::close_device()
     v4l2_ = nullptr;
 }
 
-std::string Video_Stream::start()
+std::string Video_Stream::start(uint32_t width, uint32_t height)
 {
-    init_format();
+    init_format(width, height);
 
     __u32 buftype = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
@@ -127,7 +137,7 @@ std::string Video_Stream::start()
     return {};
 }
 
-void Video_Stream::init_format()
+void Video_Stream::init_format(uint32_t width, uint32_t height)
 {
     static const struct Supported_Format
     {
@@ -175,11 +185,26 @@ void Video_Stream::init_format()
     {
         v4l2_format copy = src_format_;
 
+        if (width && height
+            && (width != dest_format_.fmt.pix.width
+                || height != dest_format_.fmt.pix.height))
+        {
+            dest_format_.fmt.pix.width = width;
+            dest_format_.fmt.pix.height = height;
+            dest_format_.fmt.pix.bytesperline = 0;
+            dest_format_.fmt.pix.sizeimage = 0;
+        }
+
         v4lconvert_try_format(convert_data_, &dest_format_, &src_format_);
         // v4lconvert_try_format sometimes modifies the source format if it thinks
         // that there is a better format available. Restore our selected source
         // format since we do not want that happening.
         src_format_ = copy;
+
+        qDebug().nospace() << "Convert from "
+                 << src_format_.fmt.pix.pixelformat << ' ' << src_format_.fmt.pix.width << 'x' << src_format_.fmt.pix.width << " size " << src_format_.fmt.pix.sizeimage
+                 << " to "
+                 << dest_format_.fmt.pix.pixelformat << ' ' << dest_format_.fmt.pix.width << 'x' << dest_format_.fmt.pix.width << " size " << dest_format_.fmt.pix.sizeimage;
     }
 
 #ifdef QT_DEBUG

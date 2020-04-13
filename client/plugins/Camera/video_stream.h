@@ -23,18 +23,20 @@ class v4l2;
 class Video_Stream
 {
 public:
-    Video_Stream(const QString& device_path);
+    Video_Stream(const QString& device_path, uint32_t width = 0, uint32_t height = 0);
     ~Video_Stream();
 
     const QByteArray& param();
     const QByteArray& get_frame();
 
+    uint32_t width() const;
+    uint32_t height() const;
 private:
     bool open_device(const QString& device_path);
     void close_device();
 
-    std::string start();
-    void init_format();
+    std::string start(uint32_t width, uint32_t height);
+    void init_format(uint32_t width, uint32_t height);
     void stop();
 
     void cap_frame();

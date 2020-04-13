@@ -122,8 +122,11 @@ void Camera_Thread::run()
                     if (!socket_)
                         socket_.reset(new Stream_Client_Thread(config().stream_server_.toStdString(), config().stream_server_port_.toStdString()));
 
-                    std::unique_ptr<Video_Stream> stream(new Video_Stream(path));
+                    std::unique_ptr<Video_Stream> stream(new Video_Stream(path, config().stream_width_, config().stream_height_));
                     const QByteArray param = stream->param();
+
+                    qCDebug(CameraLog).nospace() << data.user_id_ << "|Start stream " << stream->width() << 'x' << stream->height();
+
                     auto it = streams_.emplace(data.item_, std::move(stream));
                     if (!it.second)
                         throw std::runtime_error("Emplace failed");
@@ -245,7 +248,9 @@ void Camera_Plugin::configure(QSettings *settings)
                 Param<QString>{"StreamServer", "deviceaccess.ru"},
                 Param<QString>{"StreamServerPort", "6731"},
                 Param<uint32_t>{"FrameDelayMs", 60},
-                Param<uint32_t>{"PictureSkip", 50}
+                Param<uint32_t>{"PictureSkip", 50},
+                Param<uint32_t>{"StreamWidth", 320},
+                Param<uint32_t>{"StreamHeight", 240}
     ).obj<Camera::Config>();
 
     thread_.start(std::move(config), this);

@@ -22,6 +22,7 @@ SOURCES += \
     db/dig_status.cpp \
     db/dig_status_type.cpp \
     db/dig_type.cpp \
+    db/scheme.cpp \
     db/schemed_model.cpp \
     db/sign_type.cpp \
     db/user.cpp \
@@ -71,6 +72,7 @@ HEADERS +=\
     db/dig_status.h \
     db/dig_status_type.h \
     db/dig_type.h \
+    db/scheme.h \
     db/schemed_model.h \
     db/sign_type.h \
     db/user.h \
