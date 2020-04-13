@@ -137,6 +137,19 @@ std::string Video_Stream::start(uint32_t width, uint32_t height)
     return {};
 }
 
+std::string fcc2s(unsigned int val)
+{
+    std::string s;
+
+    s += val & 0x7f;
+    s += (val >> 8) & 0x7f;
+    s += (val >> 16) & 0x7f;
+    s += (val >> 24) & 0x7f;
+    if (val & (1 << 31))
+        s += "-BE";
+    return s;
+}
+
 void Video_Stream::init_format(uint32_t width, uint32_t height)
 {
     static const struct Supported_Format
@@ -202,9 +215,13 @@ void Video_Stream::init_format(uint32_t width, uint32_t height)
         src_format_ = copy;
 
         qDebug().nospace() << "Convert from "
-                 << src_format_.fmt.pix.pixelformat << ' ' << src_format_.fmt.pix.width << 'x' << src_format_.fmt.pix.width << " size " << src_format_.fmt.pix.sizeimage
+                 << fcc2s(src_format_.fmt.pix.pixelformat).c_str() << ' ' << src_format_.fmt.pix.width << 'x' << src_format_.fmt.pix.height << " size " << src_format_.fmt.pix.sizeimage
                  << " to "
-                 << dest_format_.fmt.pix.pixelformat << ' ' << dest_format_.fmt.pix.width << 'x' << dest_format_.fmt.pix.width << " size " << dest_format_.fmt.pix.sizeimage;
+                 << fcc2s(dest_format_.fmt.pix.pixelformat).c_str() << ' ' << dest_format_.fmt.pix.width << 'x' << dest_format_.fmt.pix.height << " size " << dest_format_.fmt.pix.sizeimage;
+
+        v4l2_->test(src_format_.fmt.pix.pixelformat);
+        v4l2_->test(dest_format_.fmt.pix.pixelformat);
+        v4l2_->test();
     }
 
 #ifdef QT_DEBUG

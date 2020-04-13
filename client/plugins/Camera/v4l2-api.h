@@ -37,6 +37,8 @@ public:
 		m_capability(old.m_capability)
 	{}
 
+    void test(uint32_t pixelformat = 0);
+
     virtual ~v4l2() = default;
 
     bool open(const QString &device, bool useWrapper = true, bool is_non_block = true);
