@@ -122,7 +122,7 @@ void Camera_Thread::run()
                     if (!socket_)
                         socket_.reset(new Stream_Client_Thread(config().stream_server_.toStdString(), config().stream_server_port_.toStdString()));
 
-                    std::unique_ptr<Video_Stream> stream(new Video_Stream(path, config().stream_width_, config().stream_height_));
+                    std::unique_ptr<Video_Stream> stream(new Video_Stream(path, config().stream_width_, config().stream_height_, config().quality_));
                     const QByteArray param = stream->param();
 
                     qCDebug(CameraLog).nospace() << data.user_id_ << "|Start stream " << stream->width() << 'x' << stream->height();
@@ -204,7 +204,7 @@ void Camera_Thread::read_item(Device_Item *item)
         try
         {
             const QString path = get_device_path(item);
-            std::unique_ptr<Video_Stream> stream(new Video_Stream(path));
+            std::unique_ptr<Video_Stream> stream(new Video_Stream(path, 0, 0, config().quality_));
 
             for (uint32_t i = 0; i < config().picture_skip_; ++i)
                 stream->get_frame();
@@ -250,7 +250,8 @@ void Camera_Plugin::configure(QSettings *settings)
                 Param<uint32_t>{"FrameDelayMs", 60},
                 Param<uint32_t>{"PictureSkip", 50},
                 Param<uint32_t>{"StreamWidth", 320},
-                Param<uint32_t>{"StreamHeight", 240}
+                Param<uint32_t>{"StreamHeight", 240},
+                Param<int32_t>{"Quality", -1}
     ).obj<Camera::Config>();
 
     thread_.start(std::move(config), this);

@@ -2,7 +2,6 @@
 #include <sys/mman.h>
 
 #include <QFile>
-#include <QImage>
 #include <QDebug>
 
 #include "v4l2-api.h"
@@ -10,8 +9,10 @@
 
 namespace Das {
 
-Video_Stream::Video_Stream(const QString &device_path, uint32_t width, uint32_t height) :
-    convert_data_(nullptr)
+Video_Stream::Video_Stream(const QString &device_path, uint32_t width, uint32_t height, int quality) :
+    quality_(quality),
+    convert_data_(nullptr),
+    data_(), data_buffer_(&data_)
 {
     if (!open_device(device_path))
         throw std::runtime_error("Failed open device");
@@ -21,7 +22,6 @@ Video_Stream::Video_Stream(const QString &device_path, uint32_t width, uint32_t 
     {
         stop();
         close_device();
-
         throw std::runtime_error(error);
     }
 
@@ -45,6 +45,10 @@ const QByteArray &Video_Stream::param()
 const QByteArray &Video_Stream::get_frame()
 {
     cap_frame();
+
+    data_buffer_.seek(0);
+    if (!img_.save(&data_buffer_, "JPEG", quality_))
+        qWarning() << "Failed save frame";
     return data_;
 }
 
@@ -88,7 +92,8 @@ void Video_Stream::close_device()
 
 std::string Video_Stream::start(uint32_t width, uint32_t height)
 {
-    init_format(width, height);
+    if (!init_format(width, height))
+        return "Failed init format";
 
     __u32 buftype = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
@@ -150,7 +155,7 @@ std::string fcc2s(unsigned int val)
     return s;
 }
 
-void Video_Stream::init_format(uint32_t width, uint32_t height)
+bool Video_Stream::init_format(uint32_t width, uint32_t height)
 {
     static const struct Supported_Format
     {
@@ -172,7 +177,7 @@ void Video_Stream::init_format(uint32_t width, uint32_t height)
         { 0, QImage::Format_Invalid }
     };
 
-//    QImage::Format dst_fmt = QImage::Format_RGB888;
+    QImage::Format dst_fmt = QImage::Format_RGB888;
 
     v4l2_->g_fmt_cap(src_format_);
 
@@ -250,11 +255,10 @@ void Video_Stream::init_format(uint32_t width, uint32_t height)
     if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420) qDebug() << "V4L2_PIX_FMT_YUV420";
 #endif
 
-    QDataStream ds(&data_, QIODevice::WriteOnly);
-    ds << dest_format_.fmt.pix.width << dest_format_.fmt.pix.height;
+    img_ = QImage(dest_format_.fmt.pix.width, dest_format_.fmt.pix.height, dst_fmt);
+    img_.fill(0);
 
-    //    m_capImage = new QImage(dest_format_.fmt.pix.width, dest_format_.fmt.pix.height, dst_fmt);
-    //    m_capImage->fill(0);
+    return img_.sizeInBytes() == dest_format_.fmt.pix.sizeimage;
 }
 
 void Video_Stream::stop()
@@ -295,25 +299,17 @@ void Video_Stream::cap_frame()
     int err = 0;
     if (must_convert_)
     {
-        if (data_.size() != (8 + dest_format_.fmt.pix.sizeimage))
-            data_.resize(8 + dest_format_.fmt.pix.sizeimage);
-
         err = v4lconvert_convert(convert_data_,
             &src_format_, &dest_format_,
             static_cast<uint8_t*>(buffer.start_), buf.bytesused,
-            reinterpret_cast<uint8_t*>(data_.data() + 8), dest_format_.fmt.pix.sizeimage);
+            img_.bits(), dest_format_.fmt.pix.sizeimage);
 
         if (err == -1)
             v4l2_->error(v4lconvert_get_error_message(convert_data_));
     }
 
     if (!must_convert_ || err < 0)
-    {
-        if (data_.size() != (8 + buf.bytesused))
-            data_.resize(8 + buf.bytesused);
-
-        memcpy(data_.data() + 8, buffer.start_, buf.bytesused);
-    }
+        memcpy(img_.bits(), buffer.start_, buf.bytesused);
 
     v4l2_->qbuf(buf);
 }
