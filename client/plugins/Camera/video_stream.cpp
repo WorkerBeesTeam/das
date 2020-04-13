@@ -17,6 +17,8 @@ Video_Stream::Video_Stream(const QString &device_path, uint32_t width, uint32_t 
     if (!open_device(device_path))
         throw std::runtime_error("Failed open device");
 
+    data_buffer_.open(QIODevice::WriteOnly);
+
     const std::string error = start(width, height);
     if (!error.empty())
     {
@@ -88,6 +90,8 @@ void Video_Stream::close_device()
 
     delete v4l2_;
     v4l2_ = nullptr;
+
+    data_buffer_.close();
 }
 
 std::string Video_Stream::start(uint32_t width, uint32_t height)
