@@ -172,9 +172,19 @@ void Video_Stream::init_format(uint32_t width, uint32_t height)
         { 0, QImage::Format_Invalid }
     };
 
-    QImage::Format dst_fmt = QImage::Format_RGB888;
+//    QImage::Format dst_fmt = QImage::Format_RGB888;
 
     v4l2_->g_fmt_cap(src_format_);
+
+    if (width && height
+        && (width != src_format_.fmt.pix.width
+            || height != src_format_.fmt.pix.height))
+    {
+        src_format_.fmt.pix.width = width;
+        src_format_.fmt.pix.height = height;
+        src_format_.fmt.pix.bytesperline = 0;
+        src_format_.fmt.pix.sizeimage = 0;
+    }
     v4l2_->s_fmt(src_format_);
 
     must_convert_ = true;
@@ -188,7 +198,7 @@ void Video_Stream::init_format(uint32_t width, uint32_t height)
         if (fmt.v4l2_pixfmt_ == src_format_.fmt.pix.pixelformat)
         {
             dest_format_.fmt.pix.pixelformat = fmt.v4l2_pixfmt_;
-            dst_fmt = fmt.qt_pixfmt_;
+//            dst_fmt = fmt.qt_pixfmt_;
             must_convert_ = false;
             break;
         }
@@ -218,10 +228,6 @@ void Video_Stream::init_format(uint32_t width, uint32_t height)
                  << fcc2s(src_format_.fmt.pix.pixelformat).c_str() << ' ' << src_format_.fmt.pix.width << 'x' << src_format_.fmt.pix.height << " size " << src_format_.fmt.pix.sizeimage
                  << " to "
                  << fcc2s(dest_format_.fmt.pix.pixelformat).c_str() << ' ' << dest_format_.fmt.pix.width << 'x' << dest_format_.fmt.pix.height << " size " << dest_format_.fmt.pix.sizeimage;
-
-        v4l2_->test(src_format_.fmt.pix.pixelformat);
-        v4l2_->test(dest_format_.fmt.pix.pixelformat);
-        v4l2_->test();
     }
 
 #ifdef QT_DEBUG
