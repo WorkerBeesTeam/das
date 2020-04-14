@@ -226,7 +226,7 @@ void Camera_Thread::read_item(Device_Item *item)
     }
     catch (const std::exception& e)
     {
-        qCCritical(CameraLog) << "Save frame failed:" << e.what() << ". item:" << item->display_name();
+        qCCritical(CameraLog) << "Save frame failed:" << e.what() << "item:" << item->display_name();
         if (it != streams_.end())
         {
             iface_->manager()->send_stream_toggled(0, it->first, false);

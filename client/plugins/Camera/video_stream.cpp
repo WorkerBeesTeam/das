@@ -66,9 +66,7 @@ uint32_t Video_Stream::height() const
 
 void Video_Stream::reinit(uint32_t width, uint32_t height)
 {
-    __u32 buftype = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    if (!v4l2_->streamoff(buftype))
-        qWarning() << "Failed reinit: VIDIOC_STREAMOFF" << strerror(errno);
+    stop();
 
     const std::string error = start(width, height);
     if (error.empty())
@@ -172,27 +170,25 @@ std::string fcc2s(unsigned int val)
 
 bool Video_Stream::init_format(uint32_t width, uint32_t height)
 {
-    static const struct Supported_Format
-    {
-        __u32 v4l2_pixfmt_;
-        QImage::Format qt_pixfmt_;
-    } supported_fmts[] = {
-#if Q_BYTE_ORDER == Q_BIG_ENDIAN
-        { V4L2_PIX_FMT_RGB32, QImage::Format_RGB32 },
-        { V4L2_PIX_FMT_RGB24, QImage::Format_RGB888 },
-        { V4L2_PIX_FMT_RGB565X, QImage::Format_RGB16 },
-        { V4L2_PIX_FMT_RGB555X, QImage::Format_RGB555 },
-#else
-        { V4L2_PIX_FMT_BGR32, QImage::Format_RGB32 },
-        { V4L2_PIX_FMT_RGB24, QImage::Format_RGB888 },
-        { V4L2_PIX_FMT_RGB565, QImage::Format_RGB16 },
-        { V4L2_PIX_FMT_RGB555, QImage::Format_RGB555 },
-        { V4L2_PIX_FMT_RGB444, QImage::Format_RGB444 },
-#endif
-        { 0, QImage::Format_Invalid }
-    };
-
-    QImage::Format dst_fmt = QImage::Format_RGB888;
+//    static const struct Supported_Format
+//    {
+//        __u32 v4l2_pixfmt_;
+//        QImage::Format qt_pixfmt_;
+//    } supported_fmts[] = {
+//#if Q_BYTE_ORDER == Q_BIG_ENDIAN
+//        { V4L2_PIX_FMT_RGB32, QImage::Format_RGB32 },
+//        { V4L2_PIX_FMT_RGB24, QImage::Format_RGB888 },
+//        { V4L2_PIX_FMT_RGB565X, QImage::Format_RGB16 },
+//        { V4L2_PIX_FMT_RGB555X, QImage::Format_RGB555 },
+//#else
+//        { V4L2_PIX_FMT_BGR32, QImage::Format_RGB32 },
+//        { V4L2_PIX_FMT_RGB24, QImage::Format_RGB888 },
+//        { V4L2_PIX_FMT_RGB565, QImage::Format_RGB16 },
+//        { V4L2_PIX_FMT_RGB555, QImage::Format_RGB555 },
+//        { V4L2_PIX_FMT_RGB444, QImage::Format_RGB444 },
+//#endif
+//        { 0, QImage::Format_Invalid }
+//    };
 
     v4l2_->g_fmt_cap(src_format_);
 
@@ -257,26 +253,7 @@ bool Video_Stream::init_format(uint32_t width, uint32_t height)
                  << fcc2s(dest_format_.fmt.pix.pixelformat).c_str() << ' ' << dest_format_.fmt.pix.width << 'x' << dest_format_.fmt.pix.height << " size " << dest_format_.fmt.pix.sizeimage;
     }
 
-#ifdef QT_DEBUG
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_UV8) qDebug() << "V4L2_PIX_FMT_UV8";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YVU410) qDebug() << "V4L2_PIX_FMT_YVU410";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YVU420) qDebug() << "V4L2_PIX_FMT_YVU420";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) qDebug() << "V4L2_PIX_FMT_YUYV";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YYUV) qDebug() << "V4L2_PIX_FMT_YYUV";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YVYU) qDebug() << "V4L2_PIX_FMT_YVYU";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY) qDebug() << "V4L2_PIX_FMT_UYVY";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_VYUY) qDebug() << "V4L2_PIX_FMT_VYUY";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV422P) qDebug() << "V4L2_PIX_FMT_YUV422P";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV411P) qDebug() << "V4L2_PIX_FMT_YUV411P";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_Y41P) qDebug() << "V4L2_PIX_FMT_Y41P";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV444) qDebug() << "V4L2_PIX_FMT_YUV444";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV555) qDebug() << "V4L2_PIX_FMT_YUV555";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV565) qDebug() << "V4L2_PIX_FMT_YUV565";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV32) qDebug() << "V4L2_PIX_FMT_YUV32";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV410) qDebug() << "V4L2_PIX_FMT_YUV410";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420) qDebug() << "V4L2_PIX_FMT_YUV420";
-#endif
-
+    QImage::Format dst_fmt = QImage::Format_RGB888;
     img_ = QImage(dest_format_.fmt.pix.width, dest_format_.fmt.pix.height, dst_fmt);
     img_.fill(0);
 
