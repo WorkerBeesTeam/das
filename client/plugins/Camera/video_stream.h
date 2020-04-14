@@ -32,6 +32,8 @@ public:
 
     uint32_t width() const;
     uint32_t height() const;
+
+    void reinit(uint32_t width = 0, uint32_t height = 0);
 private:
     bool open_device(const QString& device_path);
     void close_device();

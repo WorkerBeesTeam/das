@@ -64,6 +64,17 @@ uint32_t Video_Stream::height() const
     return dest_format_.fmt.pix.height;
 }
 
+void Video_Stream::reinit(uint32_t width, uint32_t height)
+{
+    __u32 buftype = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    if (!v4l2_->streamoff(buftype))
+        qWarning() << "Failed reinit: VIDIOC_STREAMOFF" << strerror(errno);
+
+    const std::string error = start(width, height);
+    if (error.empty())
+        qWarning() << "Failed reinit:" << error.c_str();
+}
+
 bool Video_Stream::open_device(const QString &device_path)
 {
     v4l2_ = new v4l2;
@@ -185,15 +196,22 @@ bool Video_Stream::init_format(uint32_t width, uint32_t height)
 
     v4l2_->g_fmt_cap(src_format_);
 
-    if (width && height
-        && (width != src_format_.fmt.pix.width
-            || height != src_format_.fmt.pix.height))
+    if (!width || !height)
+    {
+        Frame_Size size = v4l2_->get_max_resolution();
+        width = size.width_;
+        height = size.height_;
+    }
+
+    if (width != src_format_.fmt.pix.width
+        || height != src_format_.fmt.pix.height)
     {
         src_format_.fmt.pix.width = width;
         src_format_.fmt.pix.height = height;
         src_format_.fmt.pix.bytesperline = 0;
         src_format_.fmt.pix.sizeimage = 0;
     }
+
     v4l2_->s_fmt(src_format_);
 
     must_convert_ = true;
@@ -201,17 +219,17 @@ bool Video_Stream::init_format(uint32_t width, uint32_t height)
     dest_format_ = src_format_;
     dest_format_.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24;
 
-    for (int i = 0; supported_fmts[i].v4l2_pixfmt_; i++)
-    {
-        const Supported_Format& fmt = supported_fmts[i];
-        if (fmt.v4l2_pixfmt_ == src_format_.fmt.pix.pixelformat)
-        {
-            dest_format_.fmt.pix.pixelformat = fmt.v4l2_pixfmt_;
-//            dst_fmt = fmt.qt_pixfmt_;
-            must_convert_ = false;
-            break;
-        }
-    }
+//    for (int i = 0; supported_fmts[i].v4l2_pixfmt_; i++)
+//    {
+//        const Supported_Format& fmt = supported_fmts[i];
+//        if (fmt.v4l2_pixfmt_ == src_format_.fmt.pix.pixelformat)
+//        {
+//            dest_format_.fmt.pix.pixelformat = fmt.v4l2_pixfmt_;
+////            dst_fmt = fmt.qt_pixfmt_;
+//            must_convert_ = false;
+//            break;
+//        }
+//    }
 
     if (must_convert_)
     {
@@ -274,7 +292,7 @@ void Video_Stream::stop()
     v4l2_requestbuffers reqbufs;
 
     if (!v4l2_->streamoff(buftype))
-        perror("VIDIOC_STREAMOFF");
+        perror("VIDIOC_");
 
     for (const Buffer& buff: buffers_)
         if (-1 == v4l2_->munmap(buff.start_, buff.length_))

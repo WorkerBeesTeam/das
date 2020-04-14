@@ -194,27 +194,46 @@ void Camera_Thread::read_item(Device_Item *item)
 {
     QByteArray data = "img:";
 
+    auto fill_data = [this, &data](std::unique_ptr<Video_Stream>& stream)
+    {
+        for (uint32_t i = 0; i < config().picture_skip_; ++i)
+            stream->get_frame();
+        data += stream->get_frame().toBase64();
+    };
+
     auto it = streams_.find(item);
-    if (it != streams_.cend())
+
+    try
     {
-        data += it->second->get_frame().toBase64();
-    }
-    else
-    {
-        try
+        if (it != streams_.end())
+        {
+            std::unique_ptr<Video_Stream>& stream = it->second;
+
+            uint32_t width = stream->width();
+            uint32_t height = stream->height();
+
+            stream->reinit();
+            fill_data(stream);
+            stream->reinit(width, height);
+        }
+        else
         {
             const QString path = get_device_path(item);
             std::unique_ptr<Video_Stream> stream(new Video_Stream(path, 0, 0, config().quality_));
 
-            for (uint32_t i = 0; i < config().picture_skip_; ++i)
-                stream->get_frame();
-            data += stream->get_frame().toBase64();
+            fill_data(stream);
         }
-        catch (const std::exception& e)
+    }
+    catch (const std::exception& e)
+    {
+        qCCritical(CameraLog) << "Save frame failed:" << e.what() << ". item:" << item->display_name();
+        if (it != streams_.end())
         {
-            qCCritical(CameraLog) << "Save frame failed:" << e.what() << ". item:" << item->display_name();
-            return;
+            iface_->manager()->send_stream_toggled(0, it->first, false);
+            streams_.erase(it);
+            socket_.reset();
         }
+        return;
     }
 
     const qint64 now = Log_Value_Item::current_timestamp();
