@@ -3,6 +3,7 @@
 #include <served/request_error.hpp>
 
 #include <QSqlError>
+#include <QUuid>
 
 #include <Helpz/db_base.h>
 
@@ -302,7 +303,7 @@ void Scheme::create(served::response &res, const served::request &req)
     DB::Scheme scheme = from_json<DB::Scheme>(obj);
     scheme.set_last_usage(QDateTime::currentDateTimeUtc());
     scheme.set_version("");
-    scheme.set_using_key("");
+    scheme.set_using_key(QUuid().toString(QUuid::Id128));
 
     const uint32_t user_id = Auth_Middleware::get_thread_local_user().id_;
 
