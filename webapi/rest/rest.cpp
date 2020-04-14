@@ -10,6 +10,7 @@
 #include "multipart_form_data_parser.h"
 #include "csrf_middleware.h"
 #include "auth_middleware.h"
+#include "rest_scheme_group.h"
 #include "rest_scheme.h"
 #include "rest.h"
 
@@ -67,6 +68,7 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
             res.set_header("Content-Type", "application/json");
         });
 
+        auto scheme_groups = std::make_shared<Scheme_Group>(mux);
         auto scheme = std::make_shared<Scheme>(mux, dbus_iface);
 
         mux.handle("write_item_file").put([](served::response &res, const served::request &req)

@@ -1,16 +1,10 @@
 
-#define PICOJSON_USE_INT64
-#include <picojson/picojson.h>
-
 #include <served/status.hpp>
 #include <served/request_error.hpp>
 
-#include <QJsonObject>
-#include <QJsonArray>
-#include <QJsonDocument>
+#include <QSqlError>
 
 #include <Helpz/db_base.h>
-#include <Helpz/db_builder.h>
 
 //#include <Das/section.h>
 #include <Das/db/scheme.h>
@@ -21,6 +15,7 @@
 
 #include <dbus/dbus_interface.h>
 
+#include "json_helper.h"
 #include "filter.h"
 #include "csrf_middleware.h"
 #include "auth_middleware.h"
@@ -31,60 +26,6 @@ namespace Das {
 namespace Rest {
 
 using namespace Helpz::DB;
-
-// -----------------------
-
-template<typename T>
-void fill_json_object(QJsonObject& obj, const T& item, const QStringList& names)
-{
-    for (int i = 0; i < T::COL_COUNT; ++i)
-    {
-        obj.insert(names.at(i), QJsonValue::fromVariant(T::value_getter(item, i)));
-    }
-}
-
-template<typename T>
-QJsonObject get_json_object(const QSqlQuery& query, const QStringList& names)
-{
-    QJsonObject obj;
-
-    if (query.record().count() >= T::COL_COUNT)
-    {
-        const T item = db_build<T>(query);
-        fill_json_object(obj, item, names);
-    }
-    return obj;
-}
-
-template<typename T>
-QJsonObject get_json_object(const QSqlQuery& query)
-{
-    const QStringList names = T::table_column_names();
-    return get_json_object<T>(query, names);
-}
-
-template<typename T>
-QJsonArray gen_json_array(const QString& suffix = QString(), const QVariantList& values = QVariantList())
-{
-    Base& db = Base::get_thread_local_instance();
-    QStringList names = T::table_column_names();
-    QJsonArray json_array;
-    auto q = db.select(db_table<T>(), suffix, values);
-    while(q.next())
-    {
-        json_array.push_back(get_json_object<T>(q, names));
-    }
-
-    return json_array;
-}
-
-template<typename T>
-std::string gen_json_list(const QString& suffix = QString(), const QVariantList& values = QVariantList())
-{
-    return QJsonDocument(gen_json_array<T>(suffix, values)).toJson().toStdString();
-}
-
-// -----------------------
 
 const char *get_scheme_base() { return "scheme"; }
 std::string get_scheme_path_base() { return '/' + std::string(get_scheme_base()) + '/'; }
@@ -105,7 +46,9 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
     mux.handle(scheme_path + "/device_item_value").get([this](served::response& res, const served::request& req) { get_device_item_value(res, req); });
     mux.handle(scheme_path + "/set_name/").post([this](served::response& res, const served::request& req) { set_name(res, req); });
     mux.handle(scheme_path).get([this](served::response& res, const served::request& req) { get(res, req); });
-    mux.handle(get_scheme_path_base()).get([this](served::response& res, const served::request& req) { get_list(res, req); });
+    mux.handle(get_scheme_path_base())
+            .get([this](served::response& res, const served::request& req) { get_list(res, req); })
+            .post([this](served::response& res, const served::request& req) { create(res, req); });
     // throw served::request_error(served::status_4XX::NOT_FOUND, "Scheme not found");
 }
 
@@ -334,9 +277,95 @@ void Scheme::get_list(served::response &res, const served::request &req)
     suffix += filter.suffix_;
     suffix += " GROUP BY s.id";
 
-    qDebug() << suffix;
     res.set_header("Content-Type", "application/json");
     res << gen_json_list<DB::Scheme>(suffix, filter.values_);
+}
+
+void Scheme::create(served::response &res, const served::request &req)
+{
+    picojson::value val;
+    const std::string err = picojson::parse(val, req.body());
+    if (!err.empty() || !val.is<picojson::object>())
+        throw served::request_error(served::status_4XX::BAD_REQUEST, err);
+
+    picojson::object& obj = val.get<picojson::object>();
+    auto s_groups_it = obj.find("scheme_groups");
+    if (s_groups_it == obj.cend() || !s_groups_it->second.is<picojson::array>())
+        throw served::request_error(served::status_4XX::BAD_REQUEST, "scheme_groups is required");
+
+    const picojson::array& scheme_groups = s_groups_it->second.get<picojson::array>();
+    if (scheme_groups.empty())
+        throw served::request_error(served::status_4XX::BAD_REQUEST, "scheme_groups can't be empty");
+
+    Auth_Middleware::check_permission("add_scheme");
+
+    DB::Scheme scheme = from_json<DB::Scheme>(obj);
+    scheme.set_last_usage(QDateTime::currentDateTimeUtc());
+    scheme.set_version("");
+    scheme.set_using_key("");
+
+    const uint32_t user_id = Auth_Middleware::get_thread_local_user().id_;
+
+    Base& db = Base::get_thread_local_instance();
+
+    QString sql =
+            "SELECT * FROM das_scheme_groups sg "
+            "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.scheme_group_id "
+            "WHERE sgu.user_id = %1 AND sg.scheme_id = %2 "
+            "LIMIT 1";
+
+    if (scheme.parent_id())
+    {
+        auto q = db.exec(sql.arg(user_id).arg(scheme.parent_id()));
+        if (!q.isActive() || !q.next())
+            throw served::request_error(served::status_4XX::BAD_REQUEST, "Can't find scheme id: " + std::to_string(scheme.parent_id()));
+    }
+    else
+    {
+        // TODO: check can create scheme controller (parent scheme)
+    }
+
+    sql = "SELECT COUNT(*) FROM das_scheme_group_user sgu WHERE sgu.user_id = ";
+    sql += QString::number(user_id);
+    sql += " AND sgu.group_id IN (";
+
+    for (const picojson::value& s_group: scheme_groups)
+    {
+        sql += QString::number(s_group.get<int64_t>());
+        sql += ',';
+    }
+    sql.replace(sql.size()-1, 1, ')');
+
+    QSqlQuery q = db.exec(sql);
+    if (!q.isActive() || !q.next() || q.value(0).toUInt() == 0)
+        throw served::request_error(served::status_4XX::BAD_REQUEST, "Can't find some scheme group");
+
+    QVariant new_id;
+    if (!db.insert(db_table<DB::Scheme>(), DB::Scheme::to_variantlist(scheme), &new_id))
+        throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, "Can't create new scheme: " + scheme.name().toStdString());
+
+    const QString new_id_str = new_id.toString();
+    sql = "INSERT INTO das_scheme_groups(scheme_id, scheme_group_id) VALUES";
+    for (const picojson::value& s_group: scheme_groups)
+    {
+        sql += '(';
+        sql += new_id_str;
+        sql += ',';
+        sql += QString::number(s_group.get<int64_t>());
+        sql += "),";
+    }
+    sql.replace(sql.size()-1, 1, ';');
+    q = db.exec(sql);
+    if (!q.isActive())
+    {
+        db.exec("DELETE FROM das_scheme_groups WHERE scheme_id = " + new_id_str);
+        db.exec("DELETE FROM das_scheme WHERE id = " + new_id_str);
+        throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, "Can't create new scheme: " + scheme.name().toStdString() + " failed add to groups");
+    }
+
+    obj["id"] = picojson::value(new_id.value<int64_t>());
+    res << val.serialize();
+    std::cerr << "Scheme::create: " << val.serialize() << std::endl;
 }
 
 void Scheme::set_name(served::response &res, const served::request &req)
@@ -348,7 +377,7 @@ void Scheme::set_name(served::response &res, const served::request &req)
     if (!err.empty() || !val.is<picojson::object>())
         throw served::request_error(served::status_4XX::BAD_REQUEST, err);
 
-    const picojson::object obj = val.get<picojson::object>();
+    const picojson::object& obj = val.get<picojson::object>();
     const std::string scheme_name = obj.at("name").get<std::string>();
 
     std::cerr << "set_name: " << scheme_name << std::endl;

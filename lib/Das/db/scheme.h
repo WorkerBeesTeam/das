@@ -13,7 +13,7 @@ namespace DB {
 class DAS_LIBRARY_SHARED_EXPORT Scheme : public Titled_Type
 {
     HELPZ_DB_META(Scheme, "scheme", "s", 11, DB_A(id), DB_A(name), DB_A(title), DB_A(address), DB_A(description),
-                  DB_A(city_id), DB_A(company_id), DB_A(last_usage), DB_A(version), DB_A(using_key), DB_AN(parent_id))
+                  DB_AN(city_id), DB_AN(company_id), DB_A(last_usage), DB_A(version), DB_A(using_key), DB_AN(parent_id))
 public:
     Scheme(uint32_t id = 0, const QString& name = QString(), const QString& title = QString(), const QString& address = QString(),
            const QString& description = QString(), uint32_t city_id = 0, uint32_t company_id = 0, const QDateTime& last_usage = QDateTime(),

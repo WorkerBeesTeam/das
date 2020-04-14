@@ -26,6 +26,7 @@ SOURCES += main.cpp \
     rest/rest.cpp \
     rest/rest_chart.cpp \
     rest/rest_scheme.cpp \
+    rest/rest_scheme_group.cpp \
     worker.cpp \
     websocket.cpp \
     webcommand.cpp \
@@ -39,10 +40,12 @@ HEADERS += \
     rest/csrf_middleware.h \
     rest/auth_middleware.h \
     rest/filter.h \
+    rest/json_helper.h \
     rest/multipart_form_data_parser.h \
     rest/rest.h \
     rest/rest_chart.h \
     rest/rest_scheme.h \
+    rest/rest_scheme_group.h \
     worker.h \
     websocket.h \
     webcommand.h \

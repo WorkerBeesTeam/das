@@ -69,7 +69,7 @@ std::vector<Filter::Item> Filter::parse_parameters(const served::parameters &par
 
     for (auto it: params)
     {
-        std::cerr << "query " << it.first << ' ' << it.second << std::endl;
+//        std::cerr << "query " << it.first << ' ' << it.second << std::endl;
         if (it.first.empty()) continue;
 
         item.field_name_ = QString::fromStdString(it.first);
