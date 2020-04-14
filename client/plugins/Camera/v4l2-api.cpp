@@ -714,7 +714,17 @@ Frame_Size v4l2::get_max_resolution()
     struct v4l2_fmtdesc fmt;
     struct v4l2_frmsizeenum frmsize;
 
-    Frame_Size size{0, 0};
+    Frame_Size size{0, 0, 0};
+    auto check_set_size = [&size](uint32_t width, uint32_t height, uint32_t pixel_format)
+    {
+        if (size.width_ < width
+            || size.height_ < height)
+        {
+            size.width_ = width;
+            size.height_ = height;
+            size.pixel_format_ = pixel_format;
+        }
+    };
 
     fmt.index = 0;
     fmt.type = type;
@@ -725,19 +735,13 @@ Frame_Size v4l2::get_max_resolution()
         while (ioctl(VIDIOC_ENUM_FRAMESIZES, &frmsize) >= 0)
         {
             if (frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE)
-            {
-                if (size.width_ < frmsize.discrete.width)
-                    size.width_ = frmsize.discrete.width;
-                if (size.height_ < frmsize.discrete.height)
-                    size.height_ = frmsize.discrete.height;
-            }
+                check_set_size(frmsize.discrete.width,
+                               frmsize.discrete.height,
+                               frmsize.pixel_format);
             else if (frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE)
-            {
-                if (size.width_ < frmsize.stepwise.max_width)
-                    size.width_ = frmsize.stepwise.max_width;
-                if (size.height_ < frmsize.stepwise.max_height)
-                    size.height_ = frmsize.stepwise.max_height;
-            }
+                check_set_size(frmsize.stepwise.max_width,
+                               frmsize.stepwise.max_height,
+                               frmsize.pixel_format);
             frmsize.index++;
         }
         fmt.index++;

@@ -32,6 +32,7 @@ struct Frame_Size
 {
     uint32_t width_;
     uint32_t height_;
+    uint32_t pixel_format_;
 };
 
 class v4l2

@@ -69,7 +69,7 @@ void Video_Stream::reinit(uint32_t width, uint32_t height)
     stop();
 
     const std::string error = start(width, height);
-    if (error.empty())
+    if (!error.empty())
         qWarning() << "Failed reinit:" << error.c_str();
 }
 
@@ -192,11 +192,14 @@ bool Video_Stream::init_format(uint32_t width, uint32_t height)
 
     v4l2_->g_fmt_cap(src_format_);
 
+    uint32_t pixel_format = src_format_.fmt.pix.pixelformat;
+
     if (!width || !height)
     {
         Frame_Size size = v4l2_->get_max_resolution();
         width = size.width_;
         height = size.height_;
+        pixel_format = size.pixel_format_;
     }
 
     if (width != src_format_.fmt.pix.width
@@ -204,6 +207,7 @@ bool Video_Stream::init_format(uint32_t width, uint32_t height)
     {
         src_format_.fmt.pix.width = width;
         src_format_.fmt.pix.height = height;
+        src_format_.fmt.pix.pixelformat = pixel_format;
         src_format_.fmt.pix.bytesperline = 0;
         src_format_.fmt.pix.sizeimage = 0;
     }
