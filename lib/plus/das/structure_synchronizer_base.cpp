@@ -47,6 +47,37 @@ Structure_Synchronizer_Base::~Structure_Synchronizer_Base()
     return text;
 }
 
+/*static*/ std::vector<uint8_t> Structure_Synchronizer_Base::get_main_table_types()
+{
+    return {
+        ST_DEVICE,
+        ST_PLUGIN_TYPE,
+        ST_DEVICE_ITEM,
+        ST_DEVICE_ITEM_TYPE,
+        ST_SAVE_TIMER,
+        ST_SECTION,
+        ST_DEVICE_ITEM_GROUP,
+        ST_DIG_TYPE,
+        ST_DIG_MODE_TYPE,
+        ST_DIG_PARAM_TYPE,
+        ST_DIG_STATUS_TYPE,
+        ST_DIG_STATUS_CATEGORY,
+        ST_DIG_PARAM,
+        ST_SIGN_TYPE,
+        ST_CODES,
+        ST_TRANSLATION,
+        ST_NODE,
+        ST_DISABLED_PARAM,
+        ST_DISABLED_STATUS,
+        ST_CHART,
+        ST_CHART_ITEM,
+        ST_AUTH_GROUP,
+        ST_AUTH_GROUP_PERMISSION,
+        ST_USER,
+        ST_USER_GROUP
+    };
+}
+
 bool Structure_Synchronizer_Base::modified() const
 {
     return modified_;
@@ -134,37 +165,6 @@ QByteArray Structure_Synchronizer_Base::get_structure_hash_for_all(Helpz::DB::Ba
 Helpz::DB::Thread *Structure_Synchronizer_Base::db_thread() const
 {
     return db_thread_;
-}
-
-std::vector<uint8_t> Structure_Synchronizer_Base::get_main_table_types() const
-{
-    return {
-        ST_DEVICE,
-        ST_PLUGIN_TYPE,
-        ST_DEVICE_ITEM,
-        ST_DEVICE_ITEM_TYPE,
-        ST_SAVE_TIMER,
-        ST_SECTION,
-        ST_DEVICE_ITEM_GROUP,
-        ST_DIG_TYPE,
-        ST_DIG_MODE_TYPE,
-        ST_DIG_PARAM_TYPE,
-        ST_DIG_STATUS_TYPE,
-        ST_DIG_STATUS_CATEGORY,
-        ST_DIG_PARAM,
-        ST_SIGN_TYPE,
-        ST_CODES,
-        ST_TRANSLATION,
-        ST_NODE,
-        ST_DISABLED_PARAM,
-        ST_DISABLED_STATUS,
-        ST_CHART,
-        ST_CHART_ITEM,
-        ST_AUTH_GROUP,
-        ST_AUTH_GROUP_PERMISSION,
-        ST_USER,
-        ST_USER_GROUP
-    };
 }
 
 bool Structure_Synchronizer_Base::is_main_table(uint8_t struct_type) const

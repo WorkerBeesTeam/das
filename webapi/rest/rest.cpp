@@ -89,9 +89,7 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
         served::net::server server{config.address_, config.port_, mux};
         server_ = &server;
 
-        std::cout << "Restful server start on " << config.address_ << ':' << config.port_ << std::endl;
-        std::cout << "Try this example with:" << std::endl;
-        std::cout << " curl http://localhost:" << config.port_ << "/served" << std::endl;
+        std::cout << "Restful server start: http://" << config.address_ << ':' << config.port_ << '/' << config.base_path_ << std::endl;
 
         server.run(config.thread_count_);
     }

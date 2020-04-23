@@ -20,6 +20,7 @@ public:
     Scheme(served::multiplexer &mux, DBus::Interface *dbus_iface);
 
     static Scheme_Info get_info(const served::request& req);
+    static Scheme_Info get_info(uint32_t scheme_id);
 private:
     void get_dig_status(served::response& res, const served::request& req);
     void get_dig_status_type(served::response& res, const served::request& req);
@@ -29,6 +30,7 @@ private:
     void create(served::response& res, const served::request& req);
 
     void set_name(served::response& res, const served::request& req);
+    void copy(served::response& res, const served::request& req);
 
     DBus::Interface *dbus_iface_;
 

@@ -27,6 +27,7 @@ SOURCES += main.cpp \
     rest/rest_chart.cpp \
     rest/rest_scheme.cpp \
     rest/rest_scheme_group.cpp \
+    rest/scheme_copier.cpp \
     worker.cpp \
     websocket.cpp \
     webcommand.cpp \
@@ -46,6 +47,7 @@ HEADERS += \
     rest/rest_chart.h \
     rest/rest_scheme.h \
     rest/rest_scheme_group.h \
+    rest/scheme_copier.h \
     worker.h \
     websocket.h \
     webcommand.h \

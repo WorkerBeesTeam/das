@@ -20,6 +20,7 @@
 #include "filter.h"
 #include "csrf_middleware.h"
 #include "auth_middleware.h"
+#include "scheme_copier.h"
 #include "rest_chart.h"
 #include "rest_scheme.h"
 
@@ -46,6 +47,7 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
     mux.handle(scheme_path + "/dig_status_type").get([this](served::response& res, const served::request& req) { get_dig_status_type(res, req); });
     mux.handle(scheme_path + "/device_item_value").get([this](served::response& res, const served::request& req) { get_device_item_value(res, req); });
     mux.handle(scheme_path + "/set_name/").post([this](served::response& res, const served::request& req) { set_name(res, req); });
+    mux.handle(scheme_path + "/copy/").post([this](served::response& res, const served::request& req) { copy(res, req); });
     mux.handle(scheme_path).get([this](served::response& res, const served::request& req) { get(res, req); });
     mux.handle(get_scheme_path_base())
             .get([this](served::response& res, const served::request& req) { get_list(res, req); })
@@ -66,24 +68,31 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
         if (!param_data.empty())
         {
             uint32_t scheme_id = std::atoi(param_data.c_str());
-            uint32_t user_id = Auth_Middleware::get_thread_local_user().id_;
-            if (user_id != 0 && scheme_id != 0)
-            {
-                const QString sql =
-                        "SELECT s.id, s.parent_id FROM das_scheme s "
-                        "LEFT JOIN das_scheme_groups sg ON sg.scheme_id = s.id "
-                        "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.scheme_group_id "
-                        "WHERE s.id = %1 AND sgu.user_id = %2";
-
-                Base& db = Base::get_thread_local_instance();
-                QSqlQuery q = db.exec(sql.arg(scheme_id).arg(user_id));
-                if (q.next())
-                    return {q.value(0).toUInt(), q.value(1).toUInt()};
-            }
+            return get_info(scheme_id);
         }
     }
 
     throw served::request_error(served::status_4XX::NOT_FOUND, "Scheme not found");
+    return {};
+}
+
+/*static*/ Scheme_Info Scheme::get_info(uint32_t scheme_id)
+{
+    uint32_t user_id = Auth_Middleware::get_thread_local_user().id_;
+    if (user_id != 0 && scheme_id != 0)
+    {
+        const QString sql =
+                "SELECT s.id, s.parent_id FROM das_scheme s "
+                "LEFT JOIN das_scheme_groups sg ON sg.scheme_id = s.id "
+                "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.scheme_group_id "
+                "WHERE s.id = %1 AND sgu.user_id = %2";
+
+        Base& db = Base::get_thread_local_instance();
+        QSqlQuery q = db.exec(sql.arg(scheme_id).arg(user_id));
+        if (q.next())
+            return {q.value(0).toUInt(), q.value(1).toUInt()};
+    }
+
     return {};
 }
 
@@ -387,6 +396,33 @@ void Scheme::set_name(served::response &res, const served::request &req)
 
     QMetaObject::invokeMethod(dbus_iface_, "set_scheme_name", Qt::QueuedConnection,
         Q_ARG(uint32_t, scheme.id()), Q_ARG(uint32_t, user_id), Q_ARG(QString, QString::fromStdString(scheme_name)));
+
+    res << "{\"result\": true}\n";
+}
+
+void Scheme::copy(served::response &res, const served::request &req)
+{
+    picojson::value val;
+    const std::string err = picojson::parse(val, req.body());
+    if (!err.empty() || !val.is<picojson::object>())
+        throw served::request_error(served::status_4XX::BAD_REQUEST, err);
+
+    const picojson::object& obj = val.get<picojson::object>();
+    const uint32_t dest_scheme_id = obj.at("scheme_id").get<int64_t>();
+
+    const Scheme_Info scheme = Scheme::get_info(req);
+    const Scheme_Info dest_scheme = Scheme::get_info(dest_scheme_id);
+    if (scheme.parent_id() || !dest_scheme.id() || dest_scheme.parent_id())
+    {
+        const std::string error_msg = "Not possible copy scheme " + std::to_string(scheme.id()) + " to " + std::to_string(dest_scheme_id);
+        throw served::request_error(served::status_4XX::BAD_REQUEST, error_msg);
+    }
+
+    Auth_Middleware::check_permission("change_scheme");
+
+    std::cout << "Copy " << scheme.id() << " to " << dest_scheme.id() << std::endl;
+
+    Scheme_Copier copier(scheme.id(), dest_scheme.id());
 
     res << "{\"result\": true}\n";
 }

@@ -53,6 +53,7 @@ public:
     virtual ~Structure_Synchronizer_Base();
 
     static QString type_name(uint8_t struct_type);
+    static std::vector<uint8_t> get_main_table_types();
 
     bool modified() const;
     void set_modified(bool modified);
@@ -66,7 +67,6 @@ protected:
 
     Helpz::DB::Thread *db_thread() const;
 
-    std::vector<uint8_t> get_main_table_types() const;
     bool is_main_table(uint8_t struct_type) const;
 
     virtual bool is_can_modify(uint8_t struct_type) const;
