@@ -10,7 +10,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Node : public Base_Type
 {
-    HELPZ_DB_META(Node, "node", "n", 5, DB_A(id), DB_A(name), DB_A(parent_id), DB_A(type_id), DB_A(scheme_id))
+    HELPZ_DB_META(Node, "node", "n", DB_A(id), DB_A(name), DB_A(parent_id), DB_A(type_id), DB_A(scheme_id))
 public:
     Node(uint32_t id = 0, const QString& name = {}, uint32_t parent_id = 0, uint32_t type_id = 0);
 

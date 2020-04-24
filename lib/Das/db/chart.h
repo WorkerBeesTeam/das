@@ -10,7 +10,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Chart : public Base_Type
 {
-    HELPZ_DB_META(Chart, "chart", "c", 3, DB_A(id), DB_A(name), DB_A(scheme_id))
+    HELPZ_DB_META(Chart, "chart", "c", DB_A(id), DB_A(name), DB_A(scheme_id))
 public:
     using Base_Type::Base_Type;
 };
@@ -19,7 +19,7 @@ public:
 
 class DAS_LIBRARY_SHARED_EXPORT Chart_Item : public Base_Type
 {
-    HELPZ_DB_META(Chart_Item, "chart_item", "ci", 6, DB_A(id), DB_A(chart_id), DB_A(color), DB_AN(item_id), DB_AN(param_id), DB_A(scheme_id))
+    HELPZ_DB_META(Chart_Item, "chart_item", "ci", DB_A(id), DB_A(chart_id), DB_A(color), DB_AN(item_id), DB_AN(param_id), DB_A(scheme_id))
 public:
     Chart_Item(uint32_t id = 0, uint32_t chart_id = 0, const QString& color = {}, uint32_t item_id = 0, uint32_t param_id = 0, uint32_t scheme_id = Schemed_Model::default_scheme_id());
 

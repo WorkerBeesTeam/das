@@ -424,7 +424,51 @@ void Scheme::copy(served::response &res, const served::request &req)
 
     Scheme_Copier copier(scheme.id(), dest_scheme.id());
 
-    res << "{\"result\": true}\n";
+    picojson::object data;
+
+    auto get_counter_name = [](int index) -> std::string
+    {
+        using T = Scheme_Copier::Item::Counter_Type;
+        switch (index) {
+        case T::SCI_DELETED:        return "deleted";
+        case T::SCI_DELETE_ERROR:   return "delete_error";
+        case T::SCI_INSERTED:       return "inserted";
+        case T::SCI_INSERT_ERROR:   return "insert_error";
+        case T::SCI_UPDATED:        return "updated";
+        case T::SCI_UPDATE_ERROR:   return "update_error";
+        default:
+            break;
+        }
+        return "unknown";
+    };
+
+    bool is_empty;
+    int64_t counter;
+    for (const std::pair<std::string, Scheme_Copier::Item>& item: copier.result_)
+    {
+        picojson::object data_item;
+
+        is_empty = true;
+        for (int i = 0; i < Scheme_Copier::Item::SCI_COUNT; ++i)
+        {
+            counter = item.second.counter_[i];
+
+            if (!counter)
+                continue;
+
+            is_empty = false;
+
+            data_item.emplace(get_counter_name(i), picojson::value(counter));
+        }
+
+        if (!is_empty)
+            data.emplace(item.first, picojson::value(data_item));
+    }
+
+    picojson::object res_obj;
+    res_obj.emplace("result", picojson::value(true));
+    res_obj.emplace("data", picojson::value(std::move(data)));
+    res << picojson::value(std::move(res_obj)).serialize();
 }
 
 } // namespace Rest

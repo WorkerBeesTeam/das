@@ -210,14 +210,41 @@ template<> inline constexpr bool has_scheme_id<User_Groups>() { return false; }
 template<> inline constexpr bool has_scheme_id<Auth_Group>() { return false; }
 template<> inline constexpr bool has_scheme_id<Auth_Group_Permission>() { return false; }
 
+template<typename T>
+QString get_full_field_name(int index, bool add_short_name = false)
+{
+    QString res;
+    if (add_short_name)
+    {
+        const QString short_name = T::table_short_name();
+        if (!short_name.isEmpty())
+        {
+            res += short_name;
+            res += '.';
+        }
+    }
+
+    res += T::table_column_names().at(index);
+    return res;
+}
+
 // Scheme_Table_Helper
-template<typename T, auto pk_getter, int pk_num_value>
+template<typename T, auto pk_getter, int pk_num_value, int... extra_order_keys>
 struct Scheme_Table_Helper_Impl
 {
     using PK_Type = typename std::result_of<decltype(pk_getter)(T)>::type;
     static const int pk_num = pk_num_value;
     static PK_Type get_pk(const T& item) { return (item.*pk_getter)(); }
     static PK_Type get_query_pk(const QSqlQuery& q) { return q.value(pk_num).value<PK_Type>(); }
+
+    static QString get_extra_orders(bool add_short_name = false)
+    {
+        if constexpr (!sizeof...(extra_order_keys))
+            Q_UNUSED(add_short_name);
+
+        QStringList orders {get_full_field_name<T>(extra_order_keys, add_short_name)...};
+        return orders.join(',');
+    }
 };
 
 template<typename T>
@@ -232,6 +259,9 @@ struct Scheme_Table_Helper<DIG_Param_Value> :
 template<>
 struct Scheme_Table_Helper<DIG_Mode> :
         Scheme_Table_Helper_Impl<DIG_Mode, &DIG_Mode::group_id, DIG_Mode::COL_group_id> {};
+template<>
+struct Scheme_Table_Helper<User_Groups> :
+        Scheme_Table_Helper_Impl<User_Groups, &User_Groups::id, User_Groups::COL_id, User_Groups::COL_user_id, User_Groups::COL_group_id> {};
 
 // db_delete_rows
 template<typename T, typename PK_Type = typename Scheme_Table_Helper<T>::PK_Type>

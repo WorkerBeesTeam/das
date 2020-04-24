@@ -13,7 +13,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Disabled_Status : public Schemed_Model
 {
-    HELPZ_DB_META(Disabled_Status, "disabled_status", "ds", 4, DB_A(id), DB_A(group_id), DB_A(status_id), DB_A(scheme_id))
+    HELPZ_DB_META(Disabled_Status, "disabled_status", "ds", DB_A(id), DB_A(group_id), DB_A(status_id), DB_A(scheme_id))
 public:
     Disabled_Status(uint32_t id = 0, uint32_t group_id = 0, uint32_t status_id = 0);
 

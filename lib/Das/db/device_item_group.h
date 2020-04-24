@@ -13,7 +13,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Device_Item_Group : public Schemed_Model
 {
-    HELPZ_DB_META(Device_Item_Group, "device_item_group", "dig", 6, DB_A(id), DB_ANS(title), DB_A(section_id),
+    HELPZ_DB_META(Device_Item_Group, "device_item_group", "dig", DB_A(id), DB_ANS(title), DB_A(section_id),
                   DB_A(type_id), DB_AN(parent_id), DB_A(scheme_id))
 public:
     Device_Item_Group(uint32_t id = 0, const QString& title = {}, uint32_t section_id = 0, uint32_t type_id = 0, uint32_t parent_id = 0);

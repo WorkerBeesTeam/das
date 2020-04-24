@@ -9,7 +9,7 @@ namespace DB {
 
 struct DAS_LIBRARY_SHARED_EXPORT Code_Item : public Base_Type
 {
-    HELPZ_DB_META(Code_Item, "code_item", "ci", 5, DB_A(id), DB_ANS(name), DB_AMN(global_id), DB_AM(text), DB_A(scheme_id))
+    HELPZ_DB_META(Code_Item, "code_item", "ci", DB_A(id), DB_ANS(name), DB_AMN(global_id), DB_AM(text), DB_A(scheme_id))
 public:
     Code_Item(uint id = 0, const QString& name = QString(), uint32_t global_id = 0, const QString& text = QString());
     Code_Item(const Code_Item& other) = default;

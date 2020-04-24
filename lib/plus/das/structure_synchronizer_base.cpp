@@ -262,6 +262,17 @@ QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, con
     {
         suffix += " ORDER BY " + T::table_column_names().at(Helper::pk_num);
     }
+
+    const QString extra_orders = Helper::get_extra_orders();
+    if (!extra_orders.isEmpty())
+    {
+        if (Helper::pk_num != 0)
+            suffix += ',';
+        else
+            suffix += " ORDER BY ";
+        suffix += extra_orders;
+    }
+
     return suffix;
 }
 

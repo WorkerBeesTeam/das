@@ -10,7 +10,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Tg_User
 {
-    HELPZ_DB_META(Tg_User, "tg_user", "tu", 7, DB_A(id), DB_AN(user_id), DB_A(first_name),
+    HELPZ_DB_META(Tg_User, "tg_user", "tu", DB_A(id), DB_AN(user_id), DB_A(first_name),
                   DB_A(last_name), DB_A(user_name), DB_A(lang), DB_AN(private_chat_id))
 public:
     Tg_User(int32_t id = 0, uint32_t user_id = 0, const QString& first_name = {},

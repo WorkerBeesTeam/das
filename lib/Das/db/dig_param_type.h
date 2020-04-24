@@ -17,7 +17,7 @@ private:
     Q_PROPERTY(Value_Type value_type READ value_type WRITE set_value_type)
     Q_PROPERTY(Value_Type type READ value_type WRITE set_value_type)
 
-    HELPZ_DB_META(DIG_Param_Type, "dig_param_type", "gpt", 8, DB_A(id), DB_A(name), DB_A(title),
+    HELPZ_DB_META(DIG_Param_Type, "dig_param_type", "gpt", DB_A(id), DB_A(name), DB_A(title),
                   DB_ANS(description), DB_A(value_type), DB_AM(group_type_id), DB_AMN(parent_id), DB_A(scheme_id))
 public:
     enum Value_Type

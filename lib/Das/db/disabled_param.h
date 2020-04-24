@@ -13,7 +13,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Disabled_Param : public Schemed_Model
 {
-    HELPZ_DB_META(Disabled_Param, "disabled_param", "dp", 4, DB_A(id), DB_A(group_id), DB_A(param_id), DB_A(scheme_id))
+    HELPZ_DB_META(Disabled_Param, "disabled_param", "dp", DB_A(id), DB_A(group_id), DB_A(param_id), DB_A(scheme_id))
 public:
     Disabled_Param(uint32_t id = 0, uint32_t group_id = 0, uint32_t param_id = 0);
 

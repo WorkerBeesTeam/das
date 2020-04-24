@@ -421,10 +421,10 @@ void Structure_Synchronizer::process_scheme(uint8_t struct_type, QIODevice* data
 //    qCDebug(Struct_Log).noquote() << title() << '[' << type_name(struct_type) << "] process_scheme";
 //             << bool(struct_type & ST_HASH_FLAG) << "size" << data_dev->size();
 
+    qCDebug(Struct_Detail_Log).noquote() << title() << '[' << type_name(struct_type) << "] GET_SCHEME";
+
     uint8_t flags = struct_type & ST_FLAGS;
     struct_type &= ~ST_FLAGS;
-
-    qCDebug(Struct_Detail_Log).noquote() << title() << '[' << type_name(struct_type) << "] GET_SCHEME";
 
     struct_wait_set_.erase(struct_type);
     struct_wait_set_.erase(struct_type | flags);
@@ -618,7 +618,7 @@ void Structure_Synchronizer::process_scheme_hash(const QByteArray& client_hash, 
                 qCDebug(Struct_Log).noquote() << scheme->title() << '[' << type_name(struct_type) << "] Common hash is diffrent. scheme_id:" << s_id;
                 for (const uint8_t struct_type_item: struct_type_array)
                 {
-                    self->send_scheme_request(struct_type_item | ST_FLAGS);
+                    self->send_scheme_request(struct_type_item | ST_HASH_FLAG);
                 }
             }
             else

@@ -10,7 +10,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Tg_Chat
 {
-    HELPZ_DB_META(Tg_Chat, "tg_chat", "tc", 2, DB_A(id), DB_AN(admin_id))
+    HELPZ_DB_META(Tg_Chat, "tg_chat", "tc", DB_A(id), DB_AN(admin_id))
 public:
     Tg_Chat(qint64 id = 0, int32_t admin_id = 0);
 

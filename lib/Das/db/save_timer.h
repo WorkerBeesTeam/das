@@ -13,7 +13,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Save_Timer : public Schemed_Model
 {
-    HELPZ_DB_META(Save_Timer, "save_timer", "st", 3, DB_A(id), DB_A(interval), DB_A(scheme_id))
+    HELPZ_DB_META(Save_Timer, "save_timer", "st", DB_A(id), DB_A(interval), DB_A(scheme_id))
 public:
     Save_Timer(Save_Timer&& other) = default;
     Save_Timer(const Save_Timer& other) = default;
