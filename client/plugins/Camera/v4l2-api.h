@@ -20,22 +20,26 @@
 #ifndef V4L2_API_H
 #define V4L2_API_H
 
-#include <QString>
 #include <linux/videodev2.h>
 #include <libv4lconvert.h>
 
+#include <QString>
+#include <QSize>
+
 namespace Das {
+
+struct Frame_Size
+{
+    uint32_t width_;
+    uint32_t height_;
+    uint32_t pixel_format_;
+};
 
 class v4l2
 {
 public:
-	v4l2() : m_fd(-1) {}
-	v4l2(v4l2 &old) :
-		m_fd(old.m_fd),
-		m_device(old.m_device),
-		m_useWrapper(old.m_useWrapper),
-		m_capability(old.m_capability)
-	{}
+    v4l2();
+    v4l2(v4l2 &old);
 
     virtual ~v4l2() = default;
 
@@ -48,14 +52,10 @@ public:
 	void *mmap(size_t length, int64_t offset);
 	int munmap(void *_start, size_t length);
 
-	inline int fd() const { return m_fd; }
-	inline bool useWrapper() const { return m_useWrapper; }
-	inline __u32 caps() const {
-		if (m_capability.capabilities & V4L2_CAP_DEVICE_CAPS)
-			return m_capability.device_caps;
-		return m_capability.capabilities;
-	}
-	inline const QString &device() const { return m_device; }
+    int fd() const;
+    bool useWrapper() const;
+    __u32 caps() const;
+    const QString &device() const;
 	static QString pixfmt2s(unsigned pixelformat);
 
 	virtual void error(const QString &text);
@@ -111,47 +111,23 @@ public:
 	bool streamon(__u32 buftype);
 	bool streamoff(__u32 buftype);
 
-	inline bool reqbufs_mmap_cap(v4l2_requestbuffers &reqbuf, int count = 0) {
-		return reqbufs_mmap(reqbuf, V4L2_BUF_TYPE_VIDEO_CAPTURE, count);
-	}
-	inline bool reqbufs_user_cap(v4l2_requestbuffers &reqbuf, int count = 0) {
-		return reqbufs_user(reqbuf, V4L2_BUF_TYPE_VIDEO_CAPTURE, count);
-	}
-	inline bool dqbuf_mmap_cap(v4l2_buffer &buf, bool &again) {
-		return dqbuf_mmap(buf, V4L2_BUF_TYPE_VIDEO_CAPTURE, again);
-	}
-	inline bool dqbuf_user_cap(v4l2_buffer &buf, bool &again) {
-		return dqbuf_user(buf, V4L2_BUF_TYPE_VIDEO_CAPTURE, again);
-	}
-	inline bool qbuf_mmap_cap(int index) {
-		return qbuf_mmap(index, V4L2_BUF_TYPE_VIDEO_CAPTURE);
-	}
-	inline bool qbuf_user_cap(int index, void *ptr, int length) {
-		return qbuf_user(index, V4L2_BUF_TYPE_VIDEO_CAPTURE, ptr, length);
-	}
-	inline bool streamon_cap() { return streamon(V4L2_BUF_TYPE_VIDEO_CAPTURE); }
-	inline bool streamoff_cap() { return streamoff(V4L2_BUF_TYPE_VIDEO_CAPTURE); }
+    bool reqbufs_mmap_cap(v4l2_requestbuffers &reqbuf, int count = 0);
+    bool reqbufs_user_cap(v4l2_requestbuffers &reqbuf, int count = 0);
+    bool dqbuf_mmap_cap(v4l2_buffer &buf, bool &again);
+    bool dqbuf_user_cap(v4l2_buffer &buf, bool &again);
+    bool qbuf_mmap_cap(int index);
+    bool qbuf_user_cap(int index, void *ptr, int length);
+    bool streamon_cap();
+    bool streamoff_cap();
 
-	inline bool reqbufs_mmap_vbi(v4l2_requestbuffers &reqbuf, int count = 0) {
-		return reqbufs_mmap(reqbuf, V4L2_BUF_TYPE_VBI_CAPTURE, count);
-	}
-	inline bool reqbufs_user_vbi(v4l2_requestbuffers &reqbuf, int count = 0) {
-		return reqbufs_user(reqbuf, V4L2_BUF_TYPE_VBI_CAPTURE, count);
-	}
-	inline bool dqbuf_mmap_vbi(v4l2_buffer &buf, bool &again) {
-		return dqbuf_mmap(buf, V4L2_BUF_TYPE_VBI_CAPTURE, again);
-	}
-	inline bool dqbuf_user_vbi(v4l2_buffer &buf, bool &again) {
-		return dqbuf_user(buf, V4L2_BUF_TYPE_VBI_CAPTURE, again);
-	}
-	inline bool qbuf_mmap_vbi(int index) {
-		return qbuf_mmap(index, V4L2_BUF_TYPE_VBI_CAPTURE);
-	}
-	inline bool qbuf_user_vbi(int index, void *ptr, int length) {
-		return qbuf_user(index, V4L2_BUF_TYPE_VBI_CAPTURE, ptr, length);
-	}
-	inline bool streamon_vbi() { return streamon(V4L2_BUF_TYPE_VBI_CAPTURE); }
-	inline bool streamoff_vbi() { return streamoff(V4L2_BUF_TYPE_VBI_CAPTURE); }
+    bool reqbufs_mmap_vbi(v4l2_requestbuffers &reqbuf, int count = 0);
+    bool reqbufs_user_vbi(v4l2_requestbuffers &reqbuf, int count = 0);
+    bool dqbuf_mmap_vbi(v4l2_buffer &buf, bool &again);
+    bool dqbuf_user_vbi(v4l2_buffer &buf, bool &again);
+    bool qbuf_mmap_vbi(int index);
+    bool qbuf_user_vbi(int index, void *ptr, int length);
+    bool streamon_vbi();
+    bool streamoff_vbi();
 
 	bool reqbufs_mmap_out(v4l2_requestbuffers &reqbuf, int count = 0);
 	bool reqbufs_user_out(v4l2_requestbuffers &reqbuf);
@@ -166,8 +142,10 @@ public:
 
 	bool set_interval(v4l2_fract interval);
 	bool get_interval(v4l2_fract &interval);
+
+    Frame_Size get_max_resolution();
 private:
-	void clear() { error(QString()); }
+    void clear();
 
 private:
 	int 		m_fd;

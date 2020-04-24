@@ -36,6 +36,17 @@ int ParamGroupPrototype::length() const
     return thisParam()->count();
 }
 
+QScriptValue ParamGroupPrototype::value() const
+{
+    return valueOf();
+}
+
+void ParamGroupPrototype::set_value(const QScriptValue &value) const
+{
+    Param* param = thisParam();
+    qWarning() << "set" << value.toString() << "to" << param->type()->title();
+}
+
 QScriptValue ParamGroupPrototype::byTypeId(uint32_t DIG_param_type) const
 {
     Param* param = thisParam()->get_by_type_id(DIG_param_type);
@@ -44,12 +55,18 @@ QScriptValue ParamGroupPrototype::byTypeId(uint32_t DIG_param_type) const
     return ParamGroupClass::toScriptValue(engine(), param);
 }
 
+QScriptValue ParamGroupPrototype::toJSON() const
+{
+    return valueOf();
+}
+
 QString ParamGroupPrototype::toString() const
 {
     Param* param = thisParam();
+    const QString res = param->toString();
 //    if (param->type().type == DIG_Param_Type::TimeType)
 //        return QDateTime::fromMSecsSinceEpoch(param->value().toLongLong()).toString();
-    return param->value().toString();
+    return res.isEmpty() ? param->value().toString() : res;
 }
 
 QScriptValue ParamGroupPrototype::valueOf() const

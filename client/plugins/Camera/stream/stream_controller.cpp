@@ -80,7 +80,7 @@ void Stream_Controller::handle_send(std::unique_ptr<uint8_t[]> &data, std::size_
         std::cerr << "SEND ERROR empty data pointer" << std::endl;
 }
 
-void Stream_Controller::write(Helpz::Net::Message_Item message)
+void Stream_Controller::write(std::shared_ptr<Helpz::Net::Message_Item> message)
 {
     const QByteArray data = client_->prepare_packet_to_send(std::move(message));
     write(data);

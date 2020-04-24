@@ -27,10 +27,19 @@
 
 namespace Das {
 
+v4l2::v4l2() : m_fd(-1) {}
+
+v4l2::v4l2(v4l2 &old) :
+    m_fd(old.m_fd),
+    m_device(old.m_device),
+    m_useWrapper(old.m_useWrapper),
+    m_capability(old.m_capability)
+{}
+
 bool v4l2::open(const QString &device, bool useWrapper, bool is_non_block)
 {
-	m_device = device;
-	m_useWrapper = useWrapper;
+    m_device = device;
+    m_useWrapper = useWrapper;
 
     int flags = O_RDWR;
     if (is_non_block)
@@ -119,15 +128,27 @@ int v4l2::munmap(void *start, size_t length)
 	return ::munmap(start, length);
 }
 
+int v4l2::fd() const { return m_fd; }
+
+bool v4l2::useWrapper() const { return m_useWrapper; }
+
+__u32 v4l2::caps() const {
+    if (m_capability.capabilities & V4L2_CAP_DEVICE_CAPS)
+        return m_capability.device_caps;
+    return m_capability.capabilities;
+}
+
+const QString &v4l2::device() const { return m_device; }
+
 void v4l2::error(const QString &error)
 {
-	if (!error.isEmpty())
+    if (!error.isEmpty())
         fprintf(stderr, "%s\n", qPrintable(error));
 }
 
 QString v4l2::pixfmt2s(unsigned id)
 {
-	QString pixfmt;
+    QString pixfmt;
 
 	pixfmt += (char)(id & 0xff);
 	pixfmt += (char)((id >> 8) & 0xff);
@@ -518,10 +539,66 @@ bool v4l2::streamoff(__u32 buftype)
 	return ioctl("Stop Streaming", VIDIOC_STREAMOFF, &buftype);
 }
 
+bool v4l2::reqbufs_mmap_cap(v4l2_requestbuffers &reqbuf, int count) {
+    return reqbufs_mmap(reqbuf, V4L2_BUF_TYPE_VIDEO_CAPTURE, count);
+}
+
+bool v4l2::reqbufs_user_cap(v4l2_requestbuffers &reqbuf, int count) {
+    return reqbufs_user(reqbuf, V4L2_BUF_TYPE_VIDEO_CAPTURE, count);
+}
+
+bool v4l2::dqbuf_mmap_cap(v4l2_buffer &buf, bool &again) {
+    return dqbuf_mmap(buf, V4L2_BUF_TYPE_VIDEO_CAPTURE, again);
+}
+
+bool v4l2::dqbuf_user_cap(v4l2_buffer &buf, bool &again) {
+    return dqbuf_user(buf, V4L2_BUF_TYPE_VIDEO_CAPTURE, again);
+}
+
+bool v4l2::qbuf_mmap_cap(int index) {
+    return qbuf_mmap(index, V4L2_BUF_TYPE_VIDEO_CAPTURE);
+}
+
+bool v4l2::qbuf_user_cap(int index, void *ptr, int length) {
+    return qbuf_user(index, V4L2_BUF_TYPE_VIDEO_CAPTURE, ptr, length);
+}
+
+bool v4l2::streamon_cap() { return streamon(V4L2_BUF_TYPE_VIDEO_CAPTURE); }
+
+bool v4l2::streamoff_cap() { return streamoff(V4L2_BUF_TYPE_VIDEO_CAPTURE); }
+
+bool v4l2::reqbufs_mmap_vbi(v4l2_requestbuffers &reqbuf, int count) {
+    return reqbufs_mmap(reqbuf, V4L2_BUF_TYPE_VBI_CAPTURE, count);
+}
+
+bool v4l2::reqbufs_user_vbi(v4l2_requestbuffers &reqbuf, int count) {
+    return reqbufs_user(reqbuf, V4L2_BUF_TYPE_VBI_CAPTURE, count);
+}
+
+bool v4l2::dqbuf_mmap_vbi(v4l2_buffer &buf, bool &again) {
+    return dqbuf_mmap(buf, V4L2_BUF_TYPE_VBI_CAPTURE, again);
+}
+
+bool v4l2::dqbuf_user_vbi(v4l2_buffer &buf, bool &again) {
+    return dqbuf_user(buf, V4L2_BUF_TYPE_VBI_CAPTURE, again);
+}
+
+bool v4l2::qbuf_mmap_vbi(int index) {
+    return qbuf_mmap(index, V4L2_BUF_TYPE_VBI_CAPTURE);
+}
+
+bool v4l2::qbuf_user_vbi(int index, void *ptr, int length) {
+    return qbuf_user(index, V4L2_BUF_TYPE_VBI_CAPTURE, ptr, length);
+}
+
+bool v4l2::streamon_vbi() { return streamon(V4L2_BUF_TYPE_VBI_CAPTURE); }
+
+bool v4l2::streamoff_vbi() { return streamoff(V4L2_BUF_TYPE_VBI_CAPTURE); }
+
 bool v4l2::reqbufs_user_out(v4l2_requestbuffers &reqbuf)
 {
-	memset(&reqbuf, 0, sizeof (reqbuf));
-	reqbuf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+    memset(&reqbuf, 0, sizeof (reqbuf));
+    reqbuf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
 	reqbuf.memory = V4L2_MEMORY_USERPTR;
 
 	return ioctl(VIDIOC_REQBUFS, &reqbuf) >= 0;
@@ -628,7 +705,50 @@ bool v4l2::get_interval(v4l2_fract &interval)
 		return true;
         }
 
-	return false;
+    return false;
 }
+
+Frame_Size v4l2::get_max_resolution()
+{
+    enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    struct v4l2_fmtdesc fmt;
+    struct v4l2_frmsizeenum frmsize;
+
+    Frame_Size size{0, 0, 0};
+    auto check_set_size = [&size](uint32_t width, uint32_t height, uint32_t pixel_format)
+    {
+        if (size.width_ < width
+            || size.height_ < height)
+        {
+            size.width_ = width;
+            size.height_ = height;
+            size.pixel_format_ = pixel_format;
+        }
+    };
+
+    fmt.index = 0;
+    fmt.type = type;
+    while (ioctl(VIDIOC_ENUM_FMT, &fmt) >= 0)
+    {
+        frmsize.pixel_format = fmt.pixelformat;
+        frmsize.index = 0;
+        while (ioctl(VIDIOC_ENUM_FRAMESIZES, &frmsize) >= 0)
+        {
+            if (frmsize.type == V4L2_FRMSIZE_TYPE_DISCRETE)
+                check_set_size(frmsize.discrete.width,
+                               frmsize.discrete.height,
+                               frmsize.pixel_format);
+            else if (frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE)
+                check_set_size(frmsize.stepwise.max_width,
+                               frmsize.stepwise.max_height,
+                               frmsize.pixel_format);
+            frmsize.index++;
+        }
+        fmt.index++;
+    }
+    return size;
+}
+
+void v4l2::clear() { error(QString()); }
 
 } // namespace Das

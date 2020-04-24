@@ -9,7 +9,7 @@ namespace DB {
 
 struct DAS_LIBRARY_SHARED_EXPORT DIG_Status_Type : public Titled_Type
 {
-    HELPZ_DB_META(DIG_Status_Type, "dig_status_type", "hs", 7, DB_A(id), DB_A(name), DB_A(text), DB_AM(category_id),
+    HELPZ_DB_META(DIG_Status_Type, "dig_status_type", "hs", DB_A(id), DB_A(name), DB_A(text), DB_AM(category_id),
                   DB_AMN(group_type_id), DB_AM(inform), DB_A(scheme_id))
 public:
     DIG_Status_Type(uint32_t id = 0, const QString& name = QString(), const QString& text = QString(), uint32_t category_id = 0,

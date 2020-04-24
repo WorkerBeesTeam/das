@@ -17,7 +17,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT DIG_Status : public Log_Base_Item
 {
-    HELPZ_DB_META(DIG_Status, "dig_status", "gs", 7, DIG_STATUS_DB_META_ARGS, DB_A(scheme_id))
+    HELPZ_DB_META(DIG_Status, "dig_status", "gs", DIG_STATUS_DB_META_ARGS, DB_A(scheme_id))
 public:
     enum Status_Direction : uint8_t { SD_ADD = 1, SD_DEL = 2 };
 

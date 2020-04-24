@@ -10,7 +10,7 @@ namespace DB {
 
 class Log_Status_Item : public DIG_Status
 {
-    HELPZ_DB_META(Log_Status_Item, "log_status", "ls", 8, DIG_STATUS_DB_META_ARGS, DB_A(direction), DB_A(scheme_id))
+    HELPZ_DB_META(Log_Status_Item, "log_status", "ls", DIG_STATUS_DB_META_ARGS, DB_A(direction), DB_A(scheme_id))
 public:
     using DIG_Status::DIG_Status;
 };

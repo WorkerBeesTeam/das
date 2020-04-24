@@ -8,10 +8,10 @@ Base_Type::Base_Type(uint32_t id, const QString &name, uint32_t scheme_id) :
     id_(id), name_(name) {}
 
 uint32_t Base_Type::id() const { return id_; }
-void Base_Type::set_id(uint32_t _id) { if (id_ != _id) id_ = _id; }
+void Base_Type::set_id(uint32_t id) { id_ = id; }
 
 QString Base_Type::name() const { return name_; }
-void Base_Type::set_name(const QString &_name) { if (name_ != _name) name_ = _name; }
+void Base_Type::set_name(const QString &name) { if (name_ != name) name_ = name; }
 
 QDataStream &operator>>(QDataStream &ds, Base_Type &item)
 {
@@ -27,7 +27,7 @@ Titled_Type::Titled_Type(uint id, const QString &name, const QString &title) :
     Base_Type{id, name}, title_(title) {}
 
 QString Titled_Type::title() const { return title_; }
-void Titled_Type::set_title(const QString &_title) { if (title_ != _title) title_ = _title; }
+void Titled_Type::set_title(const QString &title) { if (title_ != title) title_ = title; }
 
 QDataStream &operator>>(QDataStream &ds, Titled_Type &item)
 {

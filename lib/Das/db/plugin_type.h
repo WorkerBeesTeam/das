@@ -13,7 +13,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Plugin_Type : public Base_Type
 {
-    HELPZ_DB_META(Plugin_Type, "plugin_type", "pt", 5, DB_A(id), DB_A(name),
+    HELPZ_DB_META(Plugin_Type, "plugin_type", "pt", DB_A(id), DB_A(name),
                   DB_AT(param_names_device), DB_AT(param_names_device_item), DB_A(scheme_id))
 public:
     Plugin_Type(Plugin_Type&& other) = default;

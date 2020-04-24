@@ -29,6 +29,7 @@ public:
 
     QScriptString name() const override;
     uint id() const override;
+    QScriptValue::PropertyFlags flags() const override;
 
 private:
     uint32_t m_index;
@@ -52,6 +53,8 @@ ParamGroupClass::ParamGroupClass(QScriptEngine *engine) :
 
     f_ctor = engine->newFunction(construct, proto);
     f_ctor.setData(engine->toScriptValue(this));
+
+    prop_value_ = engine->toStringHandle("value");
 }
 
 QScriptValue ParamGroupClass::newInstance(Param *param)
@@ -96,12 +99,17 @@ QScriptClass::QueryFlags ParamGroupClass::queryProperty(const QScriptValue &obje
     Param* param = nullptr;
     fromScriptValue(object, param);
     if (!param || !param->count())
+    {
+        if (param && (flags & HandlesWriteAccess) && name == prop_value_)
+            return flags;
         return 0;
+    }
 
     bool isArrayIndex;
     uint32_t pos = name.toArrayIndex(&isArrayIndex);
+
     if (!isArrayIndex)
-        return param->has(name.toString()) ? flags : static_cast<QScriptClass::QueryFlags>(0);
+        return param->has(name.toString()) || name.toString() == "value" ? flags : static_cast<QScriptClass::QueryFlags>(0);
 
     *id = pos;
     if ((flags & HandlesReadAccess) && (pos >= param->count()))
@@ -140,14 +148,19 @@ void ParamGroupClass::setProperty(QScriptValue &object, const QScriptString &nam
     if (!param)
         return;
 
-    qInfo() << "setProperty" << name << param->type()->title() << id << value.toVariant();
-
     bool isArrayIndex;
     name.toArrayIndex(&isArrayIndex);
 
-    Param* child_param = isArrayIndex ? param->get(id) : param->get(name.toString());
+    Param* child_param = isArrayIndex ?
+                param->get(id) :
+                name == prop_value_ ?
+                    param : param->get(name.toString());
+
     if (child_param)
+    {
+        qInfo() << "setProperty" << name << child_param->type()->title() << id << value.toString();
         child_param->set_value(value.toVariant());
+    }
 
 //    if (child_param->type().type == DIG_Param_Type::TimeType)
 //    {
@@ -160,6 +173,8 @@ void ParamGroupClass::setProperty(QScriptValue &object, const QScriptString &nam
 
 QScriptValue::PropertyFlags ParamGroupClass::propertyFlags(const QScriptValue &object, const QScriptString &name, uint /*id*/)
 {
+    qWarning() << "propertyFlags" << name;
+
     Param* param = nullptr;
     fromScriptValue(object, param);
     if (!param)
@@ -171,7 +186,6 @@ QScriptValue::PropertyFlags ParamGroupClass::propertyFlags(const QScriptValue &o
         flags |= QScriptValue::SkipInEnumeration;
     return flags;
 
-    qWarning() << "propertyFlags" << name;
 }
 
 QScriptClassPropertyIterator *ParamGroupClass::newIterator(const QScriptValue &object)
@@ -276,6 +290,12 @@ QScriptString ParamGroupClassPropertyIterator::name() const
 uint ParamGroupClassPropertyIterator::id() const
 {
     return m_last;
+}
+
+QScriptValue::PropertyFlags ParamGroupClassPropertyIterator::flags() const
+{
+    qDebug() << "FLAGS index" << m_index << "last" << m_last;
+    return QScriptClassPropertyIterator::flags();
 }
 
 } // namespace Das

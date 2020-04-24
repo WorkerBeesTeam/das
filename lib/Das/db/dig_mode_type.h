@@ -9,7 +9,7 @@ namespace DB {
 
 struct DAS_LIBRARY_SHARED_EXPORT DIG_Mode_Type : public Titled_Type
 {
-    HELPZ_DB_META(DIG_Mode_Type, "dig_mode_type", "gmt", 5, DB_A(id), DB_A(name), DB_A(title), DB_AMN(group_type_id), DB_A(scheme_id))
+    HELPZ_DB_META(DIG_Mode_Type, "dig_mode_type", "gmt", DB_A(id), DB_A(name), DB_A(title), DB_AMN(group_type_id), DB_A(scheme_id))
 public:
     DIG_Mode_Type(uint id = 0, const QString& name = QString(), const QString& title = QString(), uint32_t group_type_id = 0);
     uint32_t group_type_id;

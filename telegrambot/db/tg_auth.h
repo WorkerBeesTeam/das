@@ -10,7 +10,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Tg_Auth
 {
-    HELPZ_DB_META(Tg_Auth, "tg_auth", "ta", 3, DB_A(tg_user_id), DB_A(expired), DB_A(token))
+    HELPZ_DB_META(Tg_Auth, "tg_auth", "ta", DB_A(tg_user_id), DB_A(expired), DB_A(token))
 public:
     Tg_Auth(int32_t tg_user_id = 0, qint64 expired = 0, const QString& token = {});
 

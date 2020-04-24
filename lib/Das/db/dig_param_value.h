@@ -37,7 +37,7 @@ QDataStream& operator<<(QDataStream& ds, const DIG_Param_Value_Base& item);
 QDataStream& operator>>(QDataStream& ds, DIG_Param_Value_Base& item);
 
 #define DIG_PARAM_VALUE_DB_META(x, y, z) \
-    HELPZ_DB_META(x, y, z, 6, DB_A(id), DB_A(timestamp_msecs), \
+    HELPZ_DB_META(x, y, z, DB_A(id), DB_A(timestamp_msecs), \
         DB_AN(user_id), DB_A(group_param_id), DB_A(value), DB_A(scheme_id))
 
 class DAS_LIBRARY_SHARED_EXPORT DIG_Param_Value : public Log_Base_Item, public DIG_Param_Value_Base

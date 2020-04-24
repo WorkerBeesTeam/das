@@ -12,7 +12,7 @@ namespace Das {
 namespace DB {
 
 #define DEV_ITEM_DB_META(x, y, z) \
-    HELPZ_DB_META(x, y, z, 7, DB_A(id), \
+    HELPZ_DB_META(x, y, z, DB_A(id), \
               DB_A(timestamp_msecs), DB_AN(user_id), DB_A(item_id), \
               DB_AT(raw_value), DB_AT(value), DB_A(scheme_id))
 

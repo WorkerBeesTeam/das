@@ -4,3 +4,6 @@
 [submodule "lib/plus/jwt-cpp"]
 	path = lib/plus/jwt-cpp
 	url = https://github.com/WorkerBeesTeam/jwt-cpp.git
+[submodule "lib/picojson"]
+	path = lib/picojson
+	url = https://github.com/kazuho/picojson.git

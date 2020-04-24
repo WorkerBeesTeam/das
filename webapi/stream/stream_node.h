@@ -35,7 +35,7 @@ public:
     void send_frame(qint64 param, uint32_t dev_item_id, const QByteArray& buffer);
     void close();
 private:
-    void write(Helpz::Net::Message_Item message) override;
+    void write(std::shared_ptr<Helpz::Net::Message_Item> message) override;
     void write(const QByteArray &data) override;
     void handle_send(std::unique_ptr<uint8_t[]> &data, std::size_t size, const boost::system::error_code &error, const std::size_t &bytes_transferred);
 

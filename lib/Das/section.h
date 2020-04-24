@@ -20,7 +20,7 @@ class DAS_LIBRARY_SHARED_EXPORT Section : public QObject, public DB::Base_Type
     Q_PROPERTY(TimeRange* dayTime READ day_time)
     Q_PROPERTY(Device_Items items READ items)
 
-    HELPZ_DB_META(Section, "section", "s", 5, DB_A(id), DB_A(name), DB_A(day_start), DB_A(day_end), DB_A(scheme_id))
+    HELPZ_DB_META(Section, "section", "s", DB_A(id), DB_A(name), DB_A(day_start), DB_A(day_end), DB_A(scheme_id))
 public:
     explicit Section(uint32_t id = 0, const QString& name = {}, uint32_t day_start_secs = 0, uint32_t day_end_secs = 0);
     Section(Section&& o);

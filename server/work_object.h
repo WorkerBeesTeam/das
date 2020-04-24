@@ -36,6 +36,8 @@ public:
 
     std::shared_ptr<Helpz::DTLS::Server_Node> find_client(uint32_t scheme_id) const;
     std::future<std::shared_ptr<Helpz::DTLS::Server_Node>> find_client_future(uint32_t scheme_id);
+
+    void save_connection_state_to_log(uint32_t scheme_id, const std::chrono::system_clock::time_point &time_point, bool state);
 protected:
 
     void init_database(QSettings *s);

@@ -23,7 +23,7 @@ class DAS_LIBRARY_SHARED_EXPORT Device : public QObject, public DB::Base_Type, p
     Q_PROPERTY(QObject* checker READ checker)
     Q_PROPERTY(Device_Items items READ items)
 
-    HELPZ_DB_META(Device, "device", "d", 6, DB_A(id), DB_A(name), DB_AT(extra), DB_AN(plugin_id), DB_A(check_interval), DB_A(scheme_id))
+    HELPZ_DB_META(Device, "device", "d", DB_A(id), DB_A(name), DB_AT(extra), DB_AN(plugin_id), DB_A(check_interval), DB_A(scheme_id))
 public:
     Device(uint32_t id = 0, const QString& name = {}, const QVariantMap& extra = {}, uint32_t plugin_id = 0, uint32_t check_interval = 1500);
     Device(Device&& o);

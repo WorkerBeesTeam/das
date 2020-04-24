@@ -13,7 +13,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT DIG_Param : public Schemed_Model
 {
-    HELPZ_DB_META(DIG_Param, "dig_param", "hgp", 5, DB_A(id), DB_A(param_id), DB_A(group_id), DB_AN(parent_id), DB_A(scheme_id))
+    HELPZ_DB_META(DIG_Param, "dig_param", "hgp", DB_A(id), DB_A(param_id), DB_A(group_id), DB_AN(parent_id), DB_A(scheme_id))
 public:
     DIG_Param(uint32_t id = 0, uint32_t param_id = 0, uint32_t group_id = 0, uint32_t parent_id = 0);
 

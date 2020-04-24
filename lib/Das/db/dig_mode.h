@@ -12,7 +12,7 @@ namespace Das {
 namespace DB {
 
 #define DIG_MODE_DB_META(x, y, z) \
-    HELPZ_DB_META(x, y, z, 6, DB_A(id), DB_A(timestamp_msecs), \
+    HELPZ_DB_META(x, y, z, DB_A(id), DB_A(timestamp_msecs), \
         DB_AN(user_id), DB_A(group_id), DB_A(mode_id), DB_A(scheme_id))
 
 class DAS_LIBRARY_SHARED_EXPORT DIG_Mode : public Log_Base_Item

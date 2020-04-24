@@ -1,6 +1,8 @@
 #ifndef DAS_BOT_BOT_BASE_H
 #define DAS_BOT_BOT_BASE_H
 
+#include <vector>
+
 #include <tgbot/types/InlineKeyboardButton.h>
 
 namespace Das {

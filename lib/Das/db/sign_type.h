@@ -9,7 +9,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Sign_Type : public Base_Type
 {
-    HELPZ_DB_META(Sign_Type, "sign_type", "st", 3, DB_A(id), DB_A(name), DB_A(scheme_id))
+    HELPZ_DB_META(Sign_Type, "sign_type", "st", DB_A(id), DB_A(name), DB_A(scheme_id))
 public:
     using Base_Type::Base_Type;
 };

@@ -18,7 +18,7 @@ Param::Param(uint id, DIG_Param_Type *param, const QString &raw_value, Device_it
 }
 
 Param::Param(const QVariant &value, uint id, DIG_Param_Type *param, Device_item_Group *owner) :
-    QObject(), id_(id), type_(param), group_(owner), value_(value)
+    QObject(), id_(id), type_(param), group_(owner), value_(value), parent_(nullptr)
 {
     if (value_.type() == QVariant::String && param->value_type() != DIG_Param_Type::VT_STRING)
         value_ = value_from_string(param->value_type(), value.toString());
@@ -177,6 +177,29 @@ Param *Param::get_by_type_id(uint type_id) const
     return it != childrens_.cend() ? it->get() : nullptr;
 }
 
+QString Param::toString() const
+{
+    QString res;
+    if (parent_)
+        res = parent_->toString();
+
+    if (type_)
+    {
+        if (!res.isEmpty())
+            res += '.';
+        res += type_->name();
+    }
+
+    const QString value = value_to_string();
+    if (!value.isEmpty())
+    {
+        res += '(';
+        res += value;
+        res += ')';
+    }
+    return res;
+}
+
 std::vector<std::shared_ptr<Param>>::const_iterator Param::get_iterator(const QString &name) const
 {
     return std::find_if(childrens_.cbegin(), childrens_.cend(), [&name](const std::shared_ptr<Param>& elem) -> bool {
@@ -186,6 +209,7 @@ std::vector<std::shared_ptr<Param>>::const_iterator Param::get_iterator(const QS
 
 void Param::add_child(const std::shared_ptr<Param> &elem)
 {
+    elem->parent_ = this;
     childrens_.push_back(elem);
     if (elem->group() != group())
     {

@@ -34,7 +34,7 @@ public:
 
     void handle_send(std::unique_ptr<uint8_t[]> &data, std::size_t size, const boost::system::error_code &error, const std::size_t &bytes_transferred);
 
-    void write(Helpz::Net::Message_Item message) override;
+    void write(std::shared_ptr<Helpz::Net::Message_Item> message) override;
 
     void add_timeout_at(std::chrono::system_clock::time_point time_point, void *data) override;
 

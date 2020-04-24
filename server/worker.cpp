@@ -71,12 +71,14 @@ void Worker::init_logging(QSettings *s)
 void Worker::on_timer()
 {
     auto now = std::chrono::system_clock::now();
+
     std::lock_guard lock(recently_connected_.mutex_);
     recently_connected_.scheme_id_vect_.erase(std::remove_if(recently_connected_.scheme_id_vect_.begin(), recently_connected_.scheme_id_vect_.end(),
                                                            [this, &now](const Recently_Connected::Recent_Client& item)
     {
         if ((now - item.disconnect_time_) >= disconnect_event_timeout_)
         {
+            save_connection_state_to_log(item.scheme_.id(), now, /*state=*/false);
             dbus_->connection_state_changed(item.scheme_, CS_DISCONNECTED);
             return true;
         }

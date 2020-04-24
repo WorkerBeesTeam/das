@@ -51,6 +51,7 @@ private:
     static void fromScriptValue(const QScriptValue &obj, Param *&param);
 
     QScriptValue proto, f_ctor;
+    QScriptString prop_value_;
 
     friend class ParamGroupPrototype;
     friend class ParamGroupClassPropertyIterator;

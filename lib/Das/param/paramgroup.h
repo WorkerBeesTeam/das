@@ -50,6 +50,8 @@ public:
     Q_INVOKABLE Param* get_by_type_id(uint type_id) const;
 signals:
     void value_changed();
+public slots:
+    QString toString() const;
 private:
     std::vector<std::shared_ptr<Param>>::const_iterator get_iterator(const QString& name) const;
     void add_child(const std::shared_ptr<Param>& elem);
@@ -59,6 +61,7 @@ private:
     Device_item_Group* group_;
     QVariant value_;
 
+    Param* parent_;
     std::vector<std::shared_ptr<Param>> childrens_;
 
     static DIG_Param_Type empty_type;

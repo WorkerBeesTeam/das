@@ -11,7 +11,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Device_Item : public Base_Type, public Device_Extra_Params
 {
-    HELPZ_DB_META(Device_Item, "device_item", "di", 8, DB_A(id), DB_ANS(name), DB_A(type_id), DB_AT(extra),
+    HELPZ_DB_META(Device_Item, "device_item", "di", DB_A(id), DB_ANS(name), DB_A(type_id), DB_AT(extra),
                   DB_AN(parent_id), DB_A(device_id), DB_AN(group_id), DB_A(scheme_id))
 public:
     Device_Item(Device_Item&& o) = default;

@@ -47,6 +47,37 @@ Structure_Synchronizer_Base::~Structure_Synchronizer_Base()
     return text;
 }
 
+/*static*/ std::vector<uint8_t> Structure_Synchronizer_Base::get_main_table_types()
+{
+    return {
+        ST_DEVICE,
+        ST_PLUGIN_TYPE,
+        ST_DEVICE_ITEM,
+        ST_DEVICE_ITEM_TYPE,
+        ST_SAVE_TIMER,
+        ST_SECTION,
+        ST_DEVICE_ITEM_GROUP,
+        ST_DIG_TYPE,
+        ST_DIG_MODE_TYPE,
+        ST_DIG_PARAM_TYPE,
+        ST_DIG_STATUS_TYPE,
+        ST_DIG_STATUS_CATEGORY,
+        ST_DIG_PARAM,
+        ST_SIGN_TYPE,
+        ST_CODES,
+        ST_TRANSLATION,
+        ST_NODE,
+        ST_DISABLED_PARAM,
+        ST_DISABLED_STATUS,
+        ST_CHART,
+        ST_CHART_ITEM,
+        ST_AUTH_GROUP,
+        ST_AUTH_GROUP_PERMISSION,
+        ST_USER,
+        ST_USER_GROUP
+    };
+}
+
 bool Structure_Synchronizer_Base::modified() const
 {
     return modified_;
@@ -72,11 +103,11 @@ void Structure_Synchronizer_Base::process_modify_message(uint32_t user_id, uint8
     {
     case ST_DEVICE:                Helpz::apply_parse(*data_dev, v, &T::modify<Device>                         ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_PLUGIN_TYPE:           Helpz::apply_parse(*data_dev, v, &T::modify<Plugin_Type>                    ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
-    case ST_DEVICE_ITEM:           Helpz::apply_parse(*data_dev, v, &T::modify<DB::Device_Item>          ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_DEVICE_ITEM:           Helpz::apply_parse(*data_dev, v, &T::modify<DB::Device_Item>                ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_DEVICE_ITEM_TYPE:      Helpz::apply_parse(*data_dev, v, &T::modify<Device_Item_Type>               ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_SAVE_TIMER:            Helpz::apply_parse(*data_dev, v, &T::modify<Save_Timer>                     ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_SECTION:               Helpz::apply_parse(*data_dev, v, &T::modify<Section>                        ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
-    case ST_DEVICE_ITEM_GROUP:     Helpz::apply_parse(*data_dev, v, &T::modify<DB::Device_Item_Group>    ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_DEVICE_ITEM_GROUP:     Helpz::apply_parse(*data_dev, v, &T::modify<DB::Device_Item_Group>          ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_DIG_TYPE:              Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Type>                       ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_DIG_MODE_TYPE:         Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Mode_Type>                  ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_DIG_PARAM_TYPE:        Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Param_Type>                 ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
@@ -86,6 +117,11 @@ void Structure_Synchronizer_Base::process_modify_message(uint32_t user_id, uint8
     case ST_SIGN_TYPE:             Helpz::apply_parse(*data_dev, v, &T::modify<Sign_Type>                      ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_CODES:                 Helpz::apply_parse(*data_dev, v, &T::modify<Code_Item>                      ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_TRANSLATION:           Helpz::apply_parse(*data_dev, v, &T::modify<Translation>                    ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_NODE:                  Helpz::apply_parse(*data_dev, v, &T::modify<DB::Node>                       ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_DISABLED_PARAM:        Helpz::apply_parse(*data_dev, v, &T::modify<DB::Disabled_Param>             ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_DISABLED_STATUS:       Helpz::apply_parse(*data_dev, v, &T::modify<DB::Disabled_Status>            ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_CHART:                 Helpz::apply_parse(*data_dev, v, &T::modify<DB::Chart>                      ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_CHART_ITEM:            Helpz::apply_parse(*data_dev, v, &T::modify<DB::Chart_Item>                 ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_AUTH_GROUP:            Helpz::apply_parse(*data_dev, v, &T::modify<Auth_Group>                     ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_AUTH_GROUP_PERMISSION: Helpz::apply_parse(*data_dev, v, &T::modify<Auth_Group_Permission>          ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_USER:                  Helpz::apply_parse(*data_dev, v, &T::modify<User>                           ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
@@ -129,32 +165,6 @@ QByteArray Structure_Synchronizer_Base::get_structure_hash_for_all(Helpz::DB::Ba
 Helpz::DB::Thread *Structure_Synchronizer_Base::db_thread() const
 {
     return db_thread_;
-}
-
-std::vector<uint8_t> Structure_Synchronizer_Base::get_main_table_types() const
-{
-    return {
-        ST_DEVICE,
-        ST_PLUGIN_TYPE,
-        ST_DEVICE_ITEM,
-        ST_DEVICE_ITEM_TYPE,
-        ST_SAVE_TIMER,
-        ST_SECTION,
-        ST_DEVICE_ITEM_GROUP,
-        ST_DIG_TYPE,
-        ST_DIG_MODE_TYPE,
-        ST_DIG_PARAM_TYPE,
-        ST_DIG_STATUS_TYPE,
-        ST_DIG_STATUS_CATEGORY,
-        ST_DIG_PARAM,
-        ST_SIGN_TYPE,
-        ST_CODES,
-        ST_TRANSLATION,
-        ST_AUTH_GROUP,
-        ST_AUTH_GROUP_PERMISSION,
-        ST_USER,
-        ST_USER_GROUP
-    };
 }
 
 bool Structure_Synchronizer_Base::is_main_table(uint8_t struct_type) const
@@ -209,6 +219,11 @@ QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_
     case ST_CODES:                 return get_structure_hash_map<Code_Item>               (struct_type, db, scheme_id); break;
     case ST_SAVE_TIMER:            return get_structure_hash_map<Save_Timer>              (struct_type, db, scheme_id); break;
     case ST_TRANSLATION:           return get_structure_hash_map<Translation>             (struct_type, db, scheme_id); break;
+    case ST_NODE:                  return get_structure_hash_map<DB::Node>                (struct_type, db, scheme_id); break;
+    case ST_DISABLED_PARAM:        return get_structure_hash_map<DB::Disabled_Param>      (struct_type, db, scheme_id); break;
+    case ST_DISABLED_STATUS:       return get_structure_hash_map<DB::Disabled_Status>     (struct_type, db, scheme_id); break;
+    case ST_CHART:                 return get_structure_hash_map<DB::Chart>               (struct_type, db, scheme_id); break;
+    case ST_CHART_ITEM:            return get_structure_hash_map<DB::Chart_Item>          (struct_type, db, scheme_id); break;
     case ST_AUTH_GROUP:            return get_structure_hash_map<Auth_Group>              (struct_type, db, scheme_id); break;
     case ST_AUTH_GROUP_PERMISSION: return get_structure_hash_map<Auth_Group_Permission>   (struct_type, db, scheme_id); break;
     case ST_USER:                  return get_structure_hash_map<User>                    (struct_type, db, scheme_id); break;
@@ -247,6 +262,17 @@ QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, con
     {
         suffix += " ORDER BY " + T::table_column_names().at(Helper::pk_num);
     }
+
+    const QString extra_orders = Helper::get_extra_orders();
+    if (!extra_orders.isEmpty())
+    {
+        if (Helper::pk_num != 0)
+            suffix += ',';
+        else
+            suffix += " ORDER BY ";
+        suffix += extra_orders;
+    }
+
     return suffix;
 }
 
@@ -276,6 +302,11 @@ void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QD
     case ST_SIGN_TYPE:             ds << get_db_list<Sign_Type>            (struct_type, db, scheme_id, id_vect); break;
     case ST_CODES:                 ds << get_db_list<Code_Item>            (struct_type, db, scheme_id, id_vect); break;
     case ST_TRANSLATION:           ds << get_db_list<Translation>          (struct_type, db, scheme_id, id_vect); break;
+    case ST_NODE:                  ds << get_db_list<DB::Node>             (struct_type, db, scheme_id, id_vect); break;
+    case ST_DISABLED_PARAM:        ds << get_db_list<DB::Disabled_Param>   (struct_type, db, scheme_id, id_vect); break;
+    case ST_DISABLED_STATUS:       ds << get_db_list<DB::Disabled_Status>  (struct_type, db, scheme_id, id_vect); break;
+    case ST_CHART:                 ds << get_db_list<DB::Chart>            (struct_type, db, scheme_id, id_vect); break;
+    case ST_CHART_ITEM:            ds << get_db_list<DB::Chart_Item>       (struct_type, db, scheme_id, id_vect); break;
     case ST_AUTH_GROUP:            ds << get_db_list<Auth_Group>           (struct_type, db, scheme_id, id_vect); break;
     case ST_AUTH_GROUP_PERMISSION: ds << get_db_list<Auth_Group_Permission>(struct_type, db, scheme_id, id_vect); break;
     case ST_USER:                  ds << get_db_list<User>                 (struct_type, db, scheme_id, id_vect); break;
