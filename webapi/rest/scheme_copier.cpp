@@ -377,12 +377,14 @@ void Scheme_Copier::proc_vects(Base& db, const std::vector<T>& insert_vect, cons
     if (!delete_vect.empty())
     {
         Delete_Row_Info_List delete_array = DB::db_delete_info<T>(QString());
-        const QString pk_name = table.field_names().at(DB::Scheme_Table_Helper<T>::pk_num);
+        const int pk_index = DB::Scheme_Table_Helper<T>::pk_num;
+
+        const Delete_Row_Info row_info{table, pk_index, delete_array, false, pk_index};
 
         for (const T& item: delete_vect)
         {
             if (!Delete_Row_Helper(&db, QString::number(item.id()))
-                    .del(table.name(), delete_array, pk_name))
+                    .del(row_info))
             {
                 ++scheme_item.counter_[Item::SCI_DELETE_ERROR];
                 qDebug() << "Scheme_Copier: Delete error:" << item.id() << "scheme_id:" << item.scheme_id() << "table" << table.name() << T::value_getter(item, 1).toString();
