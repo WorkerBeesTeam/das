@@ -156,7 +156,7 @@ int ResistancePlugin::read_item(int pin)
     if (!conf_.is_counter_result_)
     {
         auto distance = std::chrono::system_clock::now() - now;
-        return distance.time_since_epoch().count();
+        return distance.count();
     }
 #endif
     return count;
