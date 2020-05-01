@@ -12,7 +12,7 @@ namespace Das {
 class Scheme_Copier
 {
 public:
-    Scheme_Copier(uint32_t orig_id, uint32_t dest_id);
+    Scheme_Copier(uint32_t orig_id, uint32_t dest_id, bool is_dry_run);
 
     struct Item
     {
@@ -39,6 +39,8 @@ private:
 
     template<typename T>
     void proc_vects(Helpz::DB::Base& db, const std::vector<T>& insert_vect, const std::vector<T>& delete_vect, const std::vector<T>& update_vect, std::map<uint32_t, uint32_t>* id_map);
+
+    bool is_dry_run_;
 };
 
 } // namespace Das

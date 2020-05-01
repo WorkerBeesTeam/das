@@ -24,8 +24,8 @@ public:
     Helper(QObject* parent = nullptr);
     Helper(const Helpz::DB::Connection_Info &info, const QString& name = QSqlDatabase::defaultConnection, QObject* parent = nullptr);
 
-    static QString get_default_suffix();
-    static QString get_default_where_suffix();
+    static QString get_default_suffix(const QString &table_short_name = QString());
+    static QString get_default_where_suffix(const QString &table_short_name = QString());
     static QVector<Save_Timer> get_save_timer_vect();
     static QVector<Code_Item> get_code_item_vect();
     static bool set_mode(const DIG_Mode& mode);

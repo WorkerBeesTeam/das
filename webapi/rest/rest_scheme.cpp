@@ -409,6 +409,7 @@ void Scheme::copy(served::response &res, const served::request &req)
 
     const picojson::object& obj = val.get<picojson::object>();
     const uint32_t dest_scheme_id = obj.at("scheme_id").get<int64_t>();
+    const bool is_dry_run = obj.at("dry_run").get<bool>();
 
     const Scheme_Info scheme = Scheme::get_info(req);
     const Scheme_Info dest_scheme = Scheme::get_info(dest_scheme_id);
@@ -422,7 +423,7 @@ void Scheme::copy(served::response &res, const served::request &req)
 
     std::cout << "Copy " << scheme.id() << " to " << dest_scheme.id() << std::endl;
 
-    Scheme_Copier copier(scheme.id(), dest_scheme.id());
+    Scheme_Copier copier(scheme.id(), dest_scheme.id(), is_dry_run);
 
     picojson::object data;
 
