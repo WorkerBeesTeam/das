@@ -121,6 +121,9 @@ void ResistancePlugin::run()
             value.raw_data_ = read_item(item.first);
             value.timestamp_msecs_ = DB::Log_Base_Item::current_timestamp();
             values[item.second->device()].emplace(item.second, value);
+
+            std::lock_guard erase_lock(mutex_);
+            data_.erase(data_.begin());
         }
         else
         {
@@ -147,9 +150,10 @@ int ResistancePlugin::read_item(int pin)
 
     std::this_thread::sleep_for(std::chrono::milliseconds(conf_.sleep_ms_));
 
+    pinMode(pin, INPUT);
+
     auto now = std::chrono::system_clock::now();
 
-    pinMode(pin, INPUT);
     while (digitalRead(pin) == LOW && count < conf_.max_count_)
         ++count;
 
