@@ -20,6 +20,7 @@ Q_DECLARE_LOGGING_CATEGORY(ResistanceLog)
 struct Config
 {
     bool is_counter_result_;
+    bool is_zero_disconnected_;
     int sleep_ms_;
     int max_count_;
 };

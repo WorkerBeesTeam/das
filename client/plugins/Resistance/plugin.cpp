@@ -1,3 +1,4 @@
+
 #include <QDebug>
 #include <QSettings>
 #include <QFile>
@@ -37,11 +38,14 @@ void ResistancePlugin::configure(QSettings *settings)
     conf_ = Helpz::SettingsHelper(
                 settings, "Resistance",
                 Param<bool>{"IsCounterResult", true},
+                Param<bool>{"IsZeroDisconnected", true},
                 Param<int>{"SleepMs", 100},
                 Param<int>{"MaxCount", 100000}
     ).obj<Config>();
 
-#ifndef NO_WIRINGPI
+#ifdef NO_WIRINGPI
+    srand(time(nullptr));
+#else
     wiringPiSetup();
 #endif
 
@@ -101,15 +105,22 @@ void ResistancePlugin::write(std::vector<Write_Cache_Item>& /*items*/) {}
 
 void ResistancePlugin::run()
 {
-    std::unique_lock lock(mutex_, std::defer_lock);
+    struct Device_Data_Pack
+    {
+        std::map<Device_Item*, Device::Data_Item> values_;
+        std::vector<Device_Item*> disconnected_vect_;
+    };
 
-    std::map<Device*, std::map<Device_Item*, Device::Data_Item>> values;
-    Device::Data_Item value{0, 0, {}};
+    std::map<Device*, Device_Data_Pack> devices_data_pack;
+    Device::Data_Item data_item{0, 0, {}};
+    int value;
+
+    std::unique_lock lock(mutex_, std::defer_lock);
 
     while (true)
     {
         lock.lock();
-        cond_.wait(lock, [this, &values](){ return break_ || !data_.empty() || !values.empty(); });
+        cond_.wait(lock, [this, &devices_data_pack](){ return break_ || !data_.empty() || !devices_data_pack.empty(); });
 
         if (break_) break;
 
@@ -118,9 +129,19 @@ void ResistancePlugin::run()
             std::pair<int, Device_Item*> item = *data_.begin();
             lock.unlock();
 
-            value.raw_data_ = read_item(item.first);
-            value.timestamp_msecs_ = DB::Log_Base_Item::current_timestamp();
-            values[item.second->device()].emplace(item.second, value);
+            Device_Data_Pack& device_data_pack = devices_data_pack[item.second->device()];
+
+            value = read_item(item.first);
+            if (conf_.is_zero_disconnected_ && value == 0)
+            {
+                device_data_pack.disconnected_vect_.push_back(item.second);
+            }
+            else
+            {
+                data_item.raw_data_ = value;
+                data_item.timestamp_msecs_ = DB::Log_Base_Item::current_timestamp();
+                device_data_pack.values_.emplace(item.second, data_item);
+            }
 
             std::lock_guard erase_lock(mutex_);
             data_.erase(data_.begin());
@@ -129,14 +150,19 @@ void ResistancePlugin::run()
         {
             lock.unlock();
 
-            for (const auto& it: values)
+            for (const auto& it: devices_data_pack)
             {
-                QMetaObject::invokeMethod(it.first, "set_device_items_values", Qt::QueuedConnection,
+                if (!it.second.values_.empty())
+                    QMetaObject::invokeMethod(it.first, "set_device_items_values", Qt::QueuedConnection,
                                       QArgument<std::map<Device_Item*, Device::Data_Item>>
-                                      ("std::map<Device_Item*, Device::Data_Item>", it.second),
+                                      ("std::map<Device_Item*, Device::Data_Item>", it.second.values_),
                                       Q_ARG(bool, true));
+
+                if (!it.second.disconnected_vect_.empty())
+                    QMetaObject::invokeMethod(it.first, "set_device_items_disconnect", Qt::QueuedConnection,
+                                              Q_ARG(std::vector<Device_Item*>, it.second.disconnected_vect_));
             }
-            values.clear();
+            devices_data_pack.clear();
         }
     }
 }
@@ -144,7 +170,9 @@ void ResistancePlugin::run()
 int ResistancePlugin::read_item(int pin)
 {
     int count = 0;
-#ifndef NO_WIRINGPI
+#ifdef NO_WIRINGPI
+    count = rand() % conf_.max_count_;
+#else
     pinMode(pin, OUTPUT);
     digitalWrite(pin, LOW);
 
@@ -157,7 +185,7 @@ int ResistancePlugin::read_item(int pin)
     while (digitalRead(pin) == LOW && count < conf_.max_count_)
         ++count;
 
-    if (!conf_.is_counter_result_)
+    if (!conf_.is_counter_result_ && (!conf_.is_zero_disconnected_ || count))
     {
         auto distance = std::chrono::system_clock::now() - now;
         return distance.count();
