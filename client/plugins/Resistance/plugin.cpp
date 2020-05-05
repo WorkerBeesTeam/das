@@ -185,6 +185,9 @@ int ResistancePlugin::read_item(int pin)
     while (digitalRead(pin) == LOW && count < conf_.max_count_)
         ++count;
 
+    if (count == conf_.max_count_)
+        count = 0;
+
     if (!conf_.is_counter_result_ && (!conf_.is_zero_disconnected_ || count))
     {
         auto distance = std::chrono::system_clock::now() - now;
