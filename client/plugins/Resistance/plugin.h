@@ -23,6 +23,8 @@ struct Config
     bool is_zero_disconnected_;
     int sleep_ms_;
     int max_count_;
+    int sum_for_;
+    int devide_by_;
 };
 
 class DAS_PLUGIN_SHARED_EXPORT ResistancePlugin : public QObject, public Checker::Interface

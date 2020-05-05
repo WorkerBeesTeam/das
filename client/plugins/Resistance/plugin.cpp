@@ -37,10 +37,12 @@ void ResistancePlugin::configure(QSettings *settings)
     using Helpz::Param;
     conf_ = Helpz::SettingsHelper(
                 settings, "Resistance",
-                Param<bool>{"IsCounterResult", true},
+                Param<bool>{"IsCounterResult", false},
                 Param<bool>{"IsZeroDisconnected", true},
                 Param<int>{"SleepMs", 100},
-                Param<int>{"MaxCount", 100000}
+                Param<int>{"MaxCount", 10000000},
+                Param<int>{"SumFor", 3},
+                Param<int>{"DevideBy", 10000}
     ).obj<Config>();
 
 #ifdef NO_WIRINGPI
@@ -113,7 +115,7 @@ void ResistancePlugin::run()
 
     std::map<Device*, Device_Data_Pack> devices_data_pack;
     Device::Data_Item data_item{0, 0, {}};
-    int value;
+    int value, value_sum, sum_for;
 
     std::unique_lock lock(mutex_, std::defer_lock);
 
@@ -131,14 +133,26 @@ void ResistancePlugin::run()
 
             Device_Data_Pack& device_data_pack = devices_data_pack[item.second->device()];
 
-            value = read_item(item.first);
-            if (conf_.is_zero_disconnected_ && value == 0)
+            value_sum = sum_for = 0;
+            for (int i = 0; i < conf_.sum_for_; ++i)
+            {
+                value = read_item(item.first);
+                if (value != 0)
+                {
+                    value_sum += value;
+                    ++sum_for;
+                }
+            }
+            if (conf_.is_zero_disconnected_ && value_sum == 0)
             {
                 device_data_pack.disconnected_vect_.push_back(item.second);
             }
             else
             {
-                data_item.raw_data_ = value;
+                value_sum /= sum_for;
+                if (conf_.devide_by_ != 0)
+                    value_sum /= conf_.devide_by_;
+                data_item.raw_data_ = value_sum;
                 data_item.timestamp_msecs_ = DB::Log_Base_Item::current_timestamp();
                 device_data_pack.values_.emplace(item.second, data_item);
             }
@@ -173,6 +187,8 @@ int ResistancePlugin::read_item(int pin)
 #ifdef NO_WIRINGPI
     count = rand() % conf_.max_count_;
 #else
+    std::chrono::system_clock::time_point now;
+
     pinMode(pin, OUTPUT);
     digitalWrite(pin, LOW);
 
@@ -180,7 +196,7 @@ int ResistancePlugin::read_item(int pin)
 
     pinMode(pin, INPUT);
 
-    auto now = std::chrono::system_clock::now();
+    now = std::chrono::system_clock::now();
 
     while (digitalRead(pin) == LOW && count < conf_.max_count_)
         ++count;
