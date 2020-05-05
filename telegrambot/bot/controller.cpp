@@ -302,7 +302,7 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
 
     if (directory == "page")
     {
-        if (cmd.size() < 4)
+        if (cmd.size() < 3)
             throw std::runtime_error("Unknown pagination argument count: " + to_string(cmd.size()));
 
         const string direction = cmd.at(1);
@@ -314,7 +314,8 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
         else
             throw std::runtime_error("Unknown pagination direction: " + direction);
 
-        send_schemes_list(user_id, message->chat, current_page, message, cmd.at(3));
+        const string search_text = cmd.size() > 3 ? cmd.at(3) : std::string();
+        send_schemes_list(user_id, message->chat, current_page, message, search_text);
     }
     else if (directory == "list")
     {
