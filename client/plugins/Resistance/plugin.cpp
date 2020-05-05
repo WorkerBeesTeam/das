@@ -37,12 +37,11 @@ void ResistancePlugin::configure(QSettings *settings)
     using Helpz::Param;
     conf_ = Helpz::SettingsHelper(
                 settings, "Resistance",
-                Param<bool>{"IsCounterResult", false},
                 Param<bool>{"IsZeroDisconnected", true},
                 Param<int>{"SleepMs", 100},
                 Param<int>{"MaxCount", 10000000},
                 Param<int>{"SumFor", 3},
-                Param<int>{"DevideBy", 10000}
+                Param<int>{"DevideBy", 100}
     ).obj<Config>();
 
 #ifdef NO_WIRINGPI
@@ -187,8 +186,6 @@ int ResistancePlugin::read_item(int pin)
 #ifdef NO_WIRINGPI
     count = rand() % conf_.max_count_;
 #else
-    std::chrono::system_clock::time_point now;
-
     pinMode(pin, OUTPUT);
     digitalWrite(pin, LOW);
 
@@ -196,19 +193,11 @@ int ResistancePlugin::read_item(int pin)
 
     pinMode(pin, INPUT);
 
-    now = std::chrono::system_clock::now();
-
     while (digitalRead(pin) == LOW && count < conf_.max_count_)
         ++count;
 
     if (count == conf_.max_count_)
         count = 0;
-
-    if (!conf_.is_counter_result_ && (!conf_.is_zero_disconnected_ || count))
-    {
-        auto distance = std::chrono::system_clock::now() - now;
-        return distance.count();
-    }
 #endif
     return count;
 }
