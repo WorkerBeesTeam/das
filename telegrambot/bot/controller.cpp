@@ -39,10 +39,11 @@ namespace Bot {
 using namespace std;
 using namespace Helpz::DB;
 
-Controller::Controller(DBus::Interface *dbus_iface, const string &token, const string& webhook_url, uint16_t port, const string &webhook_cert, const string &templates_path) :
+Controller::Controller(DBus::Interface *dbus_iface, const string &token, const string& webhook_url, uint16_t port, const string &webhook_cert,
+                       const string &auth_base_url, const string &templates_path) :
     QThread(), Bot_Base(dbus_iface),
     stop_flag_(false), port_(port), bot_(nullptr), server_(nullptr), token_(token),
-    webhook_url_(webhook_url), webhook_cert_(webhook_cert)
+    webhook_url_(webhook_url), webhook_cert_(webhook_cert), auth_base_url_(auth_base_url)
 {
     try
     {
@@ -908,8 +909,8 @@ void Controller::send_authorization_message(const TgBot::Message& msg) const
     if (db.insert(db_table<Tg_Auth>(), Tg_Auth::to_variantlist(auth), nullptr,
               "ON DUPLICATE KEY UPDATE expired = VALUES(expired), token = VALUES(token)"))
     {
-        std::string text = "Чтобы продолжить, пожалуйста перейдите по ссылке ниже и авторизуйтесь."
-                           "\n\nhttps://deviceaccess.ru/tg_auth/";
+        std::string text = "Чтобы продолжить, пожалуйста перейдите по ссылке ниже и авторизуйтесь.\n\n";
+        text += auth_base_url_;
         text += auth.token().toStdString();
 //        send_message(chat_id, text);
 

@@ -109,6 +109,7 @@ void Worker::init_bot(QSettings* s)
         Helpz::Param<std::string>{"WebHook", "https://deviceaccess.ru/tg_bot"},
         Helpz::Param<uint16_t>{"WebHookPort", 8033},
         Helpz::Param<std::string>{"WebHookCert", std::string()},
+        Helpz::Param<std::string>{"AuthBaseUrl", "https://deviceaccess.ru/tg_auth/"},
         Helpz::Param<std::string>{"TemplatesPath", std::string()}
         ).ptr<Bot::Controller>();
     bot_->start();
