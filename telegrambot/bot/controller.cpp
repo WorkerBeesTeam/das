@@ -726,7 +726,7 @@ map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t 
         search_cond = " AND s.title LIKE '%" + QString::fromStdString(search_text) + "%'";
 
     Base& db = Base::get_thread_local_instance();
-    QSqlQuery q = db.exec(sql.arg(user_id).arg(page_number).arg(schemes_per_page_).arg(search_cond));
+    QSqlQuery q = db.exec(sql.arg(user_id).arg(schemes_per_page_ * page_number).arg(schemes_per_page_).arg(search_cond));
 
     map<uint32_t, string> res;
 
