@@ -158,6 +158,7 @@ void Scheme_Copier::copy_table(Base& db, const QString &suffix, uint32_t orig_id
         skipped_vect = std::move(tmp_vect);
 
         fill_vects(dest_id, skipped_vect, orig_vect, dest_vect, upd_vect, id_map, self_column_index);
+        sort_insert_vect(orig_vect, self_column_index);
         proc_vects(db, orig_vect, dest_vect, upd_vect, id_map);
 
         // In next iteration we don't need to delete or update items
@@ -271,7 +272,8 @@ DECL_SCHEME_COPY_TRAILS(DB::Disabled_Status,    group_id, status_id)
 DECL_SCHEME_COPY_TRAILS(DB::Node,               name, type_id, parent_id)
 
 template<typename T>
-void Scheme_Copier::fill_vects(uint32_t dest_id, std::vector<T>& skipped_vect, std::vector<T>& insert_vect, std::vector<T>& delete_vect, std::vector<T>& update_vect, std::map<uint32_t, uint32_t>* id_map, int self_column_index)
+void Scheme_Copier::fill_vects(uint32_t dest_id, std::vector<T>& skipped_vect, std::vector<T>& insert_vect, std::vector<T>& delete_vect,
+                               std::vector<T>& update_vect, std::map<uint32_t, uint32_t>* id_map, int self_column_index)
 {
     std::vector<T>& orig_vect = insert_vect;
     std::vector<T>& dest_vect = delete_vect;
@@ -363,6 +365,21 @@ void Scheme_Copier::fill_vects(uint32_t dest_id, std::vector<T>& skipped_vect, s
         delete_vect.erase(dest_it);
         insert_it = insert_vect.erase(insert_it);
     }
+}
+
+template<typename T>
+void Scheme_Copier::sort_insert_vect(std::vector<T>& vect, int self_column_index)
+{
+    std::sort(vect.begin(), vect.end(), [self_column_index](const T& t1, const T& t2)
+    {
+        if (self_column_index != -1)
+        {
+            if (T::value_getter(t1, self_column_index).toUInt()
+                < T::value_getter(t2, self_column_index).toUInt())
+                return true;
+        }
+        return t1.id() < t2.id();
+    });
 }
 
 template<typename T>
