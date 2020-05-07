@@ -142,7 +142,8 @@ void ResistancePlugin::run()
                     ++sum_for;
                 }
             }
-            if (conf_.is_zero_disconnected_ && value_sum == 0)
+
+            if (conf_.is_zero_disconnected_ && sum_for == 0)
             {
                 device_data_pack.disconnected_vect_.push_back(item.second);
             }
@@ -151,9 +152,15 @@ void ResistancePlugin::run()
                 value_sum /= sum_for;
                 if (conf_.devide_by_ != 0)
                     value_sum /= conf_.devide_by_;
-                data_item.raw_data_ = value_sum;
-                data_item.timestamp_msecs_ = DB::Log_Base_Item::current_timestamp();
-                device_data_pack.values_.emplace(item.second, data_item);
+
+                if (conf_.is_zero_disconnected_ && value_sum == 0)
+                    device_data_pack.disconnected_vect_.push_back(item.second);
+                else
+                {
+                    data_item.raw_data_ = value_sum;
+                    data_item.timestamp_msecs_ = DB::Log_Base_Item::current_timestamp();
+                    device_data_pack.values_.emplace(item.second, data_item);
+                }
             }
 
             std::lock_guard erase_lock(mutex_);
