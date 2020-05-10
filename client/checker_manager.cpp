@@ -90,6 +90,8 @@ void Manager::loadPlugins(Worker *worker)
         return names;
     };
 
+    std::map<QString, QString> loaded_map;
+
     for (const QString& fileName: pluginsDir.entryList(QDir::Files))
     {
         std::shared_ptr<QPluginLoader> loader = std::make_shared<QPluginLoader>(pluginsDir.absoluteFilePath(fileName));
@@ -103,7 +105,7 @@ void Manager::loadPlugins(Worker *worker)
                 pl_type = plugin_type_mng_->get_type(type);
                 if (pl_type->id() && pl_type->need_it && !pl_type->loader)
                 {
-                    qCDebug(Log) << "Load plugin:" << fileName << type;
+                    loaded_map.emplace(type, fileName);
 
                     plugin = loader->instance();
                     checker_interface = qobject_cast<Checker::Interface *>(plugin);
@@ -154,6 +156,13 @@ void Manager::loadPlugins(Worker *worker)
         }
         else
             qCWarning(Log) << "Fail to load plugin" << fileName << loader->errorString();
+    }
+
+    if (!loaded_map.empty() && Log().isDebugEnabled())
+    {
+        auto dbg = qDebug(Log).nospace() << "Loaded plugins:";
+        for (const auto& it: loaded_map)
+            dbg << "\n  - " << it.first << " (" << it.second << ')';
     }
 
     if (plugins_update_vect.size())
