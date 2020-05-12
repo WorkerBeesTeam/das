@@ -1,6 +1,9 @@
 #include <QCoreApplication>
 
+#include <Helpz/service.h>
+
 #include <Das/daslib_global.h>
+
 #include "worker.h"
 
 namespace Das {
@@ -10,6 +13,8 @@ namespace Das {
 
 int main(int argc, char *argv[])
 {
-    SET_DAS_META("DasServer")
-    return Das::Server::Service::instance(argc, argv).exec();
+    SET_DAS_META("DasServer");
+
+    using Service = Helpz::Service::Impl<Das::Server::Worker>;
+    return Service::instance(argc, argv).exec();
 }

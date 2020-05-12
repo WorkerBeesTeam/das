@@ -160,7 +160,7 @@ void Manager::loadPlugins(Worker *worker)
 
     if (!loaded_map.empty() && Log().isDebugEnabled())
     {
-        auto dbg = qDebug(Log).nospace() << "Loaded plugins:";
+        auto dbg = qDebug(Log).nospace().noquote() << "Loaded plugins:";
         for (const auto& it: loaded_map)
             dbg << "\n  - " << it.first << " (" << it.second << ')';
     }

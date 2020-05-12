@@ -20,8 +20,15 @@ Dbus_Object::~Dbus_Object()
 {
 }
 
+void Dbus_Object::set_server(Helpz::DTLS::Server *server)
+{
+    server_ = server;
+}
+
 std::shared_ptr<Helpz::DTLS::Server_Node> Dbus_Object::find_client(uint32_t scheme_id) const
 {
+    if (!server_)
+        return {};
     return server_->find_client([scheme_id](const Helpz::Net::Protocol* protocol) -> bool
     {
         auto p = static_cast<const Protocol_Base*>(protocol);
@@ -36,6 +43,9 @@ bool Dbus_Object::is_connected(uint32_t scheme_id) const
 
 uint8_t Dbus_Object::get_scheme_connection_state(const std::set<uint32_t>& scheme_group_set, uint32_t scheme_id) const
 {
+    if (!server_)
+        return CS_DISCONNECTED;
+
     std::shared_ptr<Helpz::DTLS::Server_Node> node = server_->find_client([scheme_id, &scheme_group_set](const Helpz::Net::Protocol* protocol) -> bool
     {
         auto p = static_cast<const Protocol_Base*>(protocol);

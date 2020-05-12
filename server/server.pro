@@ -32,7 +32,6 @@ SOURCES += main.cpp \
     database/db_thread_manager.cpp \
     base_synchronizer.cpp \
     command_line_parser.cpp \
-    work_object.cpp \
     dbus_object.cpp
 
 HEADERS += \
@@ -52,7 +51,6 @@ HEADERS += \
     database/db_thread_manager.h \
     base_synchronizer.h \
     command_line_parser.h \
-    work_object.h \
     dbus_object.h
 
 unix {

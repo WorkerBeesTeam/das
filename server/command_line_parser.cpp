@@ -8,6 +8,7 @@
 
 #include <Das/lib.h>
 
+#include "worker.h"
 #include "server.h"
 #include "server_protocol.h"
 #include "command_line_parser.h"
@@ -23,7 +24,7 @@ QString getVersionString();
 
 namespace Server {
 
-Command_Line_Parser::Command_Line_Parser(Work_Object* work_object) :
+Command_Line_Parser::Command_Line_Parser(Worker* work_object) :
     work_object_(work_object)
 {
 }

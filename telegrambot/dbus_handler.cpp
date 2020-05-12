@@ -38,8 +38,11 @@ void Dbus_Handler::connection_state_changed(const Scheme_Info& scheme, uint8_t s
         worker_->informer_->disconnected(scheme, true);
         break;
     case CS_CONNECTED_JUST_NOW:
-        dbg << "connected";
+        dbg << "connected just now";
         worker_->informer_->connected(scheme);
+        break;
+    case CS_CONNECTED:
+        dbg << "connected (do nothing)";
         break;
     default:
         break;

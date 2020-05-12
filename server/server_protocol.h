@@ -18,8 +18,8 @@ using namespace Das::Server;
 class Protocol final : public Protocol_Base
 {
 public:
-    Protocol(Work_Object* work_object);
-    ~Protocol();
+    Protocol(Worker* work_object);
+    virtual ~Protocol();
 
     void disable_sync();
 

@@ -16,7 +16,7 @@ namespace Das {
 namespace Ver {
 namespace Server {
 
-Protocol::Protocol(Work_Object* work_object) :
+Protocol::Protocol(Worker *work_object) :
     Protocol_Base{ work_object },
     is_copy_(false),
     disable_sync_(false),
@@ -27,7 +27,7 @@ Protocol::Protocol(Work_Object* work_object) :
 
 Protocol::~Protocol()
 {
-    if (!is_copy_ && id())
+    if (/*!is_copy_ &&*/ id())
     {
         work_object()->recently_connected_.disconnected(*this);
         set_connection_state(CS_DISCONNECTED_JUST_NOW);

@@ -25,6 +25,8 @@ public:
                          const QString& object_path = DAS_DBUS_DEFAULT_OBJECT);
     ~Dbus_Object();
 
+    void set_server(Helpz::DTLS::Server* server);
+
     std::shared_ptr<Helpz::DTLS::Server_Node> find_client(uint32_t scheme_id) const;
 
 signals:

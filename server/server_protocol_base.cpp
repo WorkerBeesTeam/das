@@ -9,7 +9,7 @@ namespace Server {
 Q_LOGGING_CATEGORY(Log, "net")
 Q_LOGGING_CATEGORY(DetailLog, "net.detail")
 
-Protocol_Base::Protocol_Base(Work_Object* work_object) :
+Protocol_Base::Protocol_Base(Worker* work_object) :
     connection_state_(CS_DISCONNECTED),
     work_object_(work_object)
 {
@@ -70,7 +70,7 @@ Helpz::DB::Thread* Protocol_Base::db_thread()
     return work_object_->db_thread_mng_->thread();
 }
 
-Work_Object* Protocol_Base::work_object()
+Worker* Protocol_Base::work_object()
 {
     return work_object_;
 }
