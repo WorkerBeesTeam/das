@@ -25,7 +25,7 @@ void Dbus_Handler::connection_state_changed(const Scheme_Info& scheme, uint8_t s
 
     state &= ~CS_FLAGS;
 
-    auto dbg = qDebug(DBus_log) << "instance:" << scheme.id() << "state:" << int(state);
+    auto dbg = qDebug(DBus_log) << "instance:" << scheme.id() << "state:" << int(state) << "flags:" << int(flags);
 
     switch (state)
     {
@@ -39,7 +39,10 @@ void Dbus_Handler::connection_state_changed(const Scheme_Info& scheme, uint8_t s
         break;
     case CS_CONNECTED_JUST_NOW:
         dbg << "connected just now";
-        worker_->informer_->connected(scheme);
+        if (flags)
+            dbg << "(do nothing)";
+        else
+            worker_->informer_->connected(scheme);
         break;
     case CS_CONNECTED:
         dbg << "connected (do nothing)";

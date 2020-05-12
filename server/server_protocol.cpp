@@ -215,7 +215,10 @@ void Protocol::auth(const Authentication_Info &info, bool modified, uint8_t msg_
         work_object()->save_connection_state_to_log(id(), std::chrono::system_clock::now(), /*state=*/true);
 
         structure_sync_.set_modified(modified);
-        set_connection_state(CS_CONNECTED_JUST_NOW | (modified ? CS_CONNECTED_MODIFIED : 0));
+        set_connection_state(CS_CONNECTED_JUST_NOW);
+
+        if (modified)
+            set_connection_state(connection_state() | CS_CONNECTED_MODIFIED);
 
         send(Cmd::VERSION).answer([this](QIODevice& data_dev) { print_version(data_dev); });
         send(Cmd::TIME_INFO).answer([this](QIODevice& data_dev) { apply_parse(data_dev, &Protocol::set_time_offset); });
