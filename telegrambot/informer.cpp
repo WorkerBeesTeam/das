@@ -51,27 +51,12 @@ void Informer::connected(const Scheme_Info& scheme)
 {
     auto expired_time = std::chrono::system_clock::now() + event_timeout_;
     add_connection_state(std::make_shared<Connection_State_Item>(scheme, expired_time, /*is_connected=*/true));
-
-
-
-
-    const QVector<DIG_Status> data{DIG_Status{}};
-    add_status(std::make_shared<Status>(scheme, expired_time, data));
 }
 
 void Informer::disconnected(const Scheme_Info& scheme, bool just_now)
 {
     auto expired_time = std::chrono::system_clock::now() + event_timeout_;
-    add_connection_state(std::make_shared<Connection_State_Item>(scheme, expired_time, /*is_connected=*/true, /*just_now=*/just_now));
-
-
-
-
-    QVector<DIG_Status> data{DIG_Status{}};
-    if (just_now)
-        data.first().set_args(QStringList{QString()});
-
-    add_status(std::make_shared<Status>(scheme, expired_time, QVector<DIG_Status>{}, data));
+    add_connection_state(std::make_shared<Connection_State_Item>(scheme, expired_time, /*is_connected=*/false, /*just_now=*/just_now));
 }
 
 void Informer::change_status(const Scheme_Info &scheme, const QVector<DIG_Status> &pack)
