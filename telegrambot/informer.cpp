@@ -190,7 +190,7 @@ void Informer::add_connection_state(std::shared_ptr<Informer::Connection_State_I
                 if (d_it->get()->type_ == item_ptr->type_)
                 {
                     is_removed = true;
-                    *d_it = std::move(item_ptr);
+                    *d_it = item_ptr;
                 }
                 ++d_it;
             }
