@@ -33,6 +33,7 @@ public:
 
     void set_scheme_name(uint32_t user_id, const QString& name);
 private:
+    void closed() override;
     void before_remove_copy() override;
     void lost_msg_detected(uint8_t msg_id, uint8_t expected) override;
     void ready_write() override;

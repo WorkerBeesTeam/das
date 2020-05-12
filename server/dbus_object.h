@@ -42,6 +42,8 @@ public slots:
     void send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& data) override;
     QString get_ip_address(uint32_t scheme_id) const override;
     void write_item_file(uint32_t scheme_id, uint32_t user_id, uint32_t dev_item_id, const QString& file_name, const QString& file_path) override;
+
+    bool ping();
 private:
     Helpz::DTLS::Server* server_;
 };

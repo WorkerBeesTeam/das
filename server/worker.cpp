@@ -70,11 +70,15 @@ Worker::~Worker()
     delete server_thread_;
     server_thread_ = nullptr;
 
-    for (const Recently_Connected::Recent_Client& item: recently_connected_.scheme_id_vect_)
-        dbus_->connection_state_changed(item.scheme_, CS_DISCONNECTED);
-
     delete db_thread_mng_;
     delete db_conn_info_; db_conn_info = nullptr;
+
+    for (const Recently_Connected::Recent_Client& item: recently_connected_.scheme_id_vect_)
+    {
+        dbus_->connection_state_changed(item.scheme_, CS_DISCONNECTED);
+        qApp->processEvents(QEventLoop::AllEvents);
+    }
+
     delete dbus_;
 }
 

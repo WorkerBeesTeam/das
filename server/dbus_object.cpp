@@ -165,5 +165,10 @@ void Dbus_Object::write_item_file(uint32_t scheme_id, uint32_t user_id, uint32_t
     }
 }
 
+bool Dbus_Object::ping()
+{
+    return true;
+}
+
 } // namespace Server
 } // namespace Das

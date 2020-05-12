@@ -27,11 +27,7 @@ Protocol::Protocol(Worker *work_object) :
 
 Protocol::~Protocol()
 {
-    if (/*!is_copy_ &&*/ id())
-    {
-        work_object()->recently_connected_.disconnected(*this);
-        set_connection_state(CS_DISCONNECTED_JUST_NOW);
-    }
+    closed();
 }
 
 void Protocol::disable_sync()
@@ -94,6 +90,15 @@ void Protocol::synchronize(bool full)
 void Protocol::set_scheme_name(uint32_t user_id, const QString &name)
 {
     send(Cmd::SET_SCHEME_NAME).timeout(nullptr, std::chrono::seconds(8)) << user_id << name;
+}
+
+void Protocol::closed()
+{
+    if (/*!is_copy_ &&*/ id())
+    {
+        work_object()->recently_connected_.disconnected(*this);
+        set_connection_state(CS_DISCONNECTED_JUST_NOW);
+    }
 }
 
 void Protocol::before_remove_copy()
