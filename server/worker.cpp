@@ -171,6 +171,11 @@ void Worker::init_database(QSettings* s)
 
 void Worker::init_server(QSettings* s)
 {
+    auto [disconnect_event_timeout] = Helpz::SettingsHelper{s, "Server",
+                Helpz::Param{"DisconnectEventTimeoutSeconds", 60}
+    }();
+    disconnect_event_timeout_ = std::chrono::seconds{disconnect_event_timeout};
+
     Helpz::DTLS::Create_Server_Protocol_Func_T create_protocol = [this](const std::vector<std::string> &client_protos, std::string* choose_out) -> std::shared_ptr<Helpz::Net::Protocol>
     {
         for (const std::string& proto: client_protos)
@@ -219,11 +224,11 @@ void Worker::init_server(QSettings* s)
         return nullptr;
     };
 
-    const QString default_dir = qApp->applicationDirPath() + '/';
-    auto [ port, tls_policy_file, certificate_file, certificate_key_file,
-            cleaning_timeout, receive_thread_count, record_thread_count,
-            disconnect_event_timeout ]
-            = Helpz::SettingsHelper{
+    const std::string default_dir = qApp->applicationDirPath().toStdString() + '/';
+//    auto [ port, tls_policy_file, certificate_file, certificate_key_file,
+//            cleaning_timeout, receive_thread_count, record_thread_count,
+//            disconnect_event_timeout ]
+    Helpz::DTLS::Server_Thread_Config conf = Helpz::SettingsHelper{
         s, "Server",
                 Helpz::Param{"Port", (uint16_t)25588},
                 Helpz::Param{"TlsPolicyFile", default_dir + "tls_policy.conf"},
@@ -232,13 +237,8 @@ void Worker::init_server(QSettings* s)
                 Helpz::Param{"CleaningTimeout", (uint32_t)3 * 60},
                 Helpz::Param{"ReceiveThreadCount", (uint16_t)5},
                 Helpz::Param{"RecordThreadCount", (uint16_t)5},
-                Helpz::Param{"DisconnectEventTimeoutSeconds", 60}
-    }();
-
-    disconnect_event_timeout_ = std::chrono::seconds{disconnect_event_timeout};
-
-    Helpz::DTLS::Server_Thread_Config conf{ port, tls_policy_file.toStdString(), certificate_file.toStdString(), certificate_key_file.toStdString(),
-                cleaning_timeout, receive_thread_count, record_thread_count, 60 };
+            /*main_thread_priority=*/60
+    }.obj<Helpz::DTLS::Server_Thread_Config>();
 
     conf.set_create_protocol_func(std::move(create_protocol));
     server_thread_ = new Helpz::DTLS::Server_Thread{std::move(conf)};
