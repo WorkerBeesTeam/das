@@ -289,7 +289,10 @@ void Controller::anyMessage(TgBot::Message::Ptr message)
                 waited_map_.erase(it);
             }
 #ifdef QT_DEBUG
-            send_message(message->chat->id, "*You send*: " + message->text);
+            std::string user_text = message->text;
+            boost::replace_all(user_text, "*", "\\*");
+            boost::replace_all(user_text, "_", "\\_");
+            send_message(message->chat->id, "*You send*: " + user_text);
 #endif
         }
     }
@@ -790,14 +793,16 @@ unordered_map<uint32_t, string> Controller::get_sub_1_names_for_scheme(const Sch
 
 uint32_t Controller::get_authorized_user_id(uint32_t user_id, int64_t chat_id, bool skip_message) const
 {
+    uint32_t das_user_id = 0;
+
     Base& db = Base::get_thread_local_instance();
     QSqlQuery q = db.select({Tg_User::table_name(), {}, {"user_id"}}, "WHERE id=" + QString::number(user_id));
     if (q.isActive() && q.next())
-        return q.value(0).toUInt();
+        das_user_id = q.value(0).toUInt();
 
-    if (!skip_message)
+    if (!skip_message && !das_user_id)
         send_message(chat_id, "Для этого действия вам необходимо авторизоваться в личном чате с ботом");
-    return 0;
+    return das_user_id;
 }
 
 void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint32_t current_page,

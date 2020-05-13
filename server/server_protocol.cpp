@@ -27,7 +27,13 @@ Protocol::Protocol(Worker *work_object) :
 
 Protocol::~Protocol()
 {
-    closed();
+    if (/*!is_copy_ &&*/ id())
+    {
+        std::cout << "~Protocol " << id() << " is copy: " << is_copy_ << std::endl;
+//        std::cout << "closed " << id() << " is copy: " << is_copy_ << std::endl;
+        work_object()->recently_connected_.disconnected(*this);
+        set_connection_state(CS_DISCONNECTED_JUST_NOW);
+    }
 }
 
 void Protocol::disable_sync()
@@ -94,11 +100,6 @@ void Protocol::set_scheme_name(uint32_t user_id, const QString &name)
 
 void Protocol::closed()
 {
-    if (/*!is_copy_ &&*/ id())
-    {
-        work_object()->recently_connected_.disconnected(*this);
-        set_connection_state(CS_DISCONNECTED_JUST_NOW);
-    }
 }
 
 void Protocol::before_remove_copy()
@@ -216,6 +217,7 @@ void Protocol::auth(const Authentication_Info &info, bool modified, uint8_t msg_
 
         structure_sync_.set_modified(modified);
         set_connection_state(CS_CONNECTED_JUST_NOW);
+        std::cout << "Connected state " << id() << std::endl;
 
         if (modified)
             set_connection_state(connection_state() | CS_CONNECTED_MODIFIED);
