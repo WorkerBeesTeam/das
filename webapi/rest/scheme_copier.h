@@ -12,7 +12,7 @@ namespace Das {
 class Scheme_Copier
 {
 public:
-    Scheme_Copier(uint32_t orig_id, uint32_t dest_id);
+    Scheme_Copier(uint32_t orig_id, uint32_t dest_id, bool is_dry_run);
 
     struct Item
     {
@@ -35,10 +35,16 @@ private:
     void fill_items(std::vector<T> &orig, uint32_t orig_id, std::vector<T> &dest, uint32_t dest_id);
 
     template<typename T>
-    void fill_vects(uint32_t dest_id, std::vector<T>& skipped_vect, std::vector<T>& insert_vect, std::vector<T>& delete_vect, std::vector<T>& update_vect, std::map<uint32_t, uint32_t>* id_map, int self_column_index = -1);
+    void fill_vects(uint32_t dest_id, std::vector<T>& skipped_vect, std::vector<T>& insert_vect, std::vector<T>& delete_vect, std::vector<T>& update_vect,
+                    std::map<uint32_t, uint32_t>* id_map, int self_column_index = -1);
+
+    template<typename T>
+    void sort_insert_vect(std::vector<T>& vect, int self_column_index = -1);
 
     template<typename T>
     void proc_vects(Helpz::DB::Base& db, const std::vector<T>& insert_vect, const std::vector<T>& delete_vect, const std::vector<T>& update_vect, std::map<uint32_t, uint32_t>* id_map);
+
+    bool is_dry_run_;
 };
 
 } // namespace Das

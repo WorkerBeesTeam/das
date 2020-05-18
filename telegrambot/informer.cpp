@@ -13,10 +13,17 @@ Q_LOGGING_CATEGORY(Inf_Detail_log, "informer.detail", QtInfoMsg)
 
 using namespace Helpz::DB;
 
-Informer::Data::Data(const Scheme_Info &scheme, std::chrono::time_point<std::chrono::system_clock> expired_time,
+Informer::Connection_State_Item::Connection_State_Item(const Scheme_Info& scheme, std::chrono::time_point<std::chrono::system_clock> expired_time,
+                                                       bool is_connected, bool just_now) :
+    Item{is_connected ? Item::T_CONNECTED : Item::T_DISCONNECTED, expired_time, scheme},
+    just_now_(just_now)
+{
+}
+
+Informer::Status::Status(const Scheme_Info &scheme, std::chrono::time_point<std::chrono::system_clock> expired_time,
                      const QVector<DIG_Status> &add_vect, const QVector<DIG_Status> &del_vect) :
-    expired_time_(expired_time),
-    scheme_(scheme), add_vect_(add_vect), del_vect_(del_vect)
+    Item{Item::T_STATUS, expired_time, scheme},
+    add_vect_(add_vect), del_vect_(del_vect)
 {
 }
 
@@ -35,27 +42,21 @@ Informer::~Informer()
     break_flag_ = true;
     cond_.notify_one();
     if (thread_->joinable())
-    {
         thread_->join();
-    }
+
     delete thread_;
 }
 
 void Informer::connected(const Scheme_Info& scheme)
 {
-    const QVector<DIG_Status> data{DIG_Status{}};
     auto expired_time = std::chrono::system_clock::now() + event_timeout_;
-    add_data(std::make_shared<Data>(scheme, expired_time, data), skip_connected_event_);
+    add_connection_state(std::make_shared<Connection_State_Item>(scheme, expired_time, /*is_connected=*/true));
 }
 
 void Informer::disconnected(const Scheme_Info& scheme, bool just_now)
 {
-    QVector<DIG_Status> data{DIG_Status{}};
-    if (just_now)
-        data.first().set_args(QStringList{QString()});
-
     auto expired_time = std::chrono::system_clock::now() + event_timeout_;
-    add_data(std::make_shared<Data>(scheme, expired_time, QVector<DIG_Status>{}, data));
+    add_connection_state(std::make_shared<Connection_State_Item>(scheme, expired_time, /*is_connected=*/false, /*just_now=*/just_now));
 }
 
 void Informer::change_status(const Scheme_Info &scheme, const QVector<DIG_Status> &pack)
@@ -95,7 +96,7 @@ void Informer::change_status(const Scheme_Info &scheme, const QVector<DIG_Status
     }
 
     for (const auto& it: status_map)
-        add_data(std::make_shared<Data>(scheme, it.first, it.second.add_vect_, it.second.del_vect_));
+        add_status(std::make_shared<Status>(scheme, it.first, it.second.add_vect_, it.second.del_vect_));
 }
 
 void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_Event_Item> &event_pack)
@@ -150,6 +151,54 @@ void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_
     }
 }
 
+void Informer::add_connection_state(std::shared_ptr<Informer::Connection_State_Item> &&item_ptr)
+{
+    bool remove_only = item_ptr->type_ == Item::T_CONNECTED && skip_connected_event_;
+    auto revert_type = item_ptr->type_ == Item::T_CONNECTED ? Item::T_DISCONNECTED : Item::T_CONNECTED;
+    bool is_removed = false;
+
+    std::lock_guard lock(mutex_);
+
+    auto it = schemedata_map_.find(item_ptr->scheme_.id());
+    if (it != schemedata_map_.end())
+    {
+        std::vector<std::shared_ptr<Item>>& schemedata = it->second;
+        for (auto d_it = schemedata.begin(); d_it != schemedata.end();)
+        {
+            if (d_it->get()->type_ == revert_type)
+            {
+                is_removed = true;
+                d_it = schemedata.erase(d_it);
+            }
+            else
+            {
+                if (d_it->get()->type_ == item_ptr->type_)
+                {
+                    is_removed = true;
+                    *d_it = item_ptr;
+                }
+                ++d_it;
+            }
+        }
+
+        if (!is_removed && !remove_only)
+            schemedata.push_back(item_ptr);
+
+        if (schemedata.empty())
+            schemedata_map_.erase(it);
+    }
+    else if (!remove_only)
+    {
+        schemedata_map_.emplace(item_ptr->scheme_.id(), std::vector<std::shared_ptr<Item>>{item_ptr});
+    }
+
+    if (!is_removed && !remove_only)
+    {
+        data_queue_.push(std::move(item_ptr));
+        cond_.notify_one();
+    }
+}
+
 void erase_two_vectors(QVector<DIG_Status>& origin_v, QVector<DIG_Status>& diff_v, QVector<DIG_Status>& same_v)
 {
     bool finded;
@@ -193,19 +242,25 @@ void erase_two_vectors(QVector<DIG_Status>& origin_v, QVector<DIG_Status>& diff_
     }
 }
 
-void Informer::add_data(std::shared_ptr<Data>&& data_ptr, bool remove_only)
+void Informer::add_status(std::shared_ptr<Status>&& item_ptr)
 {
     std::lock_guard lock(mutex_);
 
-    auto it = schemedata_map_.find(data_ptr->scheme_.id());
+    auto it = schemedata_map_.find(item_ptr->scheme_.id());
     if (it != schemedata_map_.end())
     {
-        std::vector<std::shared_ptr<Data>>& schemedata = it->second;
+        std::vector<std::shared_ptr<Item>>& schemedata = it->second;
         for (auto d_it = schemedata.begin(); d_it != schemedata.end();)
         {
-            std::shared_ptr<Data>& data = *d_it;
-            erase_two_vectors(data->add_vect_, data_ptr->del_vect_, data_ptr->add_vect_);
-            erase_two_vectors(data->del_vect_, data_ptr->add_vect_, data_ptr->del_vect_);
+            if (d_it->get()->type_ != Item::T_STATUS)
+            {
+                ++d_it;
+                continue;
+            }
+
+            Status* data = static_cast<Status*>(d_it->get());
+            erase_two_vectors(data->add_vect_, item_ptr->del_vect_, item_ptr->add_vect_);
+            erase_two_vectors(data->del_vect_, item_ptr->add_vect_, item_ptr->del_vect_);
             if (data->add_vect_.empty() && data->del_vect_.empty())
             {
                 d_it = schemedata.erase(d_it);
@@ -213,20 +268,23 @@ void Informer::add_data(std::shared_ptr<Data>&& data_ptr, bool remove_only)
             else
                 ++d_it;
         }
+
+        if (!item_ptr->add_vect_.empty() || !item_ptr->del_vect_.empty())
+            schemedata.push_back(item_ptr);
+
+        if (schemedata.empty())
+            schemedata_map_.erase(it);
+    }
+    else
+    {
+        schemedata_map_.emplace(item_ptr->scheme_.id(), std::vector<std::shared_ptr<Item>>{item_ptr});
     }
 
-    if (!remove_only && (!data_ptr->add_vect_.empty() || !data_ptr->del_vect_.empty()))
+    if (!item_ptr->add_vect_.empty() || !item_ptr->del_vect_.empty())
     {
-        if (it != schemedata_map_.end())
-            it->second.push_back(data_ptr);
-        else
-            schemedata_map_.emplace(data_ptr->scheme_.id(), std::vector<std::shared_ptr<Data>>{data_ptr});
-
-        data_queue_.push(std::move(data_ptr));
+        data_queue_.push(std::move(item_ptr));
         cond_.notify_one();
     }
-    else if (it != schemedata_map_.end() && it->second.empty())
-            schemedata_map_.erase(it);
 }
 
 void Informer::run()
@@ -260,7 +318,7 @@ void Informer::run()
 
         if (!data_queue_.empty() && data_queue_.front()->expired_time_ <= std::chrono::system_clock::now())
         {
-            std::shared_ptr<Data> data_ptr = pop_data();
+            std::shared_ptr<Item> data_ptr = pop_data();
             lock.unlock();
 
             process_data(data_ptr.get());
@@ -277,15 +335,15 @@ void Informer::run()
     }
 }
 
-std::shared_ptr<Informer::Data> Informer::pop_data()
+std::shared_ptr<Informer::Item> Informer::pop_data()
 {
-    std::shared_ptr<Data> data_ptr{std::move(data_queue_.front())};
+    std::shared_ptr<Item> data_ptr{std::move(data_queue_.front())};
     data_queue_.pop();
 
     auto it = schemedata_map_.find(data_ptr->scheme_.id());
     if (it != schemedata_map_.end())
     {
-        std::vector<std::shared_ptr<Data>>& schemedata = it->second;
+        std::vector<std::shared_ptr<Item>>& schemedata = it->second;
         schemedata.erase(std::remove(schemedata.begin(), schemedata.end(), data_ptr), schemedata.end());
         if (schemedata.empty())
             schemedata_map_.erase(it);
@@ -319,9 +377,9 @@ std::set<int64_t> get_disabled_chats(uint32_t status_type_id)
     return disabled_chats;
 }
 
-void Informer::process_data(Data* data)
+void Informer::process_data(Item* data)
 {
-    std::map<uint32_t, std::string> text_map = get_status_text(data);
+    std::map<uint32_t, std::string> text_map = get_data_text(data);
     if (text_map.empty())
         return;
 
@@ -378,32 +436,35 @@ std::string Informer::get_scheme_title(uint32_t scheme_id)
     return title.toStdString();
 }
 
-bool is_connected_type(const QVector<DIG_Status>& vect)
+std::map<uint32_t, std::string> Informer::get_data_text(Informer::Item *data) const
 {
-    if (vect.size() == 1)
+    switch (data->type_)
     {
-        const DIG_Status& item = vect.front();
-        if (item.id() == 0 && item.group_id() == 0 && item.status_id() == 0)
-            return true;
+    case Item::T_STATUS:
+        return get_status_text(static_cast<Status*>(data));
+
+    case Item::T_CONNECTED:
+        return {{0, "🚀 На связи!"}};
+
+    case Item::T_DISCONNECTED:
+    {
+        auto conn_state = static_cast<Connection_State_Item*>(data);
+        if (!conn_state->just_now_)
+            return {{0, "💢 Отключен."}};
+        break;
     }
-    return false;
+
+    default:
+        break;
+    }
+
+    return {};
 }
 
-std::map<uint32_t, std::string> Informer::get_status_text(Data* data) const
+std::map<uint32_t, std::string> Informer::get_status_text(Status *data) const
 {
     if (data->add_vect_.empty() && data->del_vect_.empty())
         return {};
-
-    if (is_connected_type(data->add_vect_))
-        return {{0, "🚀 На связи!"}};
-
-    if (is_connected_type(data->del_vect_))
-    {
-        if (data->del_vect_.front().args().empty())
-            return {{0, "💢 Отключен."}};
-        else
-            return {};
-    }
 
     QSet<uint32_t> info_id_set, group_id_set;
     for (const DIG_Status& item: data->add_vect_)

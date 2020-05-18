@@ -146,7 +146,30 @@ void Structure_Synchronizer::send_modify_response(uint8_t struct_type, const QBy
             .timeout(nullptr, std::chrono::seconds(13))
             .writeRawData(buffer.constData(), buffer.size());
 
-    QMetaObject::invokeMethod(protocol_->worker(), "restart_service_object", Qt::QueuedConnection, Q_ARG(uint32_t, user_id));
+    auto restart_at = std::chrono::system_clock::now() + std::chrono::seconds(3);
+    if (wait_restart_from_)
+    {
+        wait_restart_from_->store(restart_at);
+    }
+    else
+    {
+        auto w = protocol_->worker();
+        auto wait_restart_from = wait_restart_from_ = std::make_shared<std::atomic<std::chrono::system_clock::time_point>>(restart_at);
+
+        std::thread([w, wait_restart_from, user_id]()
+        {
+            bool is_destroyed = false;
+            QObject::connect(w, &QObject::destroyed, [&is_destroyed]() { is_destroyed = true; });
+            do
+            {
+                std::this_thread::sleep_until(wait_restart_from->load());
+            }
+            while (!is_destroyed && wait_restart_from->load() > std::chrono::system_clock::now());
+
+            if (!is_destroyed)
+                QMetaObject::invokeMethod(w, "restart_service_object", Qt::QueuedConnection, Q_ARG(uint32_t, user_id));
+        }).detach();
+    }
 }
 
 } // namespace Client

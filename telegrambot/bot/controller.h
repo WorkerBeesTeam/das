@@ -31,7 +31,7 @@ class Controller : public QThread, public Bot_Base
 public:
     Controller(DBus::Interface* dbus_iface, const std::string& token,
         const std::string& webhook_url, uint16_t port = 8443, const std::string& webhook_cert = {},
-               const std::string& templates_path = {});
+        const std::string& auth_base_url = "https://deviceaccess.ru/tg_auth/", const std::string& templates_path = {});
     ~Controller();
 
     void stop();
@@ -89,7 +89,7 @@ private:
     TgBot::User::Ptr bot_user_;
 
     TgBot::TgWebhookTcpServer* server_;
-    std::string token_, webhook_url_, webhook_cert_;
+    std::string token_, webhook_url_, webhook_cert_, auth_base_url_;
 
     const uint32_t schemes_per_page_ = 5;
 

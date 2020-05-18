@@ -1,0 +1,7 @@
+{
+    "type": "resistance",
+    "param": {
+        "device": [],
+        "device_item": ["pin"]
+    }
+}

@@ -38,7 +38,8 @@ namespace Das {
 
 using namespace Helpz::DB;
 
-Scheme_Copier::Scheme_Copier(uint32_t orig_id, uint32_t dest_id)
+Scheme_Copier::Scheme_Copier(uint32_t orig_id, uint32_t dest_id, bool is_dry_run) :
+    is_dry_run_(is_dry_run)
 {
     copy(orig_id, dest_id);
 }
@@ -157,6 +158,7 @@ void Scheme_Copier::copy_table(Base& db, const QString &suffix, uint32_t orig_id
         skipped_vect = std::move(tmp_vect);
 
         fill_vects(dest_id, skipped_vect, orig_vect, dest_vect, upd_vect, id_map, self_column_index);
+        sort_insert_vect(orig_vect, self_column_index);
         proc_vects(db, orig_vect, dest_vect, upd_vect, id_map);
 
         // In next iteration we don't need to delete or update items
@@ -270,7 +272,8 @@ DECL_SCHEME_COPY_TRAILS(DB::Disabled_Status,    group_id, status_id)
 DECL_SCHEME_COPY_TRAILS(DB::Node,               name, type_id, parent_id)
 
 template<typename T>
-void Scheme_Copier::fill_vects(uint32_t dest_id, std::vector<T>& skipped_vect, std::vector<T>& insert_vect, std::vector<T>& delete_vect, std::vector<T>& update_vect, std::map<uint32_t, uint32_t>* id_map, int self_column_index)
+void Scheme_Copier::fill_vects(uint32_t dest_id, std::vector<T>& skipped_vect, std::vector<T>& insert_vect, std::vector<T>& delete_vect,
+                               std::vector<T>& update_vect, std::map<uint32_t, uint32_t>* id_map, int self_column_index)
 {
     std::vector<T>& orig_vect = insert_vect;
     std::vector<T>& dest_vect = delete_vect;
@@ -365,6 +368,21 @@ void Scheme_Copier::fill_vects(uint32_t dest_id, std::vector<T>& skipped_vect, s
 }
 
 template<typename T>
+void Scheme_Copier::sort_insert_vect(std::vector<T>& vect, int self_column_index)
+{
+    std::sort(vect.begin(), vect.end(), [self_column_index](const T& t1, const T& t2)
+    {
+        if (self_column_index != -1)
+        {
+            if (T::value_getter(t1, self_column_index).toUInt()
+                < T::value_getter(t2, self_column_index).toUInt())
+                return true;
+        }
+        return t1.id() < t2.id();
+    });
+}
+
+template<typename T>
 void Scheme_Copier::proc_vects(Base& db, const std::vector<T>& insert_vect, const std::vector<T>& delete_vect, const std::vector<T>& update_vect, std::map<uint32_t, uint32_t>* id_map)
 {
     Table table = db_table<T>();
@@ -377,20 +395,22 @@ void Scheme_Copier::proc_vects(Base& db, const std::vector<T>& insert_vect, cons
     if (!delete_vect.empty())
     {
         Delete_Row_Info_List delete_array = DB::db_delete_info<T>(QString());
-        const QString pk_name = table.field_names().at(DB::Scheme_Table_Helper<T>::pk_num);
+        const int pk_index = DB::Scheme_Table_Helper<T>::pk_num;
+
+        const Delete_Row_Info row_info{table, pk_index, delete_array, false, pk_index};
 
         for (const T& item: delete_vect)
         {
-            if (!Delete_Row_Helper(&db, QString::number(item.id()))
-                    .del(table.name(), delete_array, pk_name))
-            {
-                ++scheme_item.counter_[Item::SCI_DELETE_ERROR];
-                qDebug() << "Scheme_Copier: Delete error:" << item.id() << "scheme_id:" << item.scheme_id() << "table" << table.name() << T::value_getter(item, 1).toString();
-            }
-            else
+            if (is_dry_run_ || Delete_Row_Helper(&db, QString::number(item.id()))
+                    .del(row_info))
             {
                 ++scheme_item.counter_[Item::SCI_DELETED];
                 qDebug() << "Scheme_Copier: Delete:" << item.id() << "scheme_id:" << item.scheme_id() << "table" << table.name() << T::value_getter(item, 1).toString();
+            }
+            else
+            {
+                ++scheme_item.counter_[Item::SCI_DELETE_ERROR];
+                qDebug() << "Scheme_Copier: Delete error:" << item.id() << "scheme_id:" << item.scheme_id() << "table" << table.name() << T::value_getter(item, 1).toString();
             }
         }
     }
@@ -408,16 +428,16 @@ void Scheme_Copier::proc_vects(Base& db, const std::vector<T>& insert_vect, cons
                 query.bindValue(i, T::value_getter(item, i));
             query.bindValue(i, item.id());
 
-            if (!query.exec())
+            if (is_dry_run_ || query.exec())
+            {
+                ++scheme_item.counter_[Item::SCI_UPDATED];
+                qDebug() << "Scheme_Copier: Update:" << item.id() << "scheme_id:" << item.scheme_id() << "table" << table.name() << T::value_getter(item, 1).toString();
+            }
+            else
             {
                 ++scheme_item.counter_[Item::SCI_UPDATE_ERROR];
                 qWarning() << "Scheme_Copier: Update error:" << item.id() << "scheme_id:" << item.scheme_id() << "table" << table.name() << T::value_getter(item, 1).toString()
                            << "Error:" << query.lastError().text();
-            }
-            else
-            {
-                ++scheme_item.counter_[Item::SCI_UPDATED];
-                qDebug() << "Scheme_Copier: Update:" << item.id() << "scheme_id:" << item.scheme_id() << "table" << table.name() << T::value_getter(item, 1).toString();
             }
         }
     }
@@ -434,19 +454,22 @@ void Scheme_Copier::proc_vects(Base& db, const std::vector<T>& insert_vect, cons
             for (i = 1; i < T::COL_COUNT; ++i)
                 query.bindValue(i - 1, T::value_getter(item, i));
 
-            if (!query.exec())
-            {
-                ++scheme_item.counter_[Item::SCI_INSERT_ERROR];
-                qDebug() << "Scheme_Copier: Insert error:" << item.id() << "scheme_id:" << item.scheme_id() << "table" << table.name() << T::value_getter(item, 1).toString()
-                         << "Error:" << query.lastError().text();
-            }
-            else
+            if (is_dry_run_ || query.exec())
             {
                 ++scheme_item.counter_[Item::SCI_INSERTED];
                 qDebug() << "Scheme_Copier: Insert:" << item.id() << "scheme_id:" << item.scheme_id() << "table" << table.name() << T::value_getter(item, 1).toString();
 
                 if (id_map)
-                    id_map->emplace(item.id(), query.lastInsertId().toUInt());
+                {
+                    const uint32_t new_id = is_dry_run_ ? random() : query.lastInsertId().toUInt();
+                    id_map->emplace(item.id(), new_id);
+                }
+            }
+            else
+            {
+                ++scheme_item.counter_[Item::SCI_INSERT_ERROR];
+                qDebug() << "Scheme_Copier: Insert error:" << item.id() << "scheme_id:" << item.scheme_id() << "table" << table.name() << T::value_getter(item, 1).toString()
+                         << "Error:" << query.lastError().text();
             }
         }
     }
