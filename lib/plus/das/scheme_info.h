@@ -38,6 +38,7 @@ public:
     Scheme_Info(const Scheme_Info&) = default;
     Scheme_Info& operator=(Scheme_Info&&) = default;
     Scheme_Info& operator=(const Scheme_Info&) = default;
+    virtual ~Scheme_Info() = default;
 
     uint32_t id() const;
     void set_id(uint32_t id);

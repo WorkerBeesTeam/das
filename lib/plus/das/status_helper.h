@@ -11,15 +11,24 @@ namespace Das {
 class Status_Helper
 {
 public:
-    struct Section {
+    struct Section
+    {
         bool operator == (uint32_t id) const { return id_ == id; }
         uint32_t id_;
-        QString name_;
-        struct Group {
+        std::string name_;
+        struct Group
+        {
             bool operator == (uint32_t id) const { return id_ == id; }
             uint32_t id_;
-            QString name_;
-            std::vector<std::pair<QString,QString>> status_text_vect_;
+            std::string name_;
+
+            struct Status
+            {
+                uint32_t type_id_;
+                std::string icon_, text_;
+            };
+
+            std::vector<Status> status_vect_;
         };
         std::vector<Group> group_vect_;
     };

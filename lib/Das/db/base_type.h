@@ -20,10 +20,10 @@ struct DAS_LIBRARY_SHARED_EXPORT Base_Type : public Schemed_Model
     Base_Type& operator=(const Base_Type& other) = default;
 
     uint32_t id() const;
-    void set_id(uint32_t _id);
+    void set_id(uint32_t id);
 
     QString name() const;
-    void set_name(const QString& _name);
+    void set_name(const QString& name);
 
 private:
     uint32_t id_;
@@ -122,7 +122,7 @@ struct DAS_LIBRARY_SHARED_EXPORT Titled_Type : public Base_Type {
     Titled_Type& operator=(const Titled_Type& o) = default;
 
     QString title() const;
-    void set_title(const QString& _title);
+    void set_title(const QString& title);
 private:
     QString title_;
 

@@ -350,7 +350,7 @@ void Scripted_Scheme::scripts_initialization(const QVector<Code_Item>& code_vect
     {
         qCDebug(ScriptDetailLog) << "load_scripts_from_dir begin" << dir_path;
         QDir scripts(dir_path);
-        QFileInfoList js_list = scripts.entryInfoList(QDir::Files | QDir::NoSymLinks | QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+        QFileInfoList js_list = scripts.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
 
         for (const QFileInfo& file_info: js_list)
         {

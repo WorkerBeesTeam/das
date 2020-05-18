@@ -23,7 +23,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Auth_Group : public Base_Type
 {
-    HELPZ_DB_META(Auth_Group, "auth_group", "ag", 2, DB_A(id), DB_A(name))
+    HELPZ_DB_META(Auth_Group, "auth_group", "ag", DB_A(id), DB_A(name))
 public:
     using Base_Type::Base_Type;
 };
@@ -32,7 +32,7 @@ public:
 
 class DAS_LIBRARY_SHARED_EXPORT Auth_Group_Permission
 {
-    HELPZ_DB_META(Auth_Group_Permission, "auth_group_permissions", "agp", 3, DB_A(id), DB_A(group_id), DB_A(permission_id))
+    HELPZ_DB_META(Auth_Group_Permission, "auth_group_permissions", "agp", DB_A(id), DB_A(group_id), DB_A(permission_id))
 public:
     Auth_Group_Permission(uint32_t id = 0, uint32_t group_id = 0, uint32_t permission_id = 0);
 

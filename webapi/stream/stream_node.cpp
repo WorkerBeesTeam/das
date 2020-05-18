@@ -81,7 +81,7 @@ void Stream_Node::close()
     controller_->remove(remote_endpoint_);
 }
 
-void Stream_Node::write(Helpz::Net::Message_Item message)
+void Stream_Node::write(std::shared_ptr<Helpz::Net::Message_Item> message)
 {
     const QByteArray data = proto_->prepare_packet_to_send(std::move(message));
     write(data);

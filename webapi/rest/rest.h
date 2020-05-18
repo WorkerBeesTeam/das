@@ -3,6 +3,8 @@
 
 #include <thread>
 
+#include <QLoggingCategory>
+
 namespace served {
 namespace net {
 class server;
@@ -18,10 +20,12 @@ class JWT_Helper;
 
 namespace Rest {
 
+Q_DECLARE_LOGGING_CATEGORY(Rest_Log)
+
 struct Config
 {
     int thread_count_;
-    std::string address_, port_;
+    std::string address_, port_, base_path_;
 };
 
 class Restful

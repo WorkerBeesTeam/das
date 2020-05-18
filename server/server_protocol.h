@@ -18,8 +18,10 @@ using namespace Das::Server;
 class Protocol final : public Protocol_Base
 {
 public:
-    Protocol(Work_Object* work_object);
-    ~Protocol();
+    Protocol(Worker* work_object);
+    virtual ~Protocol();
+
+    void disable_sync();
 
     Structure_Synchronizer* structure_sync();
     Log_Synchronizer* log_sync();
@@ -31,6 +33,7 @@ public:
 
     void set_scheme_name(uint32_t user_id, const QString& name);
 private:
+    void closed() override;
     void before_remove_copy() override;
     void lost_msg_detected(uint8_t msg_id, uint8_t expected) override;
     void ready_write() override;
@@ -47,7 +50,7 @@ private:
     void stream_param(uint32_t dev_item_id, const QByteArray& data);
     void stream_data(uint32_t dev_item_id, const QByteArray& data);
 
-    bool is_copy_;
+    bool is_copy_, disable_sync_;
     Log_Synchronizer log_sync_;
     Structure_Synchronizer structure_sync_;
 

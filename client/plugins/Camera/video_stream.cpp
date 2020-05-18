@@ -2,7 +2,6 @@
 #include <sys/mman.h>
 
 #include <QFile>
-#include <QImage>
 #include <QDebug>
 
 #include "v4l2-api.h"
@@ -10,18 +9,21 @@
 
 namespace Das {
 
-Video_Stream::Video_Stream(const QString &device_path) :
-    convert_data_(nullptr)
+Video_Stream::Video_Stream(const QString &device_path, uint32_t width, uint32_t height, int quality) :
+    quality_(quality),
+    convert_data_(nullptr),
+    data_(), data_buffer_(&data_)
 {
     if (!open_device(device_path))
         throw std::runtime_error("Failed open device");
 
-    const std::string error = start();
+    data_buffer_.open(QIODevice::WriteOnly);
+
+    const std::string error = start(width, height);
     if (!error.empty())
     {
         stop();
         close_device();
-
         throw std::runtime_error(error);
     }
 
@@ -45,7 +47,30 @@ const QByteArray &Video_Stream::param()
 const QByteArray &Video_Stream::get_frame()
 {
     cap_frame();
+
+    data_buffer_.seek(0);
+    if (!img_.save(&data_buffer_, "JPEG", quality_))
+        qWarning() << "Failed save frame";
     return data_;
+}
+
+uint32_t Video_Stream::width() const
+{
+    return dest_format_.fmt.pix.width;
+}
+
+uint32_t Video_Stream::height() const
+{
+    return dest_format_.fmt.pix.height;
+}
+
+void Video_Stream::reinit(uint32_t width, uint32_t height)
+{
+    stop();
+
+    const std::string error = start(width, height);
+    if (!error.empty())
+        qWarning() << "Failed reinit:" << error.c_str();
 }
 
 bool Video_Stream::open_device(const QString &device_path)
@@ -74,11 +99,14 @@ void Video_Stream::close_device()
 
     delete v4l2_;
     v4l2_ = nullptr;
+
+    data_buffer_.close();
 }
 
-std::string Video_Stream::start()
+std::string Video_Stream::start(uint32_t width, uint32_t height)
 {
-    init_format();
+    if (!init_format(width, height))
+        return "Failed init format";
 
     __u32 buftype = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
@@ -127,31 +155,63 @@ std::string Video_Stream::start()
     return {};
 }
 
-void Video_Stream::init_format()
+std::string fcc2s(unsigned int val)
 {
-    static const struct Supported_Format
-    {
-        __u32 v4l2_pixfmt_;
-        QImage::Format qt_pixfmt_;
-    } supported_fmts[] = {
-#if Q_BYTE_ORDER == Q_BIG_ENDIAN
-        { V4L2_PIX_FMT_RGB32, QImage::Format_RGB32 },
-        { V4L2_PIX_FMT_RGB24, QImage::Format_RGB888 },
-        { V4L2_PIX_FMT_RGB565X, QImage::Format_RGB16 },
-        { V4L2_PIX_FMT_RGB555X, QImage::Format_RGB555 },
-#else
-        { V4L2_PIX_FMT_BGR32, QImage::Format_RGB32 },
-        { V4L2_PIX_FMT_RGB24, QImage::Format_RGB888 },
-        { V4L2_PIX_FMT_RGB565, QImage::Format_RGB16 },
-        { V4L2_PIX_FMT_RGB555, QImage::Format_RGB555 },
-        { V4L2_PIX_FMT_RGB444, QImage::Format_RGB444 },
-#endif
-        { 0, QImage::Format_Invalid }
-    };
+    std::string s;
 
-    QImage::Format dst_fmt = QImage::Format_RGB888;
+    s += val & 0x7f;
+    s += (val >> 8) & 0x7f;
+    s += (val >> 16) & 0x7f;
+    s += (val >> 24) & 0x7f;
+    if (val & (1 << 31))
+        s += "-BE";
+    return s;
+}
+
+bool Video_Stream::init_format(uint32_t width, uint32_t height)
+{
+//    static const struct Supported_Format
+//    {
+//        __u32 v4l2_pixfmt_;
+//        QImage::Format qt_pixfmt_;
+//    } supported_fmts[] = {
+//#if Q_BYTE_ORDER == Q_BIG_ENDIAN
+//        { V4L2_PIX_FMT_RGB32, QImage::Format_RGB32 },
+//        { V4L2_PIX_FMT_RGB24, QImage::Format_RGB888 },
+//        { V4L2_PIX_FMT_RGB565X, QImage::Format_RGB16 },
+//        { V4L2_PIX_FMT_RGB555X, QImage::Format_RGB555 },
+//#else
+//        { V4L2_PIX_FMT_BGR32, QImage::Format_RGB32 },
+//        { V4L2_PIX_FMT_RGB24, QImage::Format_RGB888 },
+//        { V4L2_PIX_FMT_RGB565, QImage::Format_RGB16 },
+//        { V4L2_PIX_FMT_RGB555, QImage::Format_RGB555 },
+//        { V4L2_PIX_FMT_RGB444, QImage::Format_RGB444 },
+//#endif
+//        { 0, QImage::Format_Invalid }
+//    };
 
     v4l2_->g_fmt_cap(src_format_);
+
+    uint32_t pixel_format = src_format_.fmt.pix.pixelformat;
+
+    if (!width || !height)
+    {
+        Frame_Size size = v4l2_->get_max_resolution();
+        width = size.width_;
+        height = size.height_;
+        pixel_format = size.pixel_format_;
+    }
+
+    if (width != src_format_.fmt.pix.width
+        || height != src_format_.fmt.pix.height)
+    {
+        src_format_.fmt.pix.width = width;
+        src_format_.fmt.pix.height = height;
+        src_format_.fmt.pix.pixelformat = pixel_format;
+        src_format_.fmt.pix.bytesperline = 0;
+        src_format_.fmt.pix.sizeimage = 0;
+    }
+
     v4l2_->s_fmt(src_format_);
 
     must_convert_ = true;
@@ -159,54 +219,49 @@ void Video_Stream::init_format()
     dest_format_ = src_format_;
     dest_format_.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24;
 
-    for (int i = 0; supported_fmts[i].v4l2_pixfmt_; i++)
-    {
-        const Supported_Format& fmt = supported_fmts[i];
-        if (fmt.v4l2_pixfmt_ == src_format_.fmt.pix.pixelformat)
-        {
-            dest_format_.fmt.pix.pixelformat = fmt.v4l2_pixfmt_;
-            dst_fmt = fmt.qt_pixfmt_;
-            must_convert_ = false;
-            break;
-        }
-    }
+//    for (int i = 0; supported_fmts[i].v4l2_pixfmt_; i++)
+//    {
+//        const Supported_Format& fmt = supported_fmts[i];
+//        if (fmt.v4l2_pixfmt_ == src_format_.fmt.pix.pixelformat)
+//        {
+//            dest_format_.fmt.pix.pixelformat = fmt.v4l2_pixfmt_;
+////            dst_fmt = fmt.qt_pixfmt_;
+//            must_convert_ = false;
+//            break;
+//        }
+//    }
 
     if (must_convert_)
     {
         v4l2_format copy = src_format_;
+
+        if (width && height
+            && (width != dest_format_.fmt.pix.width
+                || height != dest_format_.fmt.pix.height))
+        {
+            dest_format_.fmt.pix.width = width;
+            dest_format_.fmt.pix.height = height;
+            dest_format_.fmt.pix.bytesperline = 0;
+            dest_format_.fmt.pix.sizeimage = 0;
+        }
 
         v4lconvert_try_format(convert_data_, &dest_format_, &src_format_);
         // v4lconvert_try_format sometimes modifies the source format if it thinks
         // that there is a better format available. Restore our selected source
         // format since we do not want that happening.
         src_format_ = copy;
+
+        qDebug().nospace() << "Convert from "
+                 << fcc2s(src_format_.fmt.pix.pixelformat).c_str() << ' ' << src_format_.fmt.pix.width << 'x' << src_format_.fmt.pix.height << " size " << src_format_.fmt.pix.sizeimage
+                 << " to "
+                 << fcc2s(dest_format_.fmt.pix.pixelformat).c_str() << ' ' << dest_format_.fmt.pix.width << 'x' << dest_format_.fmt.pix.height << " size " << dest_format_.fmt.pix.sizeimage;
     }
 
-#ifdef QT_DEBUG
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_UV8) qDebug() << "V4L2_PIX_FMT_UV8";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YVU410) qDebug() << "V4L2_PIX_FMT_YVU410";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YVU420) qDebug() << "V4L2_PIX_FMT_YVU420";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) qDebug() << "V4L2_PIX_FMT_YUYV";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YYUV) qDebug() << "V4L2_PIX_FMT_YYUV";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YVYU) qDebug() << "V4L2_PIX_FMT_YVYU";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY) qDebug() << "V4L2_PIX_FMT_UYVY";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_VYUY) qDebug() << "V4L2_PIX_FMT_VYUY";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV422P) qDebug() << "V4L2_PIX_FMT_YUV422P";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV411P) qDebug() << "V4L2_PIX_FMT_YUV411P";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_Y41P) qDebug() << "V4L2_PIX_FMT_Y41P";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV444) qDebug() << "V4L2_PIX_FMT_YUV444";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV555) qDebug() << "V4L2_PIX_FMT_YUV555";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV565) qDebug() << "V4L2_PIX_FMT_YUV565";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV32) qDebug() << "V4L2_PIX_FMT_YUV32";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV410) qDebug() << "V4L2_PIX_FMT_YUV410";
-    if (src_format_.fmt.pix.pixelformat == V4L2_PIX_FMT_YUV420) qDebug() << "V4L2_PIX_FMT_YUV420";
-#endif
+    QImage::Format dst_fmt = QImage::Format_RGB888;
+    img_ = QImage(dest_format_.fmt.pix.width, dest_format_.fmt.pix.height, dst_fmt);
+    img_.fill(0);
 
-    QDataStream ds(&data_, QIODevice::WriteOnly);
-    ds << dest_format_.fmt.pix.width << dest_format_.fmt.pix.height;
-
-    //    m_capImage = new QImage(dest_format_.fmt.pix.width, dest_format_.fmt.pix.height, dst_fmt);
-    //    m_capImage->fill(0);
+    return img_.sizeInBytes() == dest_format_.fmt.pix.sizeimage;
 }
 
 void Video_Stream::stop()
@@ -218,7 +273,7 @@ void Video_Stream::stop()
     v4l2_requestbuffers reqbufs;
 
     if (!v4l2_->streamoff(buftype))
-        perror("VIDIOC_STREAMOFF");
+        perror("VIDIOC_");
 
     for (const Buffer& buff: buffers_)
         if (-1 == v4l2_->munmap(buff.start_, buff.length_))
@@ -247,25 +302,17 @@ void Video_Stream::cap_frame()
     int err = 0;
     if (must_convert_)
     {
-        if (data_.size() != (8 + dest_format_.fmt.pix.sizeimage))
-            data_.resize(8 + dest_format_.fmt.pix.sizeimage);
-
         err = v4lconvert_convert(convert_data_,
             &src_format_, &dest_format_,
             static_cast<uint8_t*>(buffer.start_), buf.bytesused,
-            reinterpret_cast<uint8_t*>(data_.data() + 8), dest_format_.fmt.pix.sizeimage);
+            img_.bits(), dest_format_.fmt.pix.sizeimage);
 
         if (err == -1)
             v4l2_->error(v4lconvert_get_error_message(convert_data_));
     }
 
     if (!must_convert_ || err < 0)
-    {
-        if (data_.size() != (8 + buf.bytesused))
-            data_.resize(8 + buf.bytesused);
-
-        memcpy(data_.data() + 8, buffer.start_, buf.bytesused);
-    }
+        memcpy(img_.bits(), buffer.start_, buf.bytesused);
 
     v4l2_->qbuf(buf);
 }

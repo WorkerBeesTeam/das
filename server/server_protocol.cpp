@@ -16,9 +16,10 @@ namespace Das {
 namespace Ver {
 namespace Server {
 
-Protocol::Protocol(Work_Object* work_object) :
+Protocol::Protocol(Worker *work_object) :
     Protocol_Base{ work_object },
     is_copy_(false),
+    disable_sync_(false),
     log_sync_(this),
     structure_sync_(this)
 {
@@ -26,11 +27,18 @@ Protocol::Protocol(Work_Object* work_object) :
 
 Protocol::~Protocol()
 {
-    if (!is_copy_ && id())
+    if (/*!is_copy_ &&*/ id())
     {
+        std::cout << "~Protocol " << id() << " is copy: " << std::boolalpha << is_copy_ << std::endl;
+//        std::cout << "closed " << id() << " is copy: " << is_copy_ << std::endl;
         work_object()->recently_connected_.disconnected(*this);
         set_connection_state(CS_DISCONNECTED_JUST_NOW);
     }
+}
+
+void Protocol::disable_sync()
+{
+    disable_sync_ = true;
 }
 
 Structure_Synchronizer* Protocol::structure_sync()
@@ -45,7 +53,7 @@ Log_Synchronizer *Protocol::log_sync()
 
 int Protocol::protocol_version() const
 {
-    return 204;
+    return 205;
 }
 
 void Protocol::send_file(uint32_t user_id, uint32_t dev_item_id, const QString& file_name, const QString& file_path)
@@ -81,12 +89,17 @@ void Protocol::send_file(uint32_t user_id, uint32_t dev_item_id, const QString& 
 
 void Protocol::synchronize(bool full)
 {
-    structure_sync_.check(full ? structure_sync_.modified() : true, true);
+    if (!disable_sync_)
+        structure_sync_.check(full ? structure_sync_.modified() : true, true);
 }
 
 void Protocol::set_scheme_name(uint32_t user_id, const QString &name)
 {
     send(Cmd::SET_SCHEME_NAME).timeout(nullptr, std::chrono::seconds(8)) << user_id << name;
+}
+
+void Protocol::closed()
+{
 }
 
 void Protocol::before_remove_copy()
@@ -99,7 +112,7 @@ void Protocol::lost_msg_detected(uint8_t /*msg_id*/, uint8_t /*expected*/)
     set_connection_state(connection_state() | CS_CONNECTED_WITH_LOSSES);
 
     const auto now = std::chrono::system_clock::now();
-    if (now - last_sync_time_ > std::chrono::seconds(7))
+    if (!disable_sync_ && now - last_sync_time_ > std::chrono::seconds(7))
     {
         last_sync_time_ = now;
         log_sync_.check();
@@ -200,14 +213,23 @@ void Protocol::auth(const Authentication_Info &info, bool modified, uint8_t msg_
     {
         work_object()->server_thread_->server()->remove_copy(this);
 
+        work_object()->save_connection_state_to_log(id(), std::chrono::system_clock::now(), /*state=*/true);
+
         structure_sync_.set_modified(modified);
-        set_connection_state(CS_CONNECTED_JUST_NOW | (modified ? CS_CONNECTED_MODIFIED : 0));
+        set_connection_state(CS_CONNECTED_JUST_NOW);
+        std::cout << "Connected state " << id() << std::endl;
+
+        if (modified)
+            set_connection_state(connection_state() | CS_CONNECTED_MODIFIED);
 
         send(Cmd::VERSION).answer([this](QIODevice& data_dev) { print_version(data_dev); });
         send(Cmd::TIME_INFO).answer([this](QIODevice& data_dev) { apply_parse(data_dev, &Protocol::set_time_offset); });
 
-        structure_sync_.check(modified);
-        log_sync_.check();
+        if (!disable_sync_)
+        {
+            structure_sync_.check(modified);
+            log_sync_.check();
+        }
 
         if (!work_object()->recently_connected_.remove(id()))
         {

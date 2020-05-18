@@ -122,8 +122,11 @@ void Camera_Thread::run()
                     if (!socket_)
                         socket_.reset(new Stream_Client_Thread(config().stream_server_.toStdString(), config().stream_server_port_.toStdString()));
 
-                    std::unique_ptr<Video_Stream> stream(new Video_Stream(path));
+                    std::unique_ptr<Video_Stream> stream(new Video_Stream(path, config().stream_width_, config().stream_height_, config().quality_));
                     const QByteArray param = stream->param();
+
+                    qCDebug(CameraLog).nospace() << data.user_id_ << "|Start stream " << stream->width() << 'x' << stream->height();
+
                     auto it = streams_.emplace(data.item_, std::move(stream));
                     if (!it.second)
                         throw std::runtime_error("Emplace failed");
@@ -191,27 +194,46 @@ void Camera_Thread::read_item(Device_Item *item)
 {
     QByteArray data = "img:";
 
+    auto fill_data = [this, &data](std::unique_ptr<Video_Stream>& stream)
+    {
+        for (uint32_t i = 0; i < config().picture_skip_; ++i)
+            stream->get_frame();
+        data += stream->get_frame().toBase64();
+    };
+
     auto it = streams_.find(item);
-    if (it != streams_.cend())
+
+    try
     {
-        data += it->second->get_frame().toBase64();
-    }
-    else
-    {
-        try
+        if (it != streams_.end())
+        {
+            std::unique_ptr<Video_Stream>& stream = it->second;
+
+            uint32_t width = stream->width();
+            uint32_t height = stream->height();
+
+            stream->reinit();
+            fill_data(stream);
+            stream->reinit(width, height);
+        }
+        else
         {
             const QString path = get_device_path(item);
-            std::unique_ptr<Video_Stream> stream(new Video_Stream(path));
+            std::unique_ptr<Video_Stream> stream(new Video_Stream(path, 0, 0, config().quality_));
 
-            for (uint32_t i = 0; i < config().picture_skip_; ++i)
-                stream->get_frame();
-            data += stream->get_frame().toBase64();
+            fill_data(stream);
         }
-        catch (const std::exception& e)
+    }
+    catch (const std::exception& e)
+    {
+        qCCritical(CameraLog) << "Save frame failed:" << e.what() << "item:" << item->display_name();
+        if (it != streams_.end())
         {
-            qCCritical(CameraLog) << "Save frame failed:" << e.what() << ". item:" << item->display_name();
-            return;
+            iface_->manager()->send_stream_toggled(0, it->first, false);
+            streams_.erase(it);
+            socket_.reset();
         }
+        return;
     }
 
     const qint64 now = Log_Value_Item::current_timestamp();
@@ -245,7 +267,10 @@ void Camera_Plugin::configure(QSettings *settings)
                 Param<QString>{"StreamServer", "deviceaccess.ru"},
                 Param<QString>{"StreamServerPort", "6731"},
                 Param<uint32_t>{"FrameDelayMs", 60},
-                Param<uint32_t>{"PictureSkip", 50}
+                Param<uint32_t>{"PictureSkip", 50},
+                Param<uint32_t>{"StreamWidth", 320},
+                Param<uint32_t>{"StreamHeight", 240},
+                Param<int32_t>{"Quality", -1}
     ).obj<Camera::Config>();
 
     thread_.start(std::move(config), this);

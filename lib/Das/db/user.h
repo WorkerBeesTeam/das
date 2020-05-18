@@ -13,7 +13,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT User
 {
-    HELPZ_DB_META(User, "user", "u", 13, DB_A(id), DB_A(is_superuser), DB_A(is_active), DB_A(is_staff),
+    HELPZ_DB_META(User, "user", "u", DB_A(id), DB_A(is_superuser), DB_A(is_active), DB_A(is_staff),
                   DB_A(date_joined), DB_A(last_login), DB_A(username), DB_A(first_name), DB_A(last_name),
                   DB_A(email), DB_A(password), DB_A(need_to_change_password), DB_A(phone_number))
 public:
@@ -91,7 +91,7 @@ QDataStream& operator>>(QDataStream& ds, User& item);
 
 class DAS_LIBRARY_SHARED_EXPORT User_Groups
 {
-    HELPZ_DB_META(User_Groups, "user_groups", "ug", 3, DB_A(id), DB_A(user_id), DB_A(group_id))
+    HELPZ_DB_META(User_Groups, "user_groups", "ug", DB_A(id), DB_A(user_id), DB_A(group_id))
 public:
     User_Groups(uint32_t id = 0, uint32_t user_id = 0, uint32_t group_id = 0);
 

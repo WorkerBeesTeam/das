@@ -3,22 +3,21 @@
 
 #include <QObject>
 
-#include "work_object.h"
-
 namespace Das {
 namespace Server {
 
+class Worker;
 class Command_Line_Parser : public QObject
 {
     Q_OBJECT
 public:
-    Command_Line_Parser(Work_Object* work_object);
+    Command_Line_Parser(Worker* work_object);
 
     void process_commands(const QStringList &args);
 private:
     void print_connected_schemes(bool with_version) const;
 
-    Work_Object* work_object_;
+    Worker* work_object_;
 };
 
 } // namespace Server

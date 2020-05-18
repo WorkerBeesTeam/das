@@ -29,14 +29,22 @@ Helper::Helper(QObject *parent) :
 Helper::Helper(const Helpz::DB::Connection_Info& info, const QString &name, QObject *parent) :
     QObject(parent), Helpz::DB::Base::Base{info, name} {}
 
-/*static*/ QString Helper::get_default_suffix()
+/*static*/ QString Helper::get_default_suffix(const QString &table_short_name)
 {
-    return "scheme_id = " + QString::number(Schemed_Model::default_scheme_id());
+    QString suffix;
+    if (!table_short_name.isEmpty())
+    {
+        suffix = table_short_name;
+        suffix += '.';
+    }
+    suffix += "scheme_id = ";
+    suffix += QString::number(Schemed_Model::default_scheme_id());
+    return suffix;
 }
 
-QString Helper::get_default_where_suffix()
+QString Helper::get_default_where_suffix(const QString& table_short_name)
 {
-    return "WHERE " + get_default_suffix();
+    return "WHERE " + get_default_suffix(table_short_name);
 }
 
 /*static*/ QVector<Save_Timer> Helper::get_save_timer_vect()
@@ -169,7 +177,10 @@ void Helper::fill_section(Scheme* scheme, std::map<uint32_t, Device_item_Group*>
             db_build_list<DB::Device_Item_Group>(*this, get_default_where_suffix() + " ORDER BY section_id ASC");
     del(db_table_name<DIG_Status>(), get_default_suffix());
     QVector<DIG_Mode> dig_modes = db_build_list<DIG_Mode>(*this, get_default_where_suffix());
-    QVector<DIG_Param> dig_params = db_build_list<DIG_Param>(*this, get_default_where_suffix());
+    QVector<DIG_Param> dig_params = db_build_list<DIG_Param>(*this,
+                                                             "LEFT JOIN das_dig_param_type gpt ON gpt.id = hgp.param_id " +
+                                                             get_default_where_suffix(DIG_Param::table_short_name()) +
+                                                             " ORDER BY gpt.parent_id ASC, hgp.param_id ASC");
     QVector<DIG_Param_Value> dig_param_values = db_build_list<DIG_Param_Value>(*this, get_default_where_suffix());
     QString dig_param_value;
 

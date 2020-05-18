@@ -19,9 +19,15 @@ LIBS += -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzNetwork -lHe
 LIBS += -L/usr/local/lib -lserved
 
 SOURCES += main.cpp \
-    rest/restful.cpp \
     rest/csrf_middleware.cpp \
     rest/auth_middleware.cpp \
+    rest/filter.cpp \
+    rest/multipart_form_data_parser.cpp \
+    rest/rest.cpp \
+    rest/rest_chart.cpp \
+    rest/rest_scheme.cpp \
+    rest/rest_scheme_group.cpp \
+    rest/scheme_copier.cpp \
     worker.cpp \
     websocket.cpp \
     webcommand.cpp \
@@ -32,9 +38,16 @@ SOURCES += main.cpp \
     stream/stream_node.cpp
 
 HEADERS += \
-    rest/restful.h \
     rest/csrf_middleware.h \
     rest/auth_middleware.h \
+    rest/filter.h \
+    rest/json_helper.h \
+    rest/multipart_form_data_parser.h \
+    rest/rest.h \
+    rest/rest_chart.h \
+    rest/rest_scheme.h \
+    rest/rest_scheme_group.h \
+    rest/scheme_copier.h \
     worker.h \
     websocket.h \
     webcommand.h \

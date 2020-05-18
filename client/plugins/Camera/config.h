@@ -18,6 +18,9 @@ struct Config {
     QString stream_server_port_;
     uint32_t frame_delay_;
     uint32_t picture_skip_;
+    uint32_t stream_width_;
+    uint32_t stream_height_;
+    int32_t quality_;
 };
 
 } // namespace Camera

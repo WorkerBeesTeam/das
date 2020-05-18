@@ -9,7 +9,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT DIG_Type : public Titled_Type
 {
-    HELPZ_DB_META(DIG_Type, "dig_type", "gt", 5, DB_A(id), DB_A(name), DB_A(title), DB_ANS(description), DB_A(scheme_id))
+    HELPZ_DB_META(DIG_Type, "dig_type", "gt", DB_A(id), DB_A(name), DB_A(title), DB_ANS(description), DB_A(scheme_id))
 public:
     DIG_Type(uint id = 0, const QString& name = QString(), const QString& title = QString(),
                   const QString& description = QString());

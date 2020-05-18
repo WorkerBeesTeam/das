@@ -2,6 +2,8 @@
 #include <string>
 #include <algorithm>
 
+#include <filesystem>
+
 #include <boost/algorithm/string.hpp>
 
 #include <QDebug>
@@ -24,8 +26,10 @@
 
 #include "db/tg_auth.h"
 #include "db/tg_user.h"
+#include "db/tg_chat.h"
 #include "db/tg_subscriber.h"
 
+#include "user_menu/connection_state.h"
 #include "elements.h"
 #include "controller.h"
 
@@ -35,11 +39,20 @@ namespace Bot {
 using namespace std;
 using namespace Helpz::DB;
 
-Controller::Controller(DBus::Interface *dbus_iface, const string &token, const string& webhook_url, uint16_t port, const string &webhook_cert) :
+Controller::Controller(DBus::Interface *dbus_iface, const string &token, const string& webhook_url, uint16_t port, const string &webhook_cert,
+                       const string &auth_base_url, const string &templates_path) :
     QThread(), Bot_Base(dbus_iface),
     stop_flag_(false), port_(port), bot_(nullptr), server_(nullptr), token_(token),
-    webhook_url_(webhook_url), webhook_cert_(webhook_cert)
+    webhook_url_(webhook_url), webhook_cert_(webhook_cert), auth_base_url_(auth_base_url)
 {
+    try
+    {
+        fill_templates(templates_path);
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Bot: Fail init templates " << e.what() << std::endl;
+    }
 }
 
 Controller::~Controller()
@@ -276,7 +289,10 @@ void Controller::anyMessage(TgBot::Message::Ptr message)
                 waited_map_.erase(it);
             }
 #ifdef QT_DEBUG
-            send_message(message->chat->id, "*You send*: " + message->text);
+            std::string user_text = message->text;
+            boost::replace_all(user_text, "*", "\\*");
+            boost::replace_all(user_text, "_", "\\_");
+            send_message(message->chat->id, "*You send*: " + user_text);
 #endif
         }
     }
@@ -289,7 +305,7 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
 
     if (directory == "page")
     {
-        if (cmd.size() < 4)
+        if (cmd.size() < 3)
             throw std::runtime_error("Unknown pagination argument count: " + to_string(cmd.size()));
 
         const string direction = cmd.at(1);
@@ -301,7 +317,8 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
         else
             throw std::runtime_error("Unknown pagination direction: " + direction);
 
-        send_schemes_list(user_id, message->chat, current_page, message, cmd.at(3));
+        const string search_text = cmd.size() > 3 ? cmd.at(3) : std::string();
+        send_schemes_list(user_id, message->chat, current_page, message, search_text);
     }
     else if (directory == "list")
     {
@@ -320,7 +337,22 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
         if (cmd.size() >= 3)
         {
             const string &action = cmd.at(2);
-            if (action == "status")
+            if (action == "user_menu")
+            {
+                if (cmd.size() < 4)
+                    throw std::runtime_error("Unknown user_menu argument count: " + to_string(cmd.size()));
+
+                uint32_t index = stoul(cmd.at(3));
+                if (index < user_menu_set_.size())
+                {
+                    auto it = user_menu_set_.begin();
+                    std::advance(it, index);
+
+                    const std::string text = it->get_text(user_id, scheme);
+                    send_message(message->chat->id, text);
+                }
+            }
+            else if (action == "status")
                 status(scheme, message);
             else if (action == "elem")
             {
@@ -343,7 +375,7 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
                 else if (elements.text_.empty())
                     bot_->getApi().editMessageReplyMarkup(message->chat->id, message->messageId, "", elements.keyboard_);
                 else
-                    bot_->getApi().editMessageText(elements.text_, message->chat->id, message->messageId, "", "", false, elements.keyboard_);
+                    bot_->getApi().editMessageText(elements.text_, message->chat->id, message->messageId, "", "Markdown", false, elements.keyboard_);
             }
 
             else if (action == "menu_sub_1")
@@ -405,7 +437,7 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
         const QString sql =
                 "SELECT sg.id, tgs.id FROM das_scheme_group sg "
                 "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.id "
-                "LEFt join das_tg_subscriber tgs ON tgs.group_id = sg.id AND tgs.chat_id = %1 "
+                "LEFT JOIN das_tg_subscriber tgs ON tgs.group_id = sg.id AND tgs.chat_id = %1 "
                 "WHERE sgu.user_id = %2 AND sg.id = %3 ORDER BY sg.id";
 
         Base& db = Base::get_thread_local_instance();
@@ -415,6 +447,8 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
 
         if (q.value(1).isNull())
         {
+            db.insert(db_table<DB::Tg_Chat>(), DB::Tg_Chat::to_variantlist(DB::Tg_Chat{message->chat->id, tg_user_id}));
+
             Table table = db_table<Tg_Subscriber>();
             table.field_names().removeAt(0);
             if (!db.insert(table, {(qint64)message->chat->id, group_id}))
@@ -511,18 +545,15 @@ void Controller::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
         Q_ARG(uint32_t, scheme.id()));
 
     Base& db = Base::get_thread_local_instance();
-    QString group_title, sql, status_text, status_sql,
-            text = '*' + scheme.title_ + "*\n";
+    QString sql, status_text, status_sql;
 
-    if ((scheme_status.connection_state_ & ~CS_FLAGS) >= CS_CONNECTED_JUST_NOW)
-        text += "🚀 На связи!\n";
-    else
-    {
-        text += "💢 Не подключен!\n";
+    std::string text = '*' + scheme.title_.toStdString() + "*\n";
 
+    text += User_Menu::Connection_State::to_string(scheme_status.connection_state_) + '\n';
+
+    if ((scheme_status.connection_state_ & ~CS_FLAGS) < CS_CONNECTED_JUST_NOW)
         scheme_status.status_set_ =
                 db_build_list<DIG_Status, std::set>(db, "WHERE scheme_id = " + QString::number(scheme.id()));
-    }
 
     if (!scheme_status.status_set_.empty())
     {
@@ -552,16 +583,16 @@ void Controller::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
                                          DIG_Status_Type::COL_category_id
                                      });
 
-        std::map<uint32_t, QString> group_title_map;
+        std::string group_title;
+        std::map<uint32_t, std::string> group_title_map;
         QSqlQuery q = db.exec(sql);
         while(q.next())
         {
-            group_title = q.value(2).toString();
-            if (group_title.isEmpty())
-            {
-                group_title = q.value(3).toString();
-            }
-            group_title.insert(0, q.value(1).toString() + ' ');
+            group_title = q.value(2).toString().toStdString();
+            if (group_title.empty())
+                group_title = q.value(3).toString().toStdString();
+
+            group_title.insert(0, q.value(1).toString().toStdString() + ' ');
             group_title_map.emplace(q.value(0).toUInt(), group_title);
         }
 
@@ -585,11 +616,11 @@ void Controller::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
             for (const QString& arg: status.args())
                 status_text = status_text.arg(arg);
 
-            text += ' ' + group_it->second + ": " + status_text;
+            text += ' ' + group_it->second + ": " + status_text.toStdString();
         }
     }
 
-    send_message(message->chat->id, text.toStdString());
+    send_message(message->chat->id, text);
 }
 
 void Controller::elements(uint32_t user_id, const Scheme_Item &scheme, TgBot::Message::Ptr message,
@@ -689,7 +720,7 @@ void Controller::sub_2(const Scheme_Item& scheme, TgBot::Message::Ptr message, c
 map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t page_number, const string &search_text) const
 {
     QString search_cond;
-    const QString sql = "SELECT s.id, s.title FROM das_scheme s "
+    const QString sql = "SELECT s.id, s.title, s.parent_id FROM das_scheme s "
             "LEFT JOIN das_scheme_groups sg ON sg.scheme_id = s.id "
             "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.scheme_group_id "
             "WHERE sgu.user_id = %1%4 GROUP BY s.id LIMIT %2, %3";
@@ -698,12 +729,49 @@ map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t 
         search_cond = " AND s.title LIKE '%" + QString::fromStdString(search_text) + "%'";
 
     Base& db = Base::get_thread_local_instance();
-    QSqlQuery q = db.exec(sql.arg(user_id).arg(page_number).arg(schemes_per_page_).arg(search_cond));
+    QSqlQuery q = db.exec(sql.arg(user_id).arg(schemes_per_page_ * page_number).arg(schemes_per_page_).arg(search_cond));
 
     map<uint32_t, string> res;
 
+    const QString status_sql = "SELECT category_id FROM das_dig_status_type WHERE scheme_id = %1 AND id IN (%2) ORDER BY category_id DESC LIMIT 1";
+
+    QString status_id_sep;
+    Scheme_Status scheme_status;
+    uint32_t scheme_id, parent_id;
+    std::string name;
     while (q.next())
-        res.emplace(q.value(0).toUInt(), q.value(1).toString().toStdString());
+    {
+        scheme_id = q.value(0).toUInt();
+
+        QMetaObject::invokeMethod(dbus_iface_, "get_scheme_status", Qt::BlockingQueuedConnection,
+            Q_RETURN_ARG(Scheme_Status, scheme_status),
+            Q_ARG(uint32_t, scheme_id));
+
+        name = User_Menu::Connection_State::get_emoji(scheme_status.connection_state_);
+
+        if ((scheme_status.connection_state_ & ~CS_FLAGS) < CS_CONNECTED_JUST_NOW)
+            scheme_status.status_set_ =
+                    db_build_list<DIG_Status, std::set>(db, "WHERE scheme_id = " + QString::number(scheme_id));
+
+        status_id_sep.clear();
+        for (const DIG_Status& status: scheme_status.status_set_)
+        {
+            status_id_sep += QString::number(status.status_id());
+            status_id_sep += ',';
+        }
+        if (!status_id_sep.isEmpty())
+        {
+            status_id_sep.remove(status_id_sep.size() - 1, 1);
+            parent_id = q.value(2).isNull() ? scheme_id : q.value(2).toUInt();
+            QSqlQuery status_q = db.exec(status_sql.arg(parent_id).arg(status_id_sep));
+            if (status_q.next())
+                name += default_status_category_emoji(status_q.value(0).toUInt());
+        }
+
+        name += ' ';
+        name += q.value(1).toString().toStdString();
+        res.emplace(scheme_id, name);
+    }
     return res;
 }
 
@@ -725,26 +793,28 @@ unordered_map<uint32_t, string> Controller::get_sub_1_names_for_scheme(const Sch
 
 uint32_t Controller::get_authorized_user_id(uint32_t user_id, int64_t chat_id, bool skip_message) const
 {
+    uint32_t das_user_id = 0;
+
     Base& db = Base::get_thread_local_instance();
     QSqlQuery q = db.select({Tg_User::table_name(), {}, {"user_id"}}, "WHERE id=" + QString::number(user_id));
     if (q.isActive() && q.next())
-        return q.value(0).toUInt();
+        das_user_id = q.value(0).toUInt();
 
-    if (!skip_message)
+    if (!skip_message && !das_user_id)
         send_message(chat_id, "Для этого действия вам необходимо авторизоваться в личном чате с ботом");
-    return 0;
+    return das_user_id;
 }
 
 void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint32_t current_page,
                               TgBot::Message::Ptr msg_to_update, const string &search_text) const
 {
-    TgBot::InlineKeyboardMarkup::Ptr keyboard(new TgBot::InlineKeyboardMarkup);
+    TgBot::InlineKeyboardMarkup::Ptr keyboard = std::make_shared<TgBot::InlineKeyboardMarkup>();
 
     map<uint32_t, string> schemes_map = list_schemes_names(user_id, current_page, search_text);
 
     for (const auto &scheme: schemes_map)
     {
-        TgBot::InlineKeyboardButton::Ptr button(new TgBot::InlineKeyboardButton);
+        TgBot::InlineKeyboardButton::Ptr button = std::make_shared<TgBot::InlineKeyboardButton>();
         button->text = scheme.second;
         button->callbackData = string("scheme.") + to_string(scheme.first);
 
@@ -754,7 +824,7 @@ void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint
     vector<TgBot::InlineKeyboardButton::Ptr> row;
     if (current_page > 0)
     {
-        TgBot::InlineKeyboardButton::Ptr prev_page_button(new TgBot::InlineKeyboardButton);
+        TgBot::InlineKeyboardButton::Ptr prev_page_button = std::make_shared<TgBot::InlineKeyboardButton>();
         prev_page_button->text = "<<<";	// TODO: here you can change text of "previous page" button
         prev_page_button->callbackData = string("page.prev.") + to_string(current_page) + '.' + search_text;
         row.push_back(prev_page_button);
@@ -762,7 +832,7 @@ void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint
 
     if (schemes_map.size() >= schemes_per_page_)
     {
-        TgBot::InlineKeyboardButton::Ptr next_page_button(new TgBot::InlineKeyboardButton);
+        TgBot::InlineKeyboardButton::Ptr next_page_button = std::make_shared<TgBot::InlineKeyboardButton>();
         next_page_button->text = ">>>";	// TODO: here you can change text of "next page" button
         next_page_button->callbackData = string("page.next.") + to_string(current_page) + '.' + search_text;
         row.push_back(next_page_button);
@@ -788,6 +858,11 @@ void Controller::sendSchemeMenu(TgBot::Message::Ptr message, const Scheme_Item& 
     TgBot::InlineKeyboardMarkup::Ptr keyboard(new TgBot::InlineKeyboardMarkup);
 
     const string base_data = "scheme." + to_string(scheme.id());
+
+    int i = 0;
+    for (const User_Menu::Item& item: user_menu_set_)
+        keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".user_menu." + std::to_string(i++), item.name()));
+
     keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".status", "Состояние"));
     keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".elem", "Элементы"));
 //    keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".menu_sub_1", "Под меню 1")),
@@ -826,6 +901,8 @@ void Controller::send_authorization_message(const TgBot::Message& msg) const
         return;
     }
 
+    db.insert(db_table<DB::Tg_Chat>(), DB::Tg_Chat::to_variantlist(DB::Tg_Chat{chat_id, tg_user.id()}));
+
     QByteArray data;
     QDataStream ds(&data, QIODevice::WriteOnly);
 
@@ -838,8 +915,8 @@ void Controller::send_authorization_message(const TgBot::Message& msg) const
     if (db.insert(db_table<Tg_Auth>(), Tg_Auth::to_variantlist(auth), nullptr,
               "ON DUPLICATE KEY UPDATE expired = VALUES(expired), token = VALUES(token)"))
     {
-        std::string text = "Чтобы продолжить, пожалуйста перейдите по ссылке ниже и авторизуйтесь."
-                           "\n\nhttps://deviceaccess.ru/tg_auth/";
+        std::string text = "Чтобы продолжить, пожалуйста перейдите по ссылке ниже и авторизуйтесь.\n\n";
+        text += auth_base_url_;
         text += auth.token().toStdString();
 //        send_message(chat_id, text);
 
@@ -853,6 +930,15 @@ void Controller::finished()
 {
     qDebug() << "finished";
     bot_->getApi().deleteWebhook();
+}
+
+void Controller::fill_templates(const std::string &templates_path)
+{
+    namespace fs = std::filesystem;
+
+    for(auto& p: fs::directory_iterator(templates_path))
+        if (fs::is_regular_file(p.path()))
+            user_menu_set_.emplace(p.path(), dbus_iface_);
 }
 
 Scheme_Item Controller::get_scheme(uint32_t user_id, const string &scheme_id) const

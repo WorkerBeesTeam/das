@@ -38,6 +38,8 @@ private:
     void send_modify_response(uint8_t struct_type, const QByteArray &buffer, uint32_t user_id) override;
 
     Protocol* protocol_;
+
+    std::shared_ptr<std::atomic<std::chrono::system_clock::time_point>> wait_restart_from_;
 };
 
 } // namespace Client

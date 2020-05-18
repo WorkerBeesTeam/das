@@ -20,6 +20,8 @@
 #include "bot_base.h"
 #include "scheme_item.h"
 
+#include "user_menu/item.h"
+
 namespace Das {
 namespace Bot {
 
@@ -27,8 +29,9 @@ class Controller : public QThread, public Bot_Base
 {
     Q_OBJECT
 public:
-    Controller(Das::DBus::Interface* dbus_iface, const std::string& token,
-        const std::string& webhook_url, uint16_t port = 8443, const std::string& webhook_cert = {});
+    Controller(DBus::Interface* dbus_iface, const std::string& token,
+        const std::string& webhook_url, uint16_t port = 8443, const std::string& webhook_cert = {},
+        const std::string& auth_base_url = "https://deviceaccess.ru/tg_auth/", const std::string& templates_path = {});
     ~Controller();
 
     void stop();
@@ -75,6 +78,8 @@ protected:
 public slots:
     void finished();
 private:
+    void fill_templates(const std::string& templates_path);
+
     Scheme_Item get_scheme(uint32_t user_id, const std::string& scheme_id) const;
     void fill_scheme(uint32_t user_id, Scheme_Item& scheme) const;
 
@@ -84,7 +89,7 @@ private:
     TgBot::User::Ptr bot_user_;
 
     TgBot::TgWebhookTcpServer* server_;
-    std::string token_, webhook_url_, webhook_cert_;
+    std::string token_, webhook_url_, webhook_cert_, auth_base_url_;
 
     const uint32_t schemes_per_page_ = 5;
 
@@ -96,6 +101,8 @@ private:
     };
 
     std::map<int64_t, Waited_Item> waited_map_;
+
+    std::set<User_Menu::Item> user_menu_set_;
 };
 
 } // namespace Bot

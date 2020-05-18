@@ -9,7 +9,7 @@ namespace DB {
 
 class DAS_LIBRARY_SHARED_EXPORT Device_Item_Type : public Titled_Type
 {
-    HELPZ_DB_META(Device_Item_Type, "device_item_type", "dit", 9, DB_A(id), DB_A(name), DB_A(title),
+    HELPZ_DB_META(Device_Item_Type, "device_item_type", "dit", DB_A(id), DB_A(name), DB_A(title),
                   DB_AM(group_type_id), DB_AMN(sign_id), DB_AM(register_type), DB_AM(save_algorithm),
                   DB_AMN(save_timer_id), DB_A(scheme_id))
 public:

@@ -8,7 +8,7 @@
 
 #include <plus/das/scheme_info.h>
 
-#include "work_object.h"
+#include "worker.h"
 
 namespace Das {
 
@@ -24,7 +24,7 @@ Q_DECLARE_LOGGING_CATEGORY(DetailLog)
 class Protocol_Base : public Helpz::Net::Protocol, public Scheme_Info
 {
 public:
-    Protocol_Base(Work_Object* work_object);
+    Protocol_Base(Worker *work_object);
     virtual ~Protocol_Base() = default;
 
     virtual int protocol_version() const = 0;
@@ -55,14 +55,14 @@ public:
     std::shared_ptr<DB::global> db();
     Helpz::DB::Thread* db_thread();
 
-    Work_Object* work_object();
+    Worker* work_object();
 protected:
     void set_version(const QString& version);
 private:
     QString name_, version_;
     TimeInfo time_;
     uint32_t connection_state_;
-    Work_Object* work_object_;
+    Worker* work_object_;
 };
 
 } // namespace Server
