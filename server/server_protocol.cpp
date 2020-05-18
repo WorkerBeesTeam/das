@@ -29,7 +29,7 @@ Protocol::~Protocol()
 {
     if (/*!is_copy_ &&*/ id())
     {
-        std::cout << "~Protocol " << id() << " is copy: " << is_copy_ << std::endl;
+        std::cout << "~Protocol " << id() << " is copy: " << std::boolalpha << is_copy_ << std::endl;
 //        std::cout << "closed " << id() << " is copy: " << is_copy_ << std::endl;
         work_object()->recently_connected_.disconnected(*this);
         set_connection_state(CS_DISCONNECTED_JUST_NOW);
