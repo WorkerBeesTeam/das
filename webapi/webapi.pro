@@ -25,6 +25,7 @@ SOURCES += main.cpp \
     rest/multipart_form_data_parser.cpp \
     rest/rest.cpp \
     rest/rest_chart.cpp \
+    rest/rest_chart_value.cpp \
     rest/rest_scheme.cpp \
     rest/rest_scheme_group.cpp \
     rest/scheme_copier.cpp \
@@ -45,6 +46,7 @@ HEADERS += \
     rest/multipart_form_data_parser.h \
     rest/rest.h \
     rest/rest_chart.h \
+    rest/rest_chart_value.h \
     rest/rest_scheme.h \
     rest/rest_scheme_group.h \
     rest/scheme_copier.h \
