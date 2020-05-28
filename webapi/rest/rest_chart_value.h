@@ -8,39 +8,64 @@
 
 #include <served/served.hpp>
 
+#include <Helpz/db_base.h>
+
 namespace Das {
 namespace Rest {
 
 class Chart_Value
 {
 public:
-    Chart_Value(served::multiplexer& mux, const std::string& scheme_path);
+    Chart_Value();
+
+    std::string operator()(const served::request& req);
+protected:
+    enum Field_Type
+    {
+        FT_TIME,
+        FT_ITEM_ID,
+        FT_USER_ID,
+        FT_VALUE,
+
+        FT_SCHEME_ID
+    };
+
+    virtual std::string permission_name() const;
+    virtual QString get_table_name() const;
+    virtual QString get_field_name(Field_Type field_type) const;
+    virtual QString get_additional_field_names() const;
+    virtual void fill_additional_fields(picojson::object& obj, const QSqlQuery& q, const QVariant& value) const;
 private:
-    void list(served::response& res, const served::request& req);
+    void parse_params(const served::request& req);
 
     struct Time_Range {
         int64_t _from;
         int64_t _to;
     };
 
-    QString get_base_sql(const QString &what = QString()) const;
-    QString get_where(const served::request &req, const Time_Range& time_range, const QString &scheme_where) const;
+    QString get_where(const std::string& data_in_param) const;
     Time_Range get_time_range(const std::string& from_str, const std::string& to_str) const;
-    virtual QString get_time_field_name() const;
-    QString get_time_range_where(const Time_Range& time_range) const;
-    virtual QString get_scheme_field_name() const;
+    QString get_time_range_where() const;
     QString get_scheme_where(const served::request &req) const;
-    virtual QString get_data_field_name() const;
     QString get_data_in_string(const std::string& param) const;
-    QString get_limits(const std::string& offset_str, const std::string& limit_str, uint32_t &offset, uint32_t &limit) const;
+    void parse_limits(const std::string& offset_str, const std::string& limit_str);
     QString get_limit_suffix(uint32_t offset, uint32_t limit) const;
-    int64_t get_count_all(int64_t count, uint32_t offset, uint32_t limit, const QString &where);
-    int64_t fill_datamap(std::map<uint32_t, std::map<qint64, picojson::object>>& data_map, const QString &sql) const;
+    int64_t get_count_all(int64_t count);
+    int64_t fill_datamap();
+    QString get_base_sql(const QString &what = QString()) const;
     picojson::object get_data_item(const QSqlQuery& query, int64_t timestamp) const;
+    picojson::value variant_to_json(const QVariant& value) const;
     void fill_object(picojson::object& obj, const QSqlQuery& q) const;
-    void fill_results(picojson::array& results, const std::map<uint32_t, std::map<qint64, picojson::object>>& data_map,
-                      const Time_Range &time_range, const QString &scheme_where) const;
-    picojson::object get_one_point(int64_t timestamp, const QString &scheme_where, uint32_t item_id, bool is_before_range_point) const;
+    void fill_results(picojson::array& results) const;
+    picojson::object get_one_point(int64_t timestamp, uint32_t item_id, bool is_before_range_point) const;
+
+    uint32_t _offset, _limit;
+    Time_Range _time_range;
+    QString _scheme_where, _where;
+
+    std::map<uint32_t/*item_id*/, std::map<qint64/*timestamp*/, picojson::object>> _data_map;
+
+    Helpz::DB::Base& _db;
 };
 
 } // namespace Rest
