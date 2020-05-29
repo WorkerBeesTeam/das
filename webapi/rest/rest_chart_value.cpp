@@ -226,7 +226,7 @@ QString Chart_Value::get_full_sql() const
     }
 
     return get_base_sql() + ' ' + _where + ' ' + get_limit_suffix(_offset, _limit)
-            + ';' + get_base_sql("COUNT(*)") + ' ' + _where
+//            + ';' + get_base_sql("COUNT(*)") + ' ' + _where
             + ";(" + one_point_sql_list.join(") UNION (") + ')';
 }
 
