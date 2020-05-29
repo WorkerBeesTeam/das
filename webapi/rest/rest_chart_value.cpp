@@ -29,14 +29,13 @@ std::string Chart_Value::operator()(const served::request &req)
 
     Auth_Middleware::check_permission(permission_name());
 
-    auto [count, count_all] = fill_datamap();
+    int64_t count = fill_datamap();
 
     picojson::array results;
     fill_results(results);
 
     picojson::object json;
     json.emplace("count", count);
-    json.emplace("count_all", count_all);
     json.emplace("results", std::move(results));
     return picojson::value(std::move(json)).serialize();
 }
@@ -175,44 +174,37 @@ QString Chart_Value::get_limit_suffix(uint32_t offset, uint32_t limit) const
     return "LIMIT " + QString::number(offset) + ',' + QString::number(limit);
 }
 
-std::pair<int64_t, int64_t> Chart_Value::fill_datamap()
+int64_t Chart_Value::fill_datamap()
 {
-    int64_t count = 0, count_all = 0, timestamp;
+    int64_t count = 0, timestamp;
     uint32_t item_id;
 
     const QString sql = get_full_sql();
     QSqlQuery q = _db.exec(sql);
 
-    enum Step_Type { DATA_STEP, COUNT_STEP, ONE_POINTS_STEP };
+    enum Step_Type { DATA_STEP, ONE_POINTS_STEP };
     int step = DATA_STEP;
     do
     {
         while (q.next())
         {
-            if (step == DATA_STEP || step == ONE_POINTS_STEP)
+            timestamp = q.value(FT_TIME).toLongLong();
+            item_id = q.value(FT_ITEM_ID).toUInt();
+
+            if (step == DATA_STEP)
             {
-                timestamp = q.value(FT_TIME).toLongLong();
-                item_id = q.value(FT_ITEM_ID).toUInt();
+                std::map<int64_t, picojson::object>& item_data = _data_map[item_id];
+                item_data.emplace(timestamp, get_data_item(q, timestamp));
 
-                if (step == DATA_STEP)
-                {
-                    std::map<int64_t, picojson::object>& item_data = _data_map[item_id];
-                    item_data.emplace(timestamp, get_data_item(q, timestamp));
-
-                    ++count;
-                }
-                else if (timestamp <= _time_range._from)
-                {
-                    _before_range_point_map.emplace(item_id, get_data_item(q, _time_range._from));
-                }
-                else // if (timestamp >= _time_range._to)
-                {
-                    _after_range_point_map.emplace(item_id, get_data_item(q, _time_range._to));
-                }
+                ++count;
             }
-            else if (step == COUNT_STEP)
+            else if (timestamp <= _time_range._from)
             {
-                count_all = q.value(0).toLongLong();
+                _before_range_point_map.emplace(item_id, get_data_item(q, _time_range._from));
+            }
+            else // if (timestamp >= _time_range._to)
+            {
+                _after_range_point_map.emplace(item_id, get_data_item(q, _time_range._to));
             }
         }
 
@@ -220,7 +212,7 @@ std::pair<int64_t, int64_t> Chart_Value::fill_datamap()
     }
     while (q.nextResult());
 
-    return std::make_pair(count, count_all);
+    return count;
 }
 
 QString Chart_Value::get_full_sql() const
