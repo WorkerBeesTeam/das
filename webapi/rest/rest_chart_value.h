@@ -43,27 +43,32 @@ private:
         int64_t _to;
     };
 
-    QString get_where(const std::string& data_in_param) const;
+    QString get_where() const;
     Time_Range get_time_range(const std::string& from_str, const std::string& to_str) const;
     QString get_time_range_where() const;
     QString get_scheme_where(const served::request &req) const;
-    QString get_data_in_string(const std::string& param) const;
+    void parse_data_in(const std::string& param);
+    QString get_data_in_where() const;
     void parse_limits(const std::string& offset_str, const std::string& limit_str);
     QString get_limit_suffix(uint32_t offset, uint32_t limit) const;
     int64_t get_count_all(int64_t count);
     int64_t fill_datamap();
+    QString get_full_sql() const;
     QString get_base_sql(const QString &what = QString()) const;
     picojson::object get_data_item(const QSqlQuery& query, int64_t timestamp) const;
     picojson::value variant_to_json(const QVariant& value) const;
     void fill_object(picojson::object& obj, const QSqlQuery& q) const;
     void fill_results(picojson::array& results) const;
-    picojson::object get_one_point(int64_t timestamp, uint32_t item_id, bool is_before_range_point) const;
+    QString get_one_point_sql(int64_t timestamp, const QString &item_id, bool is_before_range_point) const;
 
+    bool _range_in_past;
     uint32_t _offset, _limit;
     Time_Range _time_range;
     QString _scheme_where, _where;
+    QStringList _data_in_list;
 
-    std::map<uint32_t/*item_id*/, std::map<qint64/*timestamp*/, picojson::object>> _data_map;
+    std::map<uint32_t/*item_id*/, std::map<int64_t/*timestamp*/, picojson::object>> _data_map;
+    std::map<uint32_t/*item_id*/, picojson::object> _before_range_point_map, _after_range_point_map;
 
     Helpz::DB::Base& _db;
 };
