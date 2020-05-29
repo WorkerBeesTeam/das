@@ -29,9 +29,7 @@ std::string Chart_Value::operator()(const served::request &req)
 
     Auth_Middleware::check_permission(permission_name());
 
-    int64_t count = fill_datamap();
-
-    int64_t count_all = get_count_all(count);
+    auto [count, count_all] = fill_datamap();
 
     picojson::array results;
     fill_results(results);
@@ -177,61 +175,52 @@ QString Chart_Value::get_limit_suffix(uint32_t offset, uint32_t limit) const
     return "LIMIT " + QString::number(offset) + ',' + QString::number(limit);
 }
 
-int64_t Chart_Value::get_count_all(int64_t count)
+std::pair<int64_t, int64_t> Chart_Value::fill_datamap()
 {
-    if (count < _limit)
-    {
-        count += _offset;
-    }
-    else
-    {
-        const QString sql = get_base_sql("COUNT(*)") + ' ' + _where;
-        QSqlQuery q = _db.exec(sql);
-        if (q.next())
-            count = q.value(0).toLongLong();
-    }
-
-    return count;
-}
-
-int64_t Chart_Value::fill_datamap()
-{
-    int64_t count = 0, timestamp;
+    int64_t count = 0, count_all = 0, timestamp;
     uint32_t item_id;
 
     const QString sql = get_full_sql();
     QSqlQuery q = _db.exec(sql);
 
-    bool is_datamap_step = true;
+    enum Step_Type { DATA_STEP, COUNT_STEP, ONE_POINTS_STEP };
+    int step = DATA_STEP;
     do
     {
         while (q.next())
         {
-            timestamp = q.value(FT_TIME).toLongLong();
-            item_id = q.value(FT_ITEM_ID).toUInt();
+            if (step == DATA_STEP || step == ONE_POINTS_STEP)
+            {
+                timestamp = q.value(FT_TIME).toLongLong();
+                item_id = q.value(FT_ITEM_ID).toUInt();
 
-            if (is_datamap_step)
-            {
-                std::map<int64_t, picojson::object>& item_data = _data_map[item_id];
-                item_data.emplace(timestamp, get_data_item(q, timestamp));
+                if (step == DATA_STEP)
+                {
+                    std::map<int64_t, picojson::object>& item_data = _data_map[item_id];
+                    item_data.emplace(timestamp, get_data_item(q, timestamp));
 
-                ++count;
+                    ++count;
+                }
+                else if (timestamp <= _time_range._from)
+                {
+                    _before_range_point_map.emplace(item_id, get_data_item(q, _time_range._from));
+                }
+                else // if (timestamp >= _time_range._to)
+                {
+                    _after_range_point_map.emplace(item_id, get_data_item(q, _time_range._to));
+                }
             }
-            else if (timestamp <= _time_range._from)
+            else if (step == COUNT_STEP)
             {
-                _before_range_point_map.emplace(item_id, get_data_item(q, _time_range._from));
-            }
-            else // if (timestamp >= _time_range._to)
-            {
-                _after_range_point_map.emplace(item_id, get_data_item(q, _time_range._to));
+                count_all = q.value(0).toLongLong();
             }
         }
 
-        is_datamap_step = false;
+        ++step;
     }
     while (q.nextResult());
 
-    return count;
+    return std::make_pair(count, count_all);
 }
 
 QString Chart_Value::get_full_sql() const
@@ -245,6 +234,7 @@ QString Chart_Value::get_full_sql() const
     }
 
     return get_base_sql() + ' ' + _where + ' ' + get_limit_suffix(_offset, _limit)
+            + ';' + get_base_sql("COUNT(*)") + ' ' + _where
             + ";(" + one_point_sql_list.join(") UNION (") + ')';
 }
 

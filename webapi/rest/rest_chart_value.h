@@ -51,8 +51,7 @@ private:
     QString get_data_in_where() const;
     void parse_limits(const std::string& offset_str, const std::string& limit_str);
     QString get_limit_suffix(uint32_t offset, uint32_t limit) const;
-    int64_t get_count_all(int64_t count);
-    int64_t fill_datamap();
+    std::pair<int64_t, int64_t> fill_datamap();
     QString get_full_sql() const;
     QString get_base_sql(const QString &what = QString()) const;
     picojson::object get_data_item(const QSqlQuery& query, int64_t timestamp) const;
