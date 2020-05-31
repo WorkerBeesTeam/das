@@ -95,16 +95,7 @@ void Chart_Value::parse_params(const served::request &req)
 
 QString Chart_Value::get_where() const
 {
-    const QString time_range_where = get_time_range_where();
-    const QString data_in_where = get_data_in_where();
-
-    QString where = "WHERE ";
-    where += time_range_where;
-    where += " AND ";
-    where += _scheme_where;
-    where += " AND ";
-    where += data_in_where;
-    return where;
+    return "WHERE " + _scheme_where + " AND " + get_data_in_where() + " AND " + get_time_range_where();
 }
 
 Chart_Value::Time_Range Chart_Value::get_time_range(const std::string &from_str, const std::string &to_str) const

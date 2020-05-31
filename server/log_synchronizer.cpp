@@ -288,7 +288,13 @@ void Log_Sync_Values::process_pack(QVector<Log_Value_Item> &&pack, uint8_t msg_i
     auto pack_ptr = std::make_shared<QVector<Log_Value_Item>>(std::move(pack));
 
     for (Log_Value_Item& item: *pack_ptr)
+    {
         static_cast<Protocol*>(protocol())->structure_sync()->change_devitem_value(item);
+
+        // TODO: Remove after all clients updated
+        if (item.need_to_save() && item.raw_value() == item.value())
+            item.set_raw_value(QVariant());
+    }
 
     if (!pack_ptr->empty())
         QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "device_item_values_available", Qt::QueuedConnection,
