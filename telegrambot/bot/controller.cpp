@@ -279,11 +279,11 @@ void Controller::anyMessage(TgBot::Message::Ptr message)
                 {
                     const vector<string> cmd = StringTools::split(it->second.data_, '.');
 
-                    Elements elements(*this, user_id, it->second.scheme_, cmd, it->second.data_);
-                    elements.process_user_data(message->text);
+                    Elements elements(*this, user_id, it->second.scheme_, cmd, it->second.data_, message->text);
+                    elements.generate_answer();
 
                     if (!elements.text_.empty())
-                        send_message(message->chat->id, elements.text_);
+                        bot_->getApi().sendMessage(message->chat->id, elements.text_, false, 0, elements.keyboard_, "Markdown");
                 }
 
                 waited_map_.erase(it);
