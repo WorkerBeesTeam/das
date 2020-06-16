@@ -29,7 +29,7 @@ public:
     static QVariant value_from_string(DIG_Param_Type::Value_Type value_type, const QString& raw_value);
     static QString value_to_string(DIG_Param_Type::Value_Type value_type, const QVariant &value);
 
-    void set_value(const QVariant& param_value, uint32_t user_id = 0);
+    Q_INVOKABLE void set_value(const QVariant& param_value, uint32_t user_id = 0);
     Q_INVOKABLE void set_value_from_string(const QString& raw_value, uint32_t user_id = 0);
     Q_INVOKABLE QString value_to_string() const;
 

@@ -56,6 +56,7 @@ public:
 
     const Device_Items& items() const;
     Param* params();
+    const Param* params() const;
     void set_params(std::shared_ptr<Param> param_group);
 
     void add_item(Device_Item* item);

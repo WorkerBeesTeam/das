@@ -73,6 +73,7 @@ const DIG_Mode &Device_item_Group::mode_data() const { return mode_; }
 
 const Device_Items &Device_item_Group::items() const { return items_; }
 Param *Device_item_Group::params() { return param_group_.get(); }
+const Param *Device_item_Group::params() const { return param_group_.get(); }
 void Device_item_Group::set_params(std::shared_ptr<Param> param_group) { param_group_ = std::move(param_group); }
 
 Section *Device_item_Group::section() const { return sct_; }

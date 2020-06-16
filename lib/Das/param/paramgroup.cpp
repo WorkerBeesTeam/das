@@ -58,7 +58,8 @@ void Param::set_group(Device_item_Group *group) { group_ = group; }
 
 /*static*/ QString Param::value_to_string(DIG_Param_Type::Value_Type value_type, const QVariant &value)
 {
-    switch (value_type) {
+    switch (value_type)
+    {
     case DIG_Param_Type::VT_BOOL:
         return QChar(value.toBool() ? '1' : '0');
     case DIG_Param_Type::VT_BYTES:
@@ -70,9 +71,12 @@ void Param::set_group(Device_item_Group *group) { group_ = group; }
 
 void Param::set_value(const QVariant &param_value, uint32_t user_id)
 {
-    if (value_.type() == param_value.type() && value_ == param_value)
+    if ((value_.type() == param_value.type()
+         || ((value_.type() == QVariant::String || value_.type() == QVariant::ByteArray)
+             && (param_value.type() == QVariant::String || param_value.type() == QVariant::ByteArray)))
+        && value_ == param_value)
         return;
-    if (param_value.type() == QVariant::String && type()->value_type() != DIG_Param_Type::VT_STRING)
+    if ((param_value.type() == QVariant::String || param_value.type() == QVariant::ByteArray) && type()->value_type() != DIG_Param_Type::VT_STRING)
     {
         QVariant tmp_value = value_from_string(type()->value_type(), param_value.toString());
         if (tmp_value == value_)

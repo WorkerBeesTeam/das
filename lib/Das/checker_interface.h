@@ -20,6 +20,8 @@ class Manager_Interface
 public:
     virtual ~Manager_Interface() = default;
 
+    virtual bool is_server_connected() const = 0;
+
     virtual void send_stream_toggled(uint32_t user_id, Device_Item* item, bool state) = 0;
     virtual void send_stream_param(Device_Item* item, const QByteArray& data) = 0;
     virtual void send_stream_data(Device_Item* item, const QByteArray& data) = 0;
@@ -48,7 +50,9 @@ public:
     }
 
     Manager_Interface* manager();
+    const Manager_Interface* manager() const;
     Scheme* scheme();
+    const Scheme* scheme() const;
 
 private:
     Manager_Interface* mng_;
