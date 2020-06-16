@@ -12,7 +12,7 @@ class System_Informator
 public:
     System_Informator();
 
-    float get_cpu_temp() const;
+    double get_cpu_temp() const;
 
     int get_cpu_load();
 private:

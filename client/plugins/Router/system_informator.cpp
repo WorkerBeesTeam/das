@@ -28,11 +28,12 @@ System_Informator::System_Informator()
     _last_proc_stat = get_proc_stat();
 }
 
-float System_Informator::get_cpu_temp() const
+double System_Informator::get_cpu_temp() const
 {
     const string file_name = "/sys/class/thermal/thermal_zone0/temp";
     const string text = File::read_all(file_name);
-    return stoi(text) / 1000.;
+    int temp = stoi(text) / 100;
+    return temp / 10.;
 }
 
 int System_Informator::get_cpu_load()
