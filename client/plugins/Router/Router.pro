@@ -6,6 +6,8 @@ VER_MIN = 0
 
 include(../plugin.pri)
 
+LIBS += -lstdc++fs -liw -lcurl
+
 HEADERS += \
     system_informator.h \
     wpa_supplicant_config.h

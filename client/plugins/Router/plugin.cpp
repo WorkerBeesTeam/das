@@ -26,9 +26,11 @@ namespace Z = Helpz;
 
 Plugin::Plugin() :
     QObject(),
-    _params{{nullptr}},
-    _dev_items{{nullptr}}
+    _params{nullptr},
+    _dev_items{nullptr}
 {
+    for (int i = 0; i < Param_Type_Count; ++i) _params[i] = nullptr;
+    for (int i = 0; i < Device_Item_Type_Count; ++i) _dev_items[i] = nullptr;
 }
 
 Plugin::~Plugin()
@@ -295,16 +297,20 @@ void Plugin::run()
 
 QVariant Plugin::check_item(int item_type)
 {
-    switch (item_type)
+    try
     {
-    case DIT_NET:       return check_item_net();
-    case DIT_CPU_TEMP:  return _sys_info.get_cpu_temp();
-    case DIT_CPU:       return _sys_info.get_cpu_load();
-    case DIT_RAM:       return _sys_info.get_mem_usage();
-    case DIT_DISK:      return _sys_info.get_disk_space_usage();
-    default:
-        break;
+        switch (item_type)
+        {
+        case DIT_NET:       return check_item_net();
+        case DIT_CPU_TEMP:  return _sys_info.get_cpu_temp();
+        case DIT_CPU:       return _sys_info.get_cpu_load();
+        case DIT_RAM:       return _sys_info.get_mem_usage();
+        case DIT_DISK:      return _sys_info.get_disk_space_usage();
+        default:
+            break;
+        }
     }
+    catch(...) {}
     return {};
 }
 

@@ -105,6 +105,7 @@ vector<string> System_Informator::get_net_info() const
     long destination, gateway;
     char iface[IF_NAMESIZE];
 
+    size_t if_name_len;
     int	skfd = iw_sockets_open();
     int channel;
 
@@ -116,13 +117,31 @@ vector<string> System_Informator::get_net_info() const
         {
             if (destination == 0) /* default */
             {
-                text = inet_ntoa(*(struct in_addr *) &gateway);
+                text.clear();
+
+                struct ifreq ifr;
+                if_name_len = strlen(iface);
+                if (if_name_len < sizeof(ifr.ifr_name))
+                {
+                    memcpy(ifr.ifr_name, iface, if_name_len);
+                    ifr.ifr_name[if_name_len] = 0;
+
+                    if (ioctl(skfd, SIOCGIFADDR, &ifr) != -1)
+                    {
+                        struct sockaddr_in* ipaddr = (struct sockaddr_in*)&ifr.ifr_addr;
+                        text = inet_ntoa(ipaddr->sin_addr);
+                    }
+                }
+
+                if (text.empty())
+                    text = inet_ntoa(*(struct in_addr *) &gateway);
                 text += ' ';
                 text += iface;
 
                 channel = get_channel(skfd, iface);
                 if (channel >= 0)
                 {
+                    text += ' ';
                     text += get_essid(skfd, iface);
                     text += " (" + to_string(channel) + ')';
                 }
