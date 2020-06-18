@@ -187,7 +187,7 @@ void WPA_Supplicant_Config::write(const std::vector<Networt_Item>& items)
         begin_pos = text.size();
 
     text.replace(begin_pos, text.size() - begin_pos, net);
-    file.write(text);
+    file.rewrite(text);
 }
 
 

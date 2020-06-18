@@ -198,7 +198,7 @@ void Plugin::init_params()
                     {
                         std::string text = file.read_all();
                         Z::Settings::set_param_value(text, param, _params[index]->value().toString().toStdString());
-                        file.write(text);
+                        file.rewrite(text);
                     }
                     else
                         qWarning(RouterLog) << "Rewrite params failed! Error: " << strerror(errno);
