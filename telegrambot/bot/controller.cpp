@@ -251,6 +251,14 @@ void Controller::anyMessage(TgBot::Message::Ptr message)
             if (bot_user_->id == message->leftChatMember->id)
             {
                 dbg << "this bot was removed from chat";
+
+                Base& db = Base::get_thread_local_instance();
+
+                QString field_name = db_table<Tg_Subscriber>().field_names().at(Tg_Subscriber::COL_chat_id);
+                db.del(db_table_name<Tg_Subscriber>(), field_name + '=' + QString::number(message->chat->id));
+
+                field_name = db_table<DB::Tg_Chat>().field_names().at(DB::Tg_Chat::COL_id);
+                db.del(db_table_name<DB::Tg_Chat>(), field_name + '=' + QString::number(message->chat->id));
             }
         }
     }
