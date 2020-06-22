@@ -153,8 +153,8 @@ void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_
 
 void Informer::add_connection_state(std::shared_ptr<Informer::Connection_State_Item> &&item_ptr)
 {
-    bool remove_only = item_ptr->type_ == Item::T_CONNECTED && skip_connected_event_;
-    auto revert_type = item_ptr->type_ == Item::T_CONNECTED ? Item::T_DISCONNECTED : Item::T_CONNECTED;
+    const bool remove_only = item_ptr->type_ == Item::T_CONNECTED && skip_connected_event_;
+    const Item::Type revert_type = item_ptr->type_ == Item::T_CONNECTED ? Item::T_DISCONNECTED : Item::T_CONNECTED;
     bool is_removed = false;
 
     std::lock_guard lock(mutex_);
@@ -167,6 +167,7 @@ void Informer::add_connection_state(std::shared_ptr<Informer::Connection_State_I
         {
             if (d_it->get()->type_ == revert_type)
             {
+                qDebug() << "Informer - remove connected state item type:" << revert_type;
                 is_removed = true;
                 d_it = schemedata.erase(d_it);
             }
@@ -174,7 +175,8 @@ void Informer::add_connection_state(std::shared_ptr<Informer::Connection_State_I
             {
                 if (d_it->get()->type_ == item_ptr->type_)
                 {
-                    is_removed = true;
+                    qDebug() << "Informer - update connected state item type:" << item_ptr->type_;
+                    is_removed = true; // Is actually updated
                     *d_it = item_ptr;
                 }
                 ++d_it;
@@ -182,13 +184,17 @@ void Informer::add_connection_state(std::shared_ptr<Informer::Connection_State_I
         }
 
         if (!is_removed && !remove_only)
+        {
+            qDebug() << "Informer - add connected state item type:" << item_ptr->type_;
             schemedata.push_back(item_ptr);
+        }
 
         if (schemedata.empty())
             schemedata_map_.erase(it);
     }
     else if (!remove_only)
     {
+        qDebug() << "Informer - emplace connected state item type:" << item_ptr->type_;
         schemedata_map_.emplace(item_ptr->scheme_.id(), std::vector<std::shared_ptr<Item>>{item_ptr});
     }
 
@@ -309,6 +315,7 @@ void Informer::run()
 
         if (break_flag_)
         {
+            lock.unlock();
             while (!data_queue_.empty())
                 process_data(pop_data().get());
             if (!prepared_data_map_.empty())
@@ -436,7 +443,7 @@ std::string Informer::get_scheme_title(uint32_t scheme_id)
     return title.toStdString();
 }
 
-std::map<uint32_t, std::string> Informer::get_data_text(Informer::Item *data) const
+std::map<uint32_t, std::string> Informer::get_data_text(Informer::Item *data)
 {
     switch (data->type_)
     {
@@ -449,7 +456,9 @@ std::map<uint32_t, std::string> Informer::get_data_text(Informer::Item *data) co
     case Item::T_DISCONNECTED:
     {
         auto conn_state = static_cast<Connection_State_Item*>(data);
-        if (!conn_state->just_now_)
+        if (conn_state->just_now_)
+            disconnected(data->scheme_, false);
+        else
             return {{0, "💢 Отключен."}};
         break;
     }
