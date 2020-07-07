@@ -20,6 +20,7 @@ class Base;
 
 namespace Das {
 
+Q_DECLARE_LOGGING_CATEGORY(Inf_log)
 Q_DECLARE_LOGGING_CATEGORY(Inf_Detail_log)
 
 class Informer : public Status_Helper
@@ -40,6 +41,7 @@ private:
     {
         enum Type
         {
+            T_UNKNOWN,
             T_STATUS,
             T_CONNECTED,
             T_DISCONNECTED

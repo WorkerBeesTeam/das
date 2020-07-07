@@ -176,7 +176,7 @@ Param *Param::get_by_id(uint id) const
 Param *Param::get_by_type_id(uint type_id) const
 {
     auto it = std::find_if(childrens_.cbegin(), childrens_.cend(), [&type_id](const std::shared_ptr<Param>& elem) {
-        return elem->type_->id() == type_id;
+        return elem->type_ && elem->type_->id() == type_id;
     });
     return it != childrens_.cend() ? it->get() : nullptr;
 }

@@ -5,14 +5,14 @@
 #include <QDebug>
 
 #include "v4l2-api.h"
-#include "video_stream.h"
+#include "camera_stream.h"
 
 namespace Das {
 
-Video_Stream::Video_Stream(const QString &device_path, uint32_t width, uint32_t height, int quality) :
+Camera_Stream::Camera_Stream(const std::string &device_path, uint32_t width, uint32_t height, int quality) :
     quality_(quality),
     convert_data_(nullptr),
-    data_(), data_buffer_(&data_)
+    data_buffer_(&_data)
 {
     if (!open_device(device_path))
         throw std::runtime_error("Failed open device");
@@ -26,54 +26,49 @@ Video_Stream::Video_Stream(const QString &device_path, uint32_t width, uint32_t 
         close_device();
         throw std::runtime_error(error);
     }
-
-    qsrand(time(nullptr));
-
-    QDataStream ds(&param_, QIODevice::WriteOnly);
-    ds << uint32_t(qrand()) << uint32_t(qrand());
 }
 
-Video_Stream::~Video_Stream()
+Camera_Stream::~Camera_Stream()
 {
     stop();
     close_device();
 }
 
-const QByteArray &Video_Stream::param()
+const QByteArray &Camera_Stream::get_frame()
 {
-    return param_;
-}
+    while(_skip_frame_count > 0)
+    {
+        if (cap_frame(false))
+            --_skip_frame_count;
+    }
 
-const QByteArray &Video_Stream::get_frame()
-{
     cap_frame();
 
     data_buffer_.seek(0);
     if (!img_.save(&data_buffer_, "JPEG", quality_))
         qWarning() << "Failed save frame";
-    return data_;
+    return _data;
 }
 
-uint32_t Video_Stream::width() const
+uint32_t Camera_Stream::width() const
 {
     return dest_format_.fmt.pix.width;
 }
 
-uint32_t Video_Stream::height() const
+uint32_t Camera_Stream::height() const
 {
     return dest_format_.fmt.pix.height;
 }
 
-void Video_Stream::reinit(uint32_t width, uint32_t height)
+bool Camera_Stream::reinit(uint32_t width, uint32_t height)
 {
     stop();
 
-    const std::string error = start(width, height);
-    if (!error.empty())
-        qWarning() << "Failed reinit:" << error.c_str();
+    _error_text = start(width, height);
+    return is_valid();
 }
 
-bool Video_Stream::open_device(const QString &device_path)
+bool Camera_Stream::open_device(const std::string &device_path)
 {
     v4l2_ = new v4l2;
     if (v4l2_->open(device_path, /*useWrapper=*/true, /*is_non_block=*/false))
@@ -86,7 +81,7 @@ bool Video_Stream::open_device(const QString &device_path)
     return false;
 }
 
-void Video_Stream::close_device()
+void Camera_Stream::close_device()
 {
     if (!v4l2_)
         return;
@@ -103,7 +98,7 @@ void Video_Stream::close_device()
     data_buffer_.close();
 }
 
-std::string Video_Stream::start(uint32_t width, uint32_t height)
+std::string Camera_Stream::start(uint32_t width, uint32_t height)
 {
     if (!init_format(width, height))
         return "Failed init format";
@@ -168,7 +163,7 @@ std::string fcc2s(unsigned int val)
     return s;
 }
 
-bool Video_Stream::init_format(uint32_t width, uint32_t height)
+bool Camera_Stream::init_format(uint32_t width, uint32_t height)
 {
 //    static const struct Supported_Format
 //    {
@@ -264,7 +259,7 @@ bool Video_Stream::init_format(uint32_t width, uint32_t height)
     return img_.sizeInBytes() == dest_format_.fmt.pix.sizeimage;
 }
 
-void Video_Stream::stop()
+void Camera_Stream::stop()
 {
     if (!v4l2_)
         return;
@@ -284,7 +279,7 @@ void Video_Stream::stop()
     v4l2_->reqbufs_mmap(reqbufs, buftype, 0);
 }
 
-void Video_Stream::cap_frame()
+bool Camera_Stream::cap_frame(bool skip)
 {
     bool again;
     v4l2_buffer buf;
@@ -295,26 +290,30 @@ void Video_Stream::cap_frame()
         throw std::runtime_error("Bad buffer index");
 
     if (again)
-        return;
+        return false;
 
-    Buffer& buffer = buffers_[buf.index];
-
-    int err = 0;
-    if (must_convert_)
+    if (!skip)
     {
-        err = v4lconvert_convert(convert_data_,
-            &src_format_, &dest_format_,
-            static_cast<uint8_t*>(buffer.start_), buf.bytesused,
-            img_.bits(), dest_format_.fmt.pix.sizeimage);
+        Buffer& buffer = buffers_[buf.index];
 
-        if (err == -1)
-            v4l2_->error(v4lconvert_get_error_message(convert_data_));
+        int err = 0;
+        if (must_convert_)
+        {
+            err = v4lconvert_convert(convert_data_,
+                &src_format_, &dest_format_,
+                static_cast<uint8_t*>(buffer.start_), buf.bytesused,
+                img_.bits(), dest_format_.fmt.pix.sizeimage);
+
+            if (err == -1)
+                v4l2_->error(v4lconvert_get_error_message(convert_data_));
+        }
+
+        if (!must_convert_ || err < 0)
+            memcpy(img_.bits(), buffer.start_, buf.bytesused);
     }
 
-    if (!must_convert_ || err < 0)
-        memcpy(img_.bits(), buffer.start_, buf.bytesused);
-
     v4l2_->qbuf(buf);
+    return true;
 }
 
 } // namespace Das

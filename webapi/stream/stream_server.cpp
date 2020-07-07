@@ -117,6 +117,17 @@ void Stream_Server::on_protocol_timeout(udp::endpoint endpoint, void *data)
 
 void Stream_Server::send_frame(udp::endpoint remote_endpoint, qint64 param, uint32_t dev_item_id, const QByteArray &buffer)
 {
+    send_to_websocket(remote_endpoint, param, dev_item_id, "send_stream_id_data", Q_ARG(QByteArray, buffer));
+}
+
+void Stream_Server::send_text(udp::endpoint remote_endpoint, qint64 param, uint32_t dev_item_id, const QString &text)
+{
+    send_to_websocket(remote_endpoint, param, dev_item_id, "send_stream_id_text", Q_ARG(QString, text));
+}
+
+void Stream_Server::send_to_websocket(udp::endpoint remote_endpoint, qint64 param, uint32_t dev_item_id,
+                                      const char *func_name, const QGenericArgument &arg)
+{
     auto it = stream_map_.find(param);
     if (it != stream_map_.cend() && it->second.dev_item_id_ == dev_item_id)
     {
@@ -127,8 +138,8 @@ void Stream_Server::send_frame(udp::endpoint remote_endpoint, qint64 param, uint
                 cl_it->second->info_.insert(it->second);
         }
 
-        QMetaObject::invokeMethod(websock_, "send_stream_id_data", Qt::QueuedConnection,
-                                  Q_ARG(uint32_t, it->second.scheme_id_), Q_ARG(uint32_t, it->second.dev_item_id_), Q_ARG(QByteArray, buffer));
+        QMetaObject::invokeMethod(websock_, func_name, Qt::QueuedConnection,
+                                  Q_ARG(uint32_t, it->second.scheme_id_), Q_ARG(uint32_t, it->second.dev_item_id_), arg);
     }
     else
         remove(remote_endpoint);

@@ -31,29 +31,29 @@ v4l2::v4l2() : m_fd(-1) {}
 
 v4l2::v4l2(v4l2 &old) :
     m_fd(old.m_fd),
-    m_device(old.m_device),
+    _device(old._device),
     m_useWrapper(old.m_useWrapper),
     m_capability(old.m_capability)
 {}
 
-bool v4l2::open(const QString &device, bool useWrapper, bool is_non_block)
+bool v4l2::open(const std::string &device, bool useWrapper, bool is_non_block)
 {
-    m_device = device;
+    _device = device;
     m_useWrapper = useWrapper;
 
     int flags = O_RDWR;
     if (is_non_block)
         flags |= O_NONBLOCK;
 
-    m_fd = ::open(qPrintable(device), flags);
+    m_fd = ::open(device.c_str(), flags);
 	if (m_fd < 0) {
-		error("Cannot open " + device);
+        fprintf(stderr, "Cannot open %s\n", device.c_str());
 		return false;
 	}
 	if (!querycap(m_capability)) {
 		::close(m_fd);
 		m_fd = -1;
-		error(device + " is not a V4L2 device");
+        fprintf(stderr, "%s is not a V4L2 device\n", device.c_str());
 		return false;
 	}
 
@@ -62,7 +62,7 @@ bool v4l2::open(const QString &device, bool useWrapper, bool is_non_block)
 
 		if (fd < 0) {
 			m_useWrapper = false;
-			error("Cannot use libv4l2 wrapper for " + device);
+            fprintf(stderr, "Cannot use libv4l2 wrapper for %s\n", device.c_str());
 		}
 	}
 	return true;
@@ -138,7 +138,7 @@ __u32 v4l2::caps() const {
     return m_capability.capabilities;
 }
 
-const QString &v4l2::device() const { return m_device; }
+const std::string &v4l2::device() const { return _device; }
 
 void v4l2::error(const QString &error)
 {

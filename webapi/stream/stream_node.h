@@ -33,6 +33,7 @@ public:
     void process_wait_list(void* data);
 
     void send_frame(qint64 param, uint32_t dev_item_id, const QByteArray& buffer);
+    void send_text(qint64 param, uint32_t dev_item_id, const QString& text);
     void close();
 private:
     void write(std::shared_ptr<Helpz::Net::Message_Item> message) override;

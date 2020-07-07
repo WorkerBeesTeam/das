@@ -9,6 +9,7 @@
 
 namespace Das {
 
+Q_LOGGING_CATEGORY(Inf_log, "informer")
 Q_LOGGING_CATEGORY(Inf_Detail_log, "informer.detail", QtInfoMsg)
 
 using namespace Helpz::DB;
@@ -132,7 +133,7 @@ void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_
     const std::string scheme_title = get_scheme_title(scheme.id());
     if (scheme_title.empty())
     {
-        qCritical() << "Can't get scheme name for id:" << scheme.id() << "events lost:" << qPrintable(text);
+        qCCritical(Inf_log) << "Can't get scheme name for id:" << scheme.id() << "events lost:" << qPrintable(text);
         return;
     }
 
@@ -157,6 +158,8 @@ void Informer::add_connection_state(std::shared_ptr<Informer::Connection_State_I
     const Item::Type revert_type = item_ptr->type_ == Item::T_CONNECTED ? Item::T_DISCONNECTED : Item::T_CONNECTED;
     bool is_removed = false;
 
+    auto dbg = qDebug(Inf_Detail_log) << "Add connection state scheme:" << item_ptr->scheme_.id() << "type:" << item_ptr->type_ << "act:";
+
     std::lock_guard lock(mutex_);
 
     auto it = schemedata_map_.find(item_ptr->scheme_.id());
@@ -167,17 +170,18 @@ void Informer::add_connection_state(std::shared_ptr<Informer::Connection_State_I
         {
             if (d_it->get()->type_ == revert_type)
             {
-                qDebug() << "Informer - remove connected state item type:" << revert_type;
+                dbg << "remove type:" << revert_type;
                 is_removed = true;
+                d_it->get()->type_ = Item::T_UNKNOWN; // Skip instead remove from _data_queue
                 d_it = schemedata.erase(d_it);
             }
             else
             {
                 if (d_it->get()->type_ == item_ptr->type_)
                 {
-                    qDebug() << "Informer - update connected state item type:" << item_ptr->type_;
+                    dbg << "update";
                     is_removed = true; // Is actually updated
-                    *d_it = item_ptr;
+                    *d_it->get() = *item_ptr;
                 }
                 ++d_it;
             }
@@ -185,7 +189,7 @@ void Informer::add_connection_state(std::shared_ptr<Informer::Connection_State_I
 
         if (!is_removed && !remove_only)
         {
-            qDebug() << "Informer - add connected state item type:" << item_ptr->type_;
+            dbg << "add";
             schemedata.push_back(item_ptr);
         }
 
@@ -194,7 +198,7 @@ void Informer::add_connection_state(std::shared_ptr<Informer::Connection_State_I
     }
     else if (!remove_only)
     {
-        qDebug() << "Informer - emplace connected state item type:" << item_ptr->type_;
+        dbg << "emplace";
         schemedata_map_.emplace(item_ptr->scheme_.id(), std::vector<std::shared_ptr<Item>>{item_ptr});
     }
 
@@ -269,6 +273,7 @@ void Informer::add_status(std::shared_ptr<Status>&& item_ptr)
             erase_two_vectors(data->del_vect_, item_ptr->add_vect_, item_ptr->del_vect_);
             if (data->add_vect_.empty() && data->del_vect_.empty())
             {
+                data->type_ = Item::T_UNKNOWN; // Skip instead remove from _data_queue
                 d_it = schemedata.erase(d_it);
             }
             else
@@ -410,7 +415,7 @@ void Informer::process_data(Item* data)
         const std::string scheme_title = get_scheme_title(data->scheme_.id());
         if (scheme_title.empty())
         {
-            qCritical() << "Can't get scheme name for id:" << data->scheme_.id();
+            qCCritical(Inf_log) << "Can't get scheme name for id:" << data->scheme_.id();
             return;
         }
         p_data.title_ = '*' + scheme_title + '*';

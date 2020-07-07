@@ -37,8 +37,12 @@ private:
 
     void on_protocol_timeout(boost::asio::ip::udp::endpoint endpoint, void *data) override;
     void send_frame(boost::asio::ip::udp::endpoint remote_endpoint, qint64 param, uint32_t dev_item_id, const QByteArray& buffer) override;
-    void remove(boost::asio::ip::udp::endpoint remote_endpoint) override;
+    void send_text(boost::asio::ip::udp::endpoint remote_endpoint, qint64 param, uint32_t dev_item_id, const QString& text) override;
 
+    void send_to_websocket(boost::asio::ip::udp::endpoint remote_endpoint, qint64 param, uint32_t dev_item_id,
+                           const char *func_name, const QGenericArgument& arg);
+
+    void remove(boost::asio::ip::udp::endpoint remote_endpoint) override;
     void cleaning(const boost::system::error_code &err);
 
     boost::asio::ip::udp::endpoint remote_endpoint_;
