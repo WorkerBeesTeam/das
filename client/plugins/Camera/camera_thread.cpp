@@ -1,4 +1,5 @@
 #include <QFile>
+#include <QUrl>
 
 #include <Das/db/device_item_type.h>
 #include <Das/param/paramgroup.h>
