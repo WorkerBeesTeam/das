@@ -251,6 +251,14 @@ void Controller::anyMessage(TgBot::Message::Ptr message)
             if (bot_user_->id == message->leftChatMember->id)
             {
                 dbg << "this bot was removed from chat";
+
+                Base& db = Base::get_thread_local_instance();
+
+                QString field_name = db_table<Tg_Subscriber>().field_names().at(Tg_Subscriber::COL_chat_id);
+                db.del(db_table_name<Tg_Subscriber>(), field_name + '=' + QString::number(message->chat->id));
+
+                field_name = db_table<DB::Tg_Chat>().field_names().at(DB::Tg_Chat::COL_id);
+                db.del(db_table_name<DB::Tg_Chat>(), field_name + '=' + QString::number(message->chat->id));
             }
         }
     }
@@ -279,11 +287,11 @@ void Controller::anyMessage(TgBot::Message::Ptr message)
                 {
                     const vector<string> cmd = StringTools::split(it->second.data_, '.');
 
-                    Elements elements(*this, user_id, it->second.scheme_, cmd, it->second.data_);
-                    elements.process_user_data(message->text);
+                    Elements elements(*this, user_id, it->second.scheme_, cmd, it->second.data_, message->text);
+                    elements.generate_answer();
 
                     if (!elements.text_.empty())
-                        send_message(message->chat->id, elements.text_);
+                        bot_->getApi().sendMessage(message->chat->id, elements.text_, false, 0, elements.keyboard_, "Markdown");
                 }
 
                 waited_map_.erase(it);

@@ -209,5 +209,5 @@ int ResistancePlugin::read_item(int pin)
     return count;
 }
 
-} // namespace Modbus
+} // namespace Resistance
 } // namespace Das

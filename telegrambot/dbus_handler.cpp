@@ -25,7 +25,7 @@ void Dbus_Handler::connection_state_changed(const Scheme_Info& scheme, uint8_t s
 
     state &= ~CS_FLAGS;
 
-    auto dbg = qDebug(DBus_log) << "instance:" << scheme.id() << "state:" << int(state) << "flags:" << int(flags);
+    auto dbg = qDebug(DBus_log) << "Connection state - instance:" << scheme.id() << "state:" << int(state) << "flags:" << int(flags);
 
     switch (state)
     {

@@ -18,7 +18,9 @@ Interface::Interface() :
 }
 
 Manager_Interface *Interface::manager() { return mng_; }
+const Manager_Interface *Interface::manager() const { return mng_; }
 Scheme *Interface::scheme() { return scheme_; }
+const Scheme *Interface::scheme() const { return scheme_; }
 
 } // namespace Checker
 } // namespace Das

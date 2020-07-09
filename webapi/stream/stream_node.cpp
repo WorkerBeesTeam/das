@@ -15,26 +15,38 @@ public:
     {
     }
 private:
+
+    enum Comands {
+        CMD_FRAME = Helpz::Net::Cmd::USER_COMMAND,
+        CMD_TEXT
+    };
+
     void process_frame(qint64 param, uint32_t dev_item_id, const QByteArray& buffer)
     {
         node_->send_frame(param, dev_item_id, buffer);
     }
+
+    void process_text(qint64 param, uint32_t dev_item_id, const QString& text)
+    {
+        node_->send_text(param, dev_item_id, text);
+    }
+
     void process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev) override
     {
-        if (cmd == Helpz::Net::Cmd::USER_COMMAND)
+        try
         {
-            try
-            {
+            if (cmd == CMD_FRAME)
                 apply_parse(data_dev, &Stream_Server_Protocol::process_frame);
-            }
-            catch(...)
-            {
-                qDebug() << "Failed process_message";
-                node_->close();
-            }
+            else if (cmd == CMD_TEXT)
+                apply_parse(data_dev, &Stream_Server_Protocol::process_text);
+            else
+                qDebug() << "Stream_Server_Protocol::process_message unknown command" << cmd << "size" << data_dev.size();
         }
-        else
-            qDebug() << "Stream_Server_Protocol::process_message unknown command" << cmd << "size" << data_dev.size();
+        catch(...)
+        {
+            qDebug() << "Failed process_message";
+            node_->close();
+        }
     }
     void process_answer_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev) override
     {
@@ -74,6 +86,11 @@ void Stream_Node::process_wait_list(void *data)
 void Stream_Node::send_frame(qint64 param, uint32_t dev_item_id, const QByteArray &buffer)
 {
     controller_->send_frame(remote_endpoint_, param, dev_item_id, buffer);
+}
+
+void Stream_Node::send_text(qint64 param, uint32_t dev_item_id, const QString &text)
+{
+    controller_->send_text(remote_endpoint_, param, dev_item_id, text);
 }
 
 void Stream_Node::close()

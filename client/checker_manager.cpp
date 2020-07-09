@@ -370,6 +370,11 @@ void Manager::write_items(Plugin_Type* plugin, std::vector<Write_Cache_Item>& it
     }
 }
 
+bool Manager::is_server_connected() const
+{
+    return (bool)worker_->net_protocol();
+}
+
 void Manager::send_stream_toggled(uint32_t user_id, Device_Item *item, bool state)
 {
     std::shared_ptr<Ver::Client::Protocol> proto = worker_->net_protocol();

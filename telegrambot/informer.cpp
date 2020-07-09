@@ -9,6 +9,7 @@
 
 namespace Das {
 
+Q_LOGGING_CATEGORY(Inf_log, "informer")
 Q_LOGGING_CATEGORY(Inf_Detail_log, "informer.detail", QtInfoMsg)
 
 using namespace Helpz::DB;
@@ -132,7 +133,7 @@ void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_
     const std::string scheme_title = get_scheme_title(scheme.id());
     if (scheme_title.empty())
     {
-        qCritical() << "Can't get scheme name for id:" << scheme.id() << "events lost:" << qPrintable(text);
+        qCCritical(Inf_log) << "Can't get scheme name for id:" << scheme.id() << "events lost:" << qPrintable(text);
         return;
     }
 
@@ -153,9 +154,11 @@ void Informer::send_event_messages(const Scheme_Info &scheme, const QVector<Log_
 
 void Informer::add_connection_state(std::shared_ptr<Informer::Connection_State_Item> &&item_ptr)
 {
-    bool remove_only = item_ptr->type_ == Item::T_CONNECTED && skip_connected_event_;
-    auto revert_type = item_ptr->type_ == Item::T_CONNECTED ? Item::T_DISCONNECTED : Item::T_CONNECTED;
+    const bool remove_only = item_ptr->type_ == Item::T_CONNECTED && skip_connected_event_;
+    const Item::Type revert_type = item_ptr->type_ == Item::T_CONNECTED ? Item::T_DISCONNECTED : Item::T_CONNECTED;
     bool is_removed = false;
+
+    auto dbg = qDebug(Inf_Detail_log) << "Add connection state scheme:" << item_ptr->scheme_.id() << "type:" << item_ptr->type_ << "act:";
 
     std::lock_guard lock(mutex_);
 
@@ -167,28 +170,35 @@ void Informer::add_connection_state(std::shared_ptr<Informer::Connection_State_I
         {
             if (d_it->get()->type_ == revert_type)
             {
+                dbg << "remove type:" << revert_type;
                 is_removed = true;
+                d_it->get()->type_ = Item::T_UNKNOWN; // Skip instead remove from _data_queue
                 d_it = schemedata.erase(d_it);
             }
             else
             {
                 if (d_it->get()->type_ == item_ptr->type_)
                 {
-                    is_removed = true;
-                    *d_it = item_ptr;
+                    dbg << "update";
+                    is_removed = true; // Is actually updated
+                    *d_it->get() = *item_ptr;
                 }
                 ++d_it;
             }
         }
 
         if (!is_removed && !remove_only)
+        {
+            dbg << "add";
             schemedata.push_back(item_ptr);
+        }
 
         if (schemedata.empty())
             schemedata_map_.erase(it);
     }
     else if (!remove_only)
     {
+        dbg << "emplace";
         schemedata_map_.emplace(item_ptr->scheme_.id(), std::vector<std::shared_ptr<Item>>{item_ptr});
     }
 
@@ -263,6 +273,7 @@ void Informer::add_status(std::shared_ptr<Status>&& item_ptr)
             erase_two_vectors(data->del_vect_, item_ptr->add_vect_, item_ptr->del_vect_);
             if (data->add_vect_.empty() && data->del_vect_.empty())
             {
+                data->type_ = Item::T_UNKNOWN; // Skip instead remove from _data_queue
                 d_it = schemedata.erase(d_it);
             }
             else
@@ -309,6 +320,7 @@ void Informer::run()
 
         if (break_flag_)
         {
+            lock.unlock();
             while (!data_queue_.empty())
                 process_data(pop_data().get());
             if (!prepared_data_map_.empty())
@@ -403,7 +415,7 @@ void Informer::process_data(Item* data)
         const std::string scheme_title = get_scheme_title(data->scheme_.id());
         if (scheme_title.empty())
         {
-            qCritical() << "Can't get scheme name for id:" << data->scheme_.id();
+            qCCritical(Inf_log) << "Can't get scheme name for id:" << data->scheme_.id();
             return;
         }
         p_data.title_ = '*' + scheme_title + '*';
@@ -436,7 +448,7 @@ std::string Informer::get_scheme_title(uint32_t scheme_id)
     return title.toStdString();
 }
 
-std::map<uint32_t, std::string> Informer::get_data_text(Informer::Item *data) const
+std::map<uint32_t, std::string> Informer::get_data_text(Informer::Item *data)
 {
     switch (data->type_)
     {
@@ -449,7 +461,9 @@ std::map<uint32_t, std::string> Informer::get_data_text(Informer::Item *data) co
     case Item::T_DISCONNECTED:
     {
         auto conn_state = static_cast<Connection_State_Item*>(data);
-        if (!conn_state->just_now_)
+        if (conn_state->just_now_)
+            disconnected(data->scheme_, false);
+        else
             return {{0, "💢 Отключен."}};
         break;
     }

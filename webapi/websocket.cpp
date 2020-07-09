@@ -632,6 +632,25 @@ void WebSocket::send_stream_id_data(uint32_t scheme_id, uint32_t dev_item_id, co
         sock->sendBinaryMessage(message);
 }
 
+void WebSocket::send_stream_id_text(uint32_t scheme_id, uint32_t dev_item_id, const QString &text)
+{
+    const Stream_Item stream_item{scheme_id, dev_item_id};
+    auto it = client_uses_stream_.find(stream_item);
+    if (it == client_uses_stream_.cend())
+    {
+        stream_stop(scheme_id, dev_item_id);
+        return;
+    }
+
+    QByteArray message;
+    QDataStream ds(&message, QIODevice::WriteOnly);
+    ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
+    ds << (quint8)WS_STREAM_TEXT << scheme_id << dev_item_id << text;
+
+    for (QWebSocket* sock: it->second)
+        sock->sendBinaryMessage(message);
+}
+
 QByteArray WebSocket::prepare_connection_state_message(uint32_t scheme_id, uint8_t connection_state) const
 {
     QByteArray message;
