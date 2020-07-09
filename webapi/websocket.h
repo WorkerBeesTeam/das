@@ -78,6 +78,7 @@ public slots:
     void send_stream_toggled(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, bool state);
     void send_stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
     void send_stream_id_data(uint32_t scheme_id, uint32_t dev_item_id, const QByteArray& data);
+    void send_stream_id_text(uint32_t scheme_id, uint32_t dev_item_id, const QString& text);
 
     void send(const Scheme_Info &scheme, const QByteArray& data) const;
     void send_to_client(std::shared_ptr<Net::Websocket_Client> client, const QByteArray& data) const;

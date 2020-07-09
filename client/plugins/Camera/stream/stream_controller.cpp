@@ -41,6 +41,14 @@ Stream_Controller::Stream_Controller(boost::asio::io_context &io_context, boost:
     start_receive();
 }
 
+Stream_Controller::~Stream_Controller()
+{
+    timer_.stop();
+    timer_.join();
+
+    socket_.close();
+}
+
 void Stream_Controller::close()
 {
     io_context_.stop();
@@ -50,10 +58,21 @@ void Stream_Controller::on_protocol_timeout(boost::asio::ip::udp::endpoint endpo
 {
     Q_UNUSED(endpoint);
 
-    io_context_.post([this, data]()
+    try
     {
-        client_->process_wait_list(data);
-    });
+        io_context_.post([this, data]()
+        {
+            client_->process_wait_list(data);
+        });
+    }
+    catch(const std::exception& e)
+    {
+        qDebug() << "Stream_Controller::on_protocol_timeout excrption:" << e.what();
+    }
+    catch(...)
+    {
+        qDebug() << "Stream_Controller::on_protocol_timeout excrption!";
+    }
 }
 
 void Stream_Controller::write(const QByteArray &data)

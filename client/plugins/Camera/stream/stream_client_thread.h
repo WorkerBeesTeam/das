@@ -7,6 +7,8 @@
 
 #include <QByteArray>
 
+#include <Helpz/net_protocol.h>
+
 namespace Das {
 
 class Stream_Controller;
@@ -17,8 +19,14 @@ public:
     ~Stream_Client_Thread();
 
     void send(uint32_t dev_item_id, const QByteArray &param, const QByteArray& buffer);
+    void send_text(uint32_t dev_item_id, const QByteArray& param, const QString &text);
 private:
     void run();
+
+    enum Comands {
+        CMD_FRAME = Helpz::Net::Cmd::USER_COMMAND,
+        CMD_TEXT
+    };
 
     std::thread thread_;
 

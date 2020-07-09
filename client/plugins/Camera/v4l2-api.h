@@ -43,7 +43,7 @@ public:
 
     virtual ~v4l2() = default;
 
-    bool open(const QString &device, bool useWrapper = true, bool is_non_block = true);
+    bool open(const std::string &device, bool useWrapper = true, bool is_non_block = true);
 	void close();
 	int read(unsigned char *p, int size);
 	int ioctl(unsigned cmd, void *arg);
@@ -55,7 +55,7 @@ public:
     int fd() const;
     bool useWrapper() const;
     __u32 caps() const;
-    const QString &device() const;
+    const std::string &device() const;
 	static QString pixfmt2s(unsigned pixelformat);
 
 	virtual void error(const QString &text);
@@ -149,7 +149,7 @@ private:
 
 private:
 	int 		m_fd;
-	QString 	m_device;
+    std::string 	_device;
 	bool 		m_useWrapper;		// true if using the libv4l2 wrappers
 	v4l2_capability m_capability;
 };

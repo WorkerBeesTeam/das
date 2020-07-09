@@ -28,7 +28,7 @@ signals:
 public slots:
     QVector<Device_Item_Value> get_unsaved_values() const;
 
-    void add_log_value_item(const Log_Value_Item& item);
+    void add_log_value_item(Log_Value_Item item);
     void add_log_event_item(const Log_Event_Item& item);
     void add_param_value(const DIG_Param_Value& param_value);
 

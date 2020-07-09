@@ -26,6 +26,8 @@ class Stream_Controller : public Helpz::Net::Protocol_Writer, public Helpz::Net:
 {
 public:
     Stream_Controller(boost::asio::io_context& io_context, boost::asio::ip::udp::resolver::query query);
+    ~Stream_Controller();
+
     void close();
 
     void on_protocol_timeout(boost::asio::ip::udp::endpoint endpoint, void *data) override;

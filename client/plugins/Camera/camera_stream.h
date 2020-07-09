@@ -1,11 +1,8 @@
-#ifndef DAS_CAMERA_PLUGIN_VIDEO_STREAM_H
-#define DAS_CAMERA_PLUGIN_VIDEO_STREAM_H
+#ifndef DAS_CAMERA_PLUGIN_CAMERA_STREAM_H
+#define DAS_CAMERA_PLUGIN_CAMERA_STREAM_H
 
 #include <vector>
 #include <linux/videodev2.h>
-
-#include <QImage>
-#include <QBuffer>
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,32 +14,36 @@ struct v4lconvert_data;
 }
 #endif /* __cplusplus */
 
+#include <QImage>
+#include <QBuffer>
+
+#include "camera_stream_iface.h"
+
 namespace Das {
 
 class v4l2;
 
-class Video_Stream
+class Camera_Stream : public Camera_Stream_Iface
 {
 public:
-    Video_Stream(const QString& device_path, uint32_t width = 0, uint32_t height = 0, int quality = -1);
-    ~Video_Stream();
+    Camera_Stream(const std::string& device_path, uint32_t width = 0, uint32_t height = 0, int quality = -1);
+    ~Camera_Stream();
 
-    const QByteArray& param();
-    const QByteArray& get_frame();
+    const QByteArray& get_frame() override;
 
-    uint32_t width() const;
-    uint32_t height() const;
+    uint32_t width() const override;
+    uint32_t height() const override;
 
-    void reinit(uint32_t width = 0, uint32_t height = 0);
+    bool reinit(uint32_t width = 0, uint32_t height = 0) override;
 private:
-    bool open_device(const QString& device_path);
+    bool open_device(const std::string &device_path);
     void close_device();
 
     std::string start(uint32_t width, uint32_t height);
     bool init_format(uint32_t width, uint32_t height);
     void stop();
 
-    void cap_frame();
+    bool cap_frame(bool skip = false);
     bool must_convert_;
 
     int quality_;
@@ -63,10 +64,9 @@ private:
 
     QImage img_;
 
-    QByteArray data_, param_;
     QBuffer data_buffer_;
 };
 
 } // namespace Das
 
-#endif // DAS_CAMERA_PLUGIN_VIDEO_STREAM_H
+#endif // DAS_CAMERA_PLUGIN_CAMERA_STREAM_H

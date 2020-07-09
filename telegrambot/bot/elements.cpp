@@ -18,9 +18,10 @@ namespace Bot {
 using namespace std;
 using namespace Helpz::DB;
 
-Elements::Elements(const Bot_Base &controller, uint32_t user_id, const Scheme_Item &scheme, const std::vector<std::string> &cmd, const std::string &msg_data) :
+Elements::Elements(const Bot_Base &controller, uint32_t user_id, const Scheme_Item &scheme, const std::vector<std::string> &cmd, const std::string &msg_data, const string &user_data) :
     Menu_Item(controller, user_id, scheme),
-    msg_data_(msg_data),
+    has_back_btn_(true),
+    msg_data_(msg_data), user_data_(user_data),
     begin_(cmd.cbegin() + 3), cmd_(cmd)
 {
 }
@@ -43,15 +44,11 @@ void Elements::generate_answer()
         fill_section(sct_id);
     }
 
-    keyboard_->inlineKeyboard.push_back(makeInlineButtonRow(back_data_, "Назад (<<)"));
+    if (has_back_btn_)
+        keyboard_->inlineKeyboard.push_back(makeInlineButtonRow(back_data_, "Назад (<<)"));
 
     if (cmd_.size() <= 4)
         text_ += ':';
-}
-
-void Elements::process_user_data(const string &text)
-{
-    text_ = "Ещё не реализованно: " + msg_data_ + " = " + text;
 }
 
 void Elements::fill_sections()
@@ -348,22 +345,7 @@ void Elements::fill_group_mode(uint32_t dig_id)
 
 void Elements::fill_group_param(uint32_t dig_id)
 {
-    text_.clear();
-
-    std::string param_btn_base;
-
-    if (cmd_.size() == 6)
-    {
-        param_btn_base = msg_data_;
-    }
-    else
-    {
-        skip_edit_ = true;
-        text_ = "Введите значение уставки:";
-        return;
-        param_btn_base = back_data_;
-        back_data_ = back_data_.substr(0, back_data_.size() - cmd_.at(cmd_.size() - 2).size() - 1);
-    }
+    const std::string& param_btn_base = msg_data_;
 
     const QString sql =
             "SELECT dp.id, dptp.title, dpt.title, dpv.value FROM das_dig_param dp "
@@ -377,18 +359,73 @@ void Elements::fill_group_param(uint32_t dig_id)
             + QString::number(dig_id);
 
     Base& db = Base::get_thread_local_instance();
-    QSqlQuery q = db.exec(sql);
-    string text;
-    while (q.next())
+
+    if (cmd_.size() == 6)
     {
-        const string data = param_btn_base + '.' + q.value(0).toString().toStdString();
-        text = q.value(1).toString().toStdString();
-        if (!text.empty())
-            text += " - ";
-        text += q.value(2).toString().toStdString();
-        text += ": ";
-        text += q.value(3).toString().toStdString();
-        keyboard_->inlineKeyboard.push_back(makeInlineButtonRow(data, text));
+        text_.clear();
+
+        QSqlQuery q = db.exec(sql);
+        string text;
+        while (q.next())
+        {
+            const string data = param_btn_base + '.' + q.value(0).toString().toStdString();
+            text = q.value(1).toString().toStdString();
+            if (!text.empty())
+                text += " - ";
+            text += q.value(2).toString().toStdString();
+            text += ": ";
+            text += q.value(3).toString().toStdString();
+            keyboard_->inlineKeyboard.push_back(makeInlineButtonRow(data, text));
+        }
+    }
+    else if (cmd_.size() > 6)
+    {
+        const uint32_t param_id = std::stoul(cmd_.at(6));
+        has_back_btn_ = false;
+
+        QSqlQuery q = db.exec(sql + " AND dp.id = " + QString::number(param_id));
+        if (!q.next())
+            return;
+
+        string param_title;
+        param_title = q.value(1).toString().toStdString();
+        if (!param_title.empty())
+            param_title += " - ";
+        param_title += q.value(2).toString().toStdString();
+
+        string param_value = q.value(3).toString().toStdString();
+
+        if (cmd_.size() > 7) // User data confirmed
+        {
+            string user_data;
+            for (int i = 7; i < cmd_.size(); ++i)
+            {
+                if (!user_data.empty())
+                    user_data += '.';
+                user_data += cmd_.at(i);
+            }
+            // TODO: Check connected
+
+            QByteArray data;
+            QDataStream ds(&data, QIODevice::WriteOnly);
+            ds << uint32_t(1) << param_id << QString::fromStdString(user_data);
+            QMetaObject::invokeMethod(dbus_iface_, "send_message_to_scheme", Qt::QueuedConnection,
+                                      Q_ARG(uint32_t, scheme_.id()), Q_ARG(uint8_t, WS_CHANGE_DIG_PARAM_VALUES), Q_ARG(uint32_t, user_id_), Q_ARG(QByteArray, data));
+
+            text_ += "\nЗначение \"" + user_data + "\" уставки \"" + param_title + "\" отправленно на аппарат";
+        }
+        else if (user_data_.empty()) // Get user data
+        {
+            text_ = "Вы собираетесь изменить уставку \"" + param_title + "\" со значением \"" + param_value + "\"\n\nВведите новое значение уставки:";
+            skip_edit_ = true;
+        }
+        else // Confirm user data
+        {
+            text_ += "\nВы уверены что хотите изменить значение уставки \"" + param_title + "\" со значением \"" + param_value
+                    + "\", на новое значение: \"" + user_data_ + "\"";
+            const string data = param_btn_base + '.' + user_data_;
+            keyboard_->inlineKeyboard.push_back(makeInlineButtonRow(data, "Подтвердить"));
+        }
     }
 }
 

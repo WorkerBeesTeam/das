@@ -84,7 +84,7 @@ QVector<Device_Item_Value> Log_Value_Save_Timer::get_unsaved_values() const
     return value_vect;
 }
 
-void Log_Value_Save_Timer::add_log_value_item(const Log_Value_Item &item)
+void Log_Value_Save_Timer::add_log_value_item(Log_Value_Item item)
 {
     if (!item.is_big_value())
     {
@@ -100,11 +100,14 @@ void Log_Value_Save_Timer::add_log_value_item(const Log_Value_Item &item)
         item_values_timer_.start(item.need_to_save() ? 500 : 5000);
     }
 
-    value_pack_.push_back(item);
     if (!value_pack_timer_.isActive() || (item.need_to_save() && value_pack_timer_.remainingTime() > 10))
     {
         value_pack_timer_.start(item.need_to_save() ? 10 : 250);
     }
+
+    if (item.raw_value() == item.value())
+        item.set_raw_value(QVariant());
+    value_pack_.push_back(std::move(item));
 }
 
 void Log_Value_Save_Timer::add_log_event_item(const Log_Event_Item &item)

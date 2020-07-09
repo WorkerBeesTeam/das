@@ -14,6 +14,7 @@ public:
     virtual ~Stream_Server_Controller() = default;
 
     virtual void send_frame(boost::asio::ip::udp::endpoint remote_endpoint, qint64 param, uint32_t dev_item_id, const QByteArray& buffer) = 0;
+    virtual void send_text(boost::asio::ip::udp::endpoint remote_endpoint, qint64 param, uint32_t dev_item_id, const QString& text) = 0;
     virtual void remove(boost::asio::ip::udp::endpoint remote_endpoint) = 0;
 
     boost::asio::io_context& io_context_;

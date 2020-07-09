@@ -14,6 +14,7 @@ class Interface;
 namespace Rest {
 
 class Chart;
+class Chart_Data_Controller;
 class Scheme
 {
 public:
@@ -35,6 +36,7 @@ private:
     DBus::Interface *dbus_iface_;
 
     std::shared_ptr<Chart> chart_;
+    std::shared_ptr<Chart_Data_Controller> chart_data_;
 };
 
 } // namespace Rest

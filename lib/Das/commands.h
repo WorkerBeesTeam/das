@@ -131,6 +131,7 @@ enum WebSockCmd : uint8_t {
 
     WS_STREAM_TOGGLE,
     WS_STREAM_DATA,
+    WS_STREAM_TEXT,
 
     WEB_SOCK_CMD_COUNT
 };

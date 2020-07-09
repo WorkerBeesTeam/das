@@ -20,6 +20,7 @@ class Base;
 
 namespace Das {
 
+Q_DECLARE_LOGGING_CATEGORY(Inf_log)
 Q_DECLARE_LOGGING_CATEGORY(Inf_Detail_log)
 
 class Informer : public Status_Helper
@@ -40,6 +41,7 @@ private:
     {
         enum Type
         {
+            T_UNKNOWN,
             T_STATUS,
             T_CONNECTED,
             T_DISCONNECTED
@@ -88,7 +90,7 @@ private:
     std::shared_ptr<Item> pop_data();
     void process_data(Item* data);
     std::string get_scheme_title(uint32_t scheme_id);
-    std::map<uint32_t, std::string> get_data_text(Item* data) const;
+    std::map<uint32_t, std::string> get_data_text(Item* data);
     std::map<uint32_t, std::string> get_status_text(Status* data) const;
     void send_message(const std::map<uint32_t, Prepared_Data>& prepared_data_map);
 
