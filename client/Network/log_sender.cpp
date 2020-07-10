@@ -64,7 +64,7 @@ void Log_Sender::send_log_data(const Log_Type_Wrapper& log_type)
             {
                 request_data_size_ = 5;
             }
-        }, std::chrono::seconds{23}, std::chrono::seconds{10}) << log_type << log_data;
+        }, std::chrono::seconds{5}) << log_type << log_data;
     }
 }
 
