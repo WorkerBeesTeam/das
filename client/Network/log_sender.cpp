@@ -19,12 +19,30 @@ Log_Sender::Log_Sender(Protocol_Base *protocol) :
 }
 
 template<typename T>
+void prepare_pack(QVector<T>& /*log_data*/) {}
+
+template<>
+void prepare_pack<Log_Value_Item>(QVector<Log_Value_Item>& log_data)
+{
+    for (auto it = log_data.begin(); it != log_data.end(); ++it)
+    {
+        if (it->is_big_value())
+        {
+            log_data.erase(++it, log_data.end());
+            break;
+        }
+    }
+}
+
+template<typename T>
 void Log_Sender::send_log_data(const Log_Type_Wrapper& log_type)
 {
     Base& db = Base::get_thread_local_instance();
     QVector<T> log_data = db_build_list<T>(db, DB::Helper::get_default_where_suffix() + " LIMIT " + QString::number(request_data_size_));
     if (!log_data.empty())
     {
+        prepare_pack(log_data);
+
         protocol_->send(Cmd::LOG_DATA_REQUEST).answer([log_data](QIODevice& /*dev*/)
         {
             QString where = DB::Helper::get_default_suffix() + " AND "

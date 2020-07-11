@@ -100,7 +100,13 @@ void Log_Value_Save_Timer::add_log_value_item(Log_Value_Item item)
         item_values_timer_.start(item.need_to_save() ? 500 : 5000);
     }
 
-    if (!value_pack_timer_.isActive() || (item.need_to_save() && value_pack_timer_.remainingTime() > 10))
+    const bool send_immediately = item.is_big_value();
+    if (send_immediately)
+    {
+        value_pack_timer_.stop();
+        send_value_pack();
+    }
+    else if (!value_pack_timer_.isActive() || (item.need_to_save() && value_pack_timer_.remainingTime() > 10))
     {
         value_pack_timer_.start(item.need_to_save() ? 10 : 250);
     }
@@ -108,6 +114,9 @@ void Log_Value_Save_Timer::add_log_value_item(Log_Value_Item item)
     if (item.raw_value() == item.value())
         item.set_raw_value(QVariant());
     value_pack_.push_back(std::move(item));
+
+    if (send_immediately)
+        send_value_pack();
 }
 
 void Log_Value_Save_Timer::add_log_event_item(const Log_Event_Item &item)
@@ -235,6 +244,9 @@ void Log_Value_Save_Timer::save_item_values()
 
 void Log_Value_Save_Timer::send_value_pack()
 {
+    if (value_pack_.empty())
+        return;
+
     std::shared_ptr<QVector<Log_Value_Item>> pack = std::make_shared<QVector<Log_Value_Item>>(std::move(value_pack_));
     value_pack_.clear();
 
