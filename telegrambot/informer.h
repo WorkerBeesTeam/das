@@ -83,15 +83,23 @@ private:
         std::set<int64_t> chat_set_;
     };
 
+    struct Prepared_Status
+    {
+        uint32_t _dig_id, _status_id;
+        std::string _text;
+    };
+
     void add_connection_state(std::shared_ptr<Connection_State_Item>&& item_ptr);
     void add_status(std::shared_ptr<Status>&& item_ptr);
 
     void run();
     std::shared_ptr<Item> pop_data();
+    std::set<int64_t> get_disabled_chats(uint32_t status_type_id, uint32_t dig_id, const Scheme_Info& scheme);
     void process_data(Item* data);
+    void add_prepared_status_data(Status* data);
+    Prepared_Data& get_prepared_data(const Scheme_Info& scheme);
     std::string get_scheme_title(uint32_t scheme_id);
-    std::map<uint32_t, std::string> get_data_text(Item* data);
-    std::map<uint32_t, std::string> get_status_text(Status* data) const;
+    std::vector<Prepared_Status> get_prepared_statuses(Status* data) const;
     void send_message(const std::map<uint32_t, Prepared_Data>& prepared_data_map);
 
     bool break_flag_, skip_connected_event_;

@@ -4,6 +4,8 @@
 
 #include <Helpz/db_builder.h>
 
+#include <Das/db/disabled_status.h>
+
 #include "db/tg_subscriber.h"
 #include "informer.h"
 
@@ -363,24 +365,33 @@ std::shared_ptr<Informer::Item> Informer::pop_data()
     return data_ptr;
 }
 
-std::set<int64_t> get_disabled_chats(uint32_t status_type_id)
+std::set<int64_t> Informer::get_disabled_chats(uint32_t status_type_id, uint32_t dig_id, const Scheme_Info &scheme)
 {
-    const QString sql =
-            "SELECT id FROM ( "
-            "    SELECT * FROM ( "
-            "        SELECT tgc.id, ds.status_id FROM das_user_groups ug "
-            "        LEFT JOIN das_disabled_status ds ON ds.group_id = ug.group_id AND ds.status_id = %1 "
-            "        LEFT JOIN das_tg_user tgu ON tgu.user_id = ug.user_id "
-            "        LEFT JOIN das_tg_chat tgc ON tgc.admin_id = tgu.id "
-            "        WHERE tgc.id IS NOT NULL "
-            "        ORDER BY ds.id "
-            "        LIMIT 18446744073709551615 "
-            "    ) t2 "
-            "    GROUP BY id "
-            ") t1 "
-            "WHERE status_id IS NOT NULL";
-
     Base& db = Base::get_thread_local_instance();
+
+    const QString where_tpl = "WHERE status_id = %1 AND (scheme_id = %2 OR scheme_id = %3) AND (dig_id IS NULL OR dig_id = %4)";
+    QString sql = where_tpl.arg(status_type_id).arg(scheme.id()).arg(scheme.parent_id()).arg(dig_id);
+    auto disabled_statuses = db_build_list<Das::DB::Disabled_Status>(db, sql);
+    if (disabled_statuses.empty())
+        return {};
+
+    sql = R"sql(
+SELECT tgc.id FROM das_tg_chat tgc
+LEFT JOIN das_tg_user tgu ON tgu.id = tgc.admin_id
+LEFT JOIN das_user_groups ug ON ug.user_id = tgu.user_id
+WHERE ug.group_id IN ()sql";
+
+    for (const Das::DB::Disabled_Status& disabled: disabled_statuses)
+    {
+        if (!disabled.group_id())
+            throw; // Disabled for all chats
+
+        sql += QString::number(disabled.group_id());
+        sql += ',';
+    }
+
+    sql.replace(sql.size() - 1, 1, QChar(')'));
+
     QSqlQuery q = db.exec(sql.arg(status_type_id));
 
     std::set<int64_t> disabled_chats;
@@ -391,47 +402,101 @@ std::set<int64_t> get_disabled_chats(uint32_t status_type_id)
 
 void Informer::process_data(Item* data)
 {
-    std::map<uint32_t, std::string> text_map = get_data_text(data);
-    if (text_map.empty())
+    auto add_connection_data = [this, data](const std::string& text)
+    {
+        Prepared_Data::Data_Item prepared_data{text, {}};
+        std::lock_guard lock(mutex_); // for prepared_data_map_
+        Prepared_Data& p_data = get_prepared_data(data->scheme_);
+        p_data.items_.push_back(std::move(prepared_data));
+    };
+
+    try
+    {
+        switch (data->type_)
+        {
+        case Item::T_STATUS:
+            add_prepared_status_data(static_cast<Status*>(data));
+            break;
+
+        case Item::T_CONNECTED:
+        {
+            add_connection_data("🚀 На связи!");
+            break;
+        }
+
+        case Item::T_DISCONNECTED:
+        {
+            auto conn_state = static_cast<Connection_State_Item*>(data);
+            if (conn_state->just_now_)
+                disconnected(data->scheme_, false);
+            else
+                add_connection_data("💢 Отключен.");
+            break;
+        }
+
+        default:
+            break;
+        }
+    }
+    catch(const std::exception& e)
+    {
+        qCCritical(Inf_log) << e.what();
+    }
+    catch(...) {}
+}
+
+void Informer::add_prepared_status_data(Informer::Status *data)
+{
+    std::vector<Prepared_Status> statuses = get_prepared_statuses(data);
+    if (statuses.empty())
         return;
 
+    std::vector<Prepared_Data::Data_Item> items;
+    for (const Prepared_Status& item: statuses)
+    {
+        try
+        {
+            items.push_back(
+                    Prepared_Data::Data_Item{
+                        .text_ = item._text,
+                        .disabled_chats_ = get_disabled_chats(item._status_id, item._dig_id, data->scheme_)
+                    });
+        }
+        catch(...) {}
+    }
+
     std::lock_guard lock(mutex_); // for prepared_data_map_
-    auto it = prepared_data_map_.find(data->scheme_.id());
+    Prepared_Data& p_data = get_prepared_data(data->scheme_);
+    std::move(items.begin(), items.end(), std::back_inserter(p_data.items_));
+}
+
+Informer::Prepared_Data &Informer::get_prepared_data(const Scheme_Info &scheme)
+{
+    auto it = prepared_data_map_.find(scheme.id());
     if (it == prepared_data_map_.end())
     {
         Base& db = Base::get_thread_local_instance();
-        QVector<Tg_Subscriber> subscribers = db_build_list<Tg_Subscriber>(db, data->scheme_.scheme_groups(), {},
+        QVector<Tg_Subscriber> subscribers = db_build_list<Tg_Subscriber>(db, scheme.scheme_groups(), {},
                                                                           Tg_Subscriber::COL_group_id);
         if (subscribers.empty())
-            return;
+            throw;
 
         Prepared_Data p_data;
         for (const Tg_Subscriber& ts: subscribers)
             if (ts.chat_id())
                 p_data.chat_set_.insert(ts.chat_id());
         if (p_data.chat_set_.empty())
-            return;
+            throw;
 
-        const std::string scheme_title = get_scheme_title(data->scheme_.id());
+        const std::string scheme_title = get_scheme_title(scheme.id());
         if (scheme_title.empty())
-        {
-            qCCritical(Inf_log) << "Can't get scheme name for id:" << data->scheme_.id();
-            return;
-        }
+            throw std::runtime_error("Can't get scheme name for id: " + std::to_string(scheme.id()));
         p_data.title_ = '*' + scheme_title + '*';
 
-        it = prepared_data_map_.emplace(data->scheme_.id(), std::move(p_data)).first;
+        it = prepared_data_map_.emplace(scheme.id(), std::move(p_data)).first;
     }
 
-    Prepared_Data& p_data = it->second;
-    for (auto it = text_map.cbegin(); it != text_map.cend(); ++it)
-    {
-        p_data.items_.push_back(
-                    Prepared_Data::Data_Item{
-                        std::move(it->second),
-                        get_disabled_chats(it->first)
-                    });
-    }
+    return it->second;
 }
 
 std::string Informer::get_scheme_title(uint32_t scheme_id)
@@ -448,36 +513,10 @@ std::string Informer::get_scheme_title(uint32_t scheme_id)
     return title.toStdString();
 }
 
-std::map<uint32_t, std::string> Informer::get_data_text(Informer::Item *data)
+std::vector<Informer::Prepared_Status> Informer::get_prepared_statuses(Status *data) const
 {
-    switch (data->type_)
-    {
-    case Item::T_STATUS:
-        return get_status_text(static_cast<Status*>(data));
-
-    case Item::T_CONNECTED:
-        return {{0, "🚀 На связи!"}};
-
-    case Item::T_DISCONNECTED:
-    {
-        auto conn_state = static_cast<Connection_State_Item*>(data);
-        if (conn_state->just_now_)
-            disconnected(data->scheme_, false);
-        else
-            return {{0, "💢 Отключен."}};
-        break;
-    }
-
-    default:
-        break;
-    }
-
-    return {};
-}
-
-std::map<uint32_t, std::string> Informer::get_status_text(Status *data) const
-{
-    if (data->add_vect_.empty() && data->del_vect_.empty())
+    if (data->add_vect_.empty()
+        && data->del_vect_.empty())
         return {};
 
     QSet<uint32_t> info_id_set, group_id_set;
@@ -508,17 +547,22 @@ std::map<uint32_t, std::string> Informer::get_status_text(Status *data) const
     for (const DIG_Status& item: data->del_vect_)
         fill_dig_status_text(group_names, info_vect, item, true);
 
-    std::map<uint32_t, std::string> text_map;
+    std::vector<Prepared_Status> prepared;
     for (const Informer::Section& sct: group_names)
         for (const Informer::Section::Group& group: sct.group_vect_)
             for (const Informer::Section::Group::Status& s: group.status_vect_)
-                text_map.emplace(s.type_id_, s.icon_ + ' ' + sct.name_ + " - " + group.name_ + ": " + s.text_);
-    return text_map;
+                prepared.push_back(Prepared_Status{
+                                       ._dig_id = group.id_,
+                                       ._status_id = s.type_id_,
+                                       ._text = s.icon_ + ' ' + sct.name_ + " - " + group.name_ + ": " + s.text_
+                                   });
+    return prepared;
 }
 
 void Informer::send_message(const std::map<uint32_t, Prepared_Data>& prepared_data_map)
 {
-    std::map<int64_t, QString> message_map;
+    std::string text;
+
     for (const auto& it: prepared_data_map)
     {
         const Prepared_Data& p_data = it.second;
@@ -527,13 +571,17 @@ void Informer::send_message(const std::map<uint32_t, Prepared_Data>& prepared_da
 
         for (int64_t chat_id: p_data.chat_set_)
         {
-            std::string text = p_data.title_;
+            text = p_data.title_;
 
             for (const Prepared_Data::Data_Item& item: p_data.items_)
             {
                 if (item.disabled_chats_.find(chat_id) == item.disabled_chats_.cend())
                     text += '\n' + item.text_;
             }
+
+            if (text.size() == p_data.title_.size())
+                continue;
+
             text += "\n\n";
 
             qCDebug(Inf_Detail_log) << "send_message chat:" << chat_id << "text:" << text.c_str();
