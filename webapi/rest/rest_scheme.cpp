@@ -10,6 +10,7 @@
 //#include <Das/section.h>
 #include <Das/db/scheme.h>
 #include <Das/db/dig_status_type.h>
+#include <Das/db/disabled_status.h>
 //#include <Das/db/dig_status.h>
 //#include <Das/db/device_item_value.h>
 //#include <Das/db/chart.h>
@@ -48,6 +49,7 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
     mux.handle(scheme_path + "/dig_status").get([this](served::response& res, const served::request& req) { get_dig_status(res, req); });
     mux.handle(scheme_path + "/dig_status_type").get([this](served::response& res, const served::request& req) { get_dig_status_type(res, req); });
     mux.handle(scheme_path + "/device_item_value").get([this](served::response& res, const served::request& req) { get_device_item_value(res, req); });
+    mux.handle(scheme_path + "/disabled_status").get([this](served::response& res, const served::request& req) { get_disabled_status(res, req); });
     mux.handle(scheme_path + "/set_name/").post([this](served::response& res, const served::request& req) { set_name(res, req); });
     mux.handle(scheme_path + "/copy/").post([this](served::response& res, const served::request& req) { copy(res, req); });
     mux.handle(scheme_path).get([this](served::response& res, const served::request& req) { get(res, req); });
@@ -264,6 +266,20 @@ void Scheme::get_device_item_value(served::response &res, const served::request 
 
     res.set_header("Content-Type", "application/json");
     res << QJsonDocument(j_array).toJson().toStdString();
+}
+
+void Scheme::get_disabled_status(served::response &res, const served::request &req)
+{
+    Auth_Middleware::check_permission("add_scheme");
+
+    const Scheme_Info scheme = get_info(req);
+
+    uint32_t dig_id = stoa_or(req.query["dig_id"]);
+
+    const QString sql = "WHERE (scheme_id=%1 OR scheme_id=%2) AND (dig_id IS NULL OR dig_id = %3)";
+
+    res.set_header("Content-Type", "application/json");
+    res << gen_json_list<DB::Disabled_Status>(sql.arg(scheme.id()).arg(scheme.parent_id()).arg(dig_id));
 }
 
 void Scheme::get(served::response &res, const served::request &req)

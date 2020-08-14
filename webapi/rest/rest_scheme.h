@@ -26,6 +26,7 @@ private:
     void get_dig_status(served::response& res, const served::request& req);
     void get_dig_status_type(served::response& res, const served::request& req);
     void get_device_item_value(served::response& res, const served::request& req);
+    void get_disabled_status(served::response& res, const served::request& req);
     void get(served::response& res, const served::request& req);
     void get_list(served::response& res, const served::request& req);
     void create(served::response& res, const served::request& req);
