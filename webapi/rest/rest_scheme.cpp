@@ -51,7 +51,7 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
     mux.handle(scheme_path + "/device_item_value").get([this](served::response& res, const served::request& req) { get_device_item_value(res, req); });
     mux.handle(scheme_path + "/disabled_status")
             .get([this](served::response& res, const served::request& req) { get_disabled_status(res, req); })
-            .del([this](served::response& res, const served::request& req) { del_disabled_status(res, req); })
+            .method(served::method::PATCH, [this](served::response& res, const served::request& req) { del_disabled_status(res, req); })
             .post([this](served::response& res, const served::request& req) { add_disabled_status(res, req); });
     mux.handle(scheme_path + "/set_name/").post([this](served::response& res, const served::request& req) { set_name(res, req); });
     mux.handle(scheme_path + "/copy/").post([this](served::response& res, const served::request& req) { copy(res, req); });
@@ -399,11 +399,9 @@ void Scheme::add_disabled_status(served::response &res, const served::request &r
     Auth_Middleware::check_permission("add_disabled_status");
     const Scheme_Info scheme = get_info(req);
 
-
     QVariantList values, tmp_values;
 
     Table table = db_table<DB::Disabled_Status>();
-    table.field_names().removeFirst();
 
     const picojson::array& arr = val.get<picojson::array>();
     for (const picojson::value& value: arr)
@@ -419,6 +417,7 @@ void Scheme::add_disabled_status(served::response &res, const served::request &r
     if (values.empty())
         throw served::request_error(served::status_4XX::BAD_REQUEST, "Failed find item for insert");
 
+    table.field_names().removeFirst();
     QString sql = "INSERT INTO " + table.name() + '(' + table.field_names().join(',') + ") VALUES" +
             Base::get_q_array(table.field_names().size(), values.size() / table.field_names().size());
 

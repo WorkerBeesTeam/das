@@ -384,7 +384,7 @@ WHERE ug.group_id IN ()sql";
     for (const Das::DB::Disabled_Status& disabled: disabled_statuses)
     {
         if (!disabled.group_id())
-            throw; // Disabled for all chats
+            throw 0; // Disabled for all chats
 
         sql += QString::number(disabled.group_id());
         sql += ',';
@@ -479,14 +479,14 @@ Informer::Prepared_Data &Informer::get_prepared_data(const Scheme_Info &scheme)
         QVector<Tg_Subscriber> subscribers = db_build_list<Tg_Subscriber>(db, scheme.scheme_groups(), {},
                                                                           Tg_Subscriber::COL_group_id);
         if (subscribers.empty())
-            throw;
+            throw 0;
 
         Prepared_Data p_data;
         for (const Tg_Subscriber& ts: subscribers)
             if (ts.chat_id())
                 p_data.chat_set_.insert(ts.chat_id());
         if (p_data.chat_set_.empty())
-            throw;
+            throw 0;
 
         const std::string scheme_title = get_scheme_title(scheme.id());
         if (scheme_title.empty())
@@ -519,20 +519,25 @@ std::vector<Informer::Prepared_Status> Informer::get_prepared_statuses(Status *d
         && data->del_vect_.empty())
         return {};
 
-    QSet<uint32_t> info_id_set, group_id_set;
+    QSet<uint32_t> info_id_set, group_id_set, user_id_set;
     for (const DIG_Status& item: data->add_vect_)
     {
         info_id_set.insert(item.status_id());
         group_id_set.insert(item.group_id());
+        if (item.user_id())
+            user_id_set.insert(item.user_id());
     }
     for (const DIG_Status& item: data->del_vect_)
     {
         info_id_set.insert(item.status_id());
         group_id_set.insert(item.group_id());
+        if (item.user_id())
+            user_id_set.insert(item.user_id());
     }
 
     Base& db = Base::get_thread_local_instance();
     std::vector<Informer::Section> group_names = get_group_names(group_id_set, db, data->scheme_);
+    std::map<uint32_t, QString> user_name_map = get_user_names(user_id_set, db, data->scheme_);
 
     QString suffix = db_get_items_list_suffix<DIG_Status_Type>(info_id_set);
     suffix += " AND ";
@@ -541,9 +546,9 @@ std::vector<Informer::Prepared_Status> Informer::get_prepared_statuses(Status *d
     const QVector<DIG_Status_Type> info_vect = db_build_list<DIG_Status_Type>(db, suffix);
 
     for (const DIG_Status& item: data->add_vect_)
-        fill_dig_status_text(group_names, info_vect, item);
+        fill_dig_status_text(group_names, user_name_map, info_vect, item);
     for (const DIG_Status& item: data->del_vect_)
-        fill_dig_status_text(group_names, info_vect, item, true);
+        fill_dig_status_text(group_names, user_name_map, info_vect, item, true);
 
     std::vector<Prepared_Status> prepared;
     for (const Informer::Section& sct: group_names)

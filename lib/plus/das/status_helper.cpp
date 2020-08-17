@@ -1,3 +1,5 @@
+#include <Helpz/db_builder.h>
+
 #include "status_helper.h"
 
 namespace Das {
@@ -15,11 +17,9 @@ namespace Das {
     QString sql = "SELECT s.id, s.name, g.id, g.title, gt.title FROM das_device_item_group g "
                   "LEFT JOIN das_section s ON s.id = g.section_id "
                   "LEFT JOIN das_dig_type gt ON gt.id = g.type_id "
-                  "WHERE g.%1 AND g.id IN (";
+                  "WHERE g.%1 AND g.";
 
-    for (uint32_t id: group_id_set)
-        sql += QString::number(id) + ',';
-    sql[sql.size() - 1] = ')';
+    sql += Helpz::DB::get_db_field_in_sql("id", group_id_set);
 
     QSqlQuery q = db.exec(sql.arg(scheme.ids_to_sql()));
     while (q.next())
@@ -44,7 +44,48 @@ namespace Das {
     return sct_vect;
 }
 
-/*static*/ void Status_Helper::fill_group_status_text(std::vector<Section>& group_names, const DIG_Status_Type& info, const DIG_Status& item, bool is_up)
+/*static*/ std::map<uint32_t, QString> Status_Helper::get_user_names(const QSet<uint32_t> &user_id_set, Helpz::DB::Base &db,
+                                                                     const Scheme_Info &scheme)
+{
+    if (user_id_set.empty())
+        return {};
+
+    QString sql =
+R"sql(SELECT u.id, u.username, u.first_name, u.last_name FROM das_user u
+LEFT JOIN das_scheme_group_user sgu ON sgu.user_id = u.id
+LEFT JOIN das_scheme_groups sg ON sg.scheme_group_id = sgu.group_id
+WHERE sg.%1 AND u.%2
+GROUP BY u.id)sql";
+
+    QSqlQuery q = db.exec(sql
+                          .arg(scheme.ids_to_sql())
+                          .arg(Helpz::DB::get_db_field_in_sql("id", user_id_set)));
+
+    std::map<uint32_t, QString> user_name_map;
+    QString name, last_name;
+
+    while (q.next())
+    {
+        name = q.value(2).toString();
+        last_name = q.value(3).toString();
+
+        if (!last_name.isEmpty())
+        {
+            if (!name.isEmpty())
+                name += ' ';
+            name += last_name;
+        }
+
+        if (name.isEmpty())
+            name = q.value(1).toString();
+        user_name_map.emplace(q.value(0).toUInt(), std::move(name));
+    }
+
+    return user_name_map;
+}
+
+/*static*/ void Status_Helper::fill_group_status_text(std::vector<Section>& group_names, const std::map<uint32_t, QString>& user_name_map,
+                                                      const DIG_Status_Type& info, const DIG_Status& item, bool is_up)
 {
     if (!info.inform)
         return;
@@ -73,8 +114,29 @@ namespace Das {
             message = message.arg(arg);
     }
 
+    auto get_user_name_msg = [&user_name_map](uint32_t id) -> QString
+    {
+        auto it = user_name_map.find(id);
+
+        QString msg = " пользователем **";
+        msg += it == user_name_map.cend() ? "Unknown" : it->second;
+        msg += "**";
+        return msg;
+    };
+
     if (is_up)
-        message = "Состояние \"`" + message + "`\" снято!";
+    {
+        message = "Состояние \"`" + message + "`\" снято";
+        if (item.user_id())
+            message += get_user_name_msg(item.user_id());
+        message += '!';
+    }
+    else if (item.user_id())
+    {
+        message += " (Установленно";
+        message += get_user_name_msg(item.user_id());
+        message += ')';
+    }
 
     for (Status_Helper::Section& sct: group_names)
     {
@@ -88,13 +150,14 @@ namespace Das {
     }
 }
 
-void Status_Helper::fill_dig_status_text(std::vector<Section>& group_names, const QVector<DIG_Status_Type>& info_vect, const DIG_Status& item, bool is_up)
+void Status_Helper::fill_dig_status_text(std::vector<Section>& group_names, const std::map<uint32_t, QString> &user_name_map,
+                                         const QVector<DIG_Status_Type>& info_vect, const DIG_Status& item, bool is_up)
 {
     for (const DIG_Status_Type& info: info_vect)
     {
         if (info.id() == item.status_id())
         {
-            fill_group_status_text(group_names, info, item, is_up);
+            fill_group_status_text(group_names, user_name_map, info, item, is_up);
             return;
         }
     }
