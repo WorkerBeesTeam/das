@@ -28,6 +28,9 @@ private:
     template<typename T>
     void send_log_data(const Log_Type_Wrapper& log_type);
 
+    template<typename T>
+    void send_log_data(const Log_Type_Wrapper& log_type, std::shared_ptr<QVector<T>> log_data);
+
     int request_data_size_;
     Protocol_Base* protocol_;
 };

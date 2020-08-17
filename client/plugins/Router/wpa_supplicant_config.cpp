@@ -101,7 +101,7 @@ void WPA_Supplicant_Config::set_str(std::string text)
                 ++pos;
         }
 
-        step = ++step % STEP_COUNT;
+        ++step %= STEP_COUNT;
     }
 
     write(items);

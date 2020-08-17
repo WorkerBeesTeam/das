@@ -43,8 +43,8 @@ std::string Device_Item::get_name() const
     const QString dev_item_sql =
             "SELECT IF(di.name IS NULL OR di.name = '', dit.title, di.name) as title FROM das_device_item di "
             "LEFT JOIN das_device_item_type dit ON dit.id = di.type_id "
-            "WHERE di.scheme_id = "
-            + QString::number(parameters().scheme_->parent_id_or_id()) +
+            "WHERE di."
+            + parameters().scheme_->ids_to_sql() +
             " AND di.id = "
             + QString::number(id());
 
@@ -64,8 +64,8 @@ Device_Item::Value_Pair Device_Item::get_value_pair() const
             "LEFT JOIN das_device_item_value dv ON dv.item_id = di.id AND dv.scheme_id = "
             + QString::number(parameters().scheme_->id()) +
             " LEFT JOIN das_sign_type s ON s.id = dit.sign_id "
-            "WHERE di.scheme_id = "
-            + QString::number(parameters().scheme_->parent_id_or_id()) +
+            "WHERE di."
+            + parameters().scheme_->ids_to_sql() +
             " AND di.id = "
             + QString::number(id());
 

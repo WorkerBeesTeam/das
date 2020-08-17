@@ -246,10 +246,10 @@ bool Camera_Stream::init_format(uint32_t width, uint32_t height)
         // format since we do not want that happening.
         src_format_ = copy;
 
-        qDebug().nospace() << "Convert from "
-                 << fcc2s(src_format_.fmt.pix.pixelformat).c_str() << ' ' << src_format_.fmt.pix.width << 'x' << src_format_.fmt.pix.height << " size " << src_format_.fmt.pix.sizeimage
-                 << " to "
-                 << fcc2s(dest_format_.fmt.pix.pixelformat).c_str() << ' ' << dest_format_.fmt.pix.width << 'x' << dest_format_.fmt.pix.height << " size " << dest_format_.fmt.pix.sizeimage;
+//        qDebug().nospace() << "Convert from "
+//                 << fcc2s(src_format_.fmt.pix.pixelformat).c_str() << ' ' << src_format_.fmt.pix.width << 'x' << src_format_.fmt.pix.height << " size " << src_format_.fmt.pix.sizeimage
+//                 << " to "
+//                 << fcc2s(dest_format_.fmt.pix.pixelformat).c_str() << ' ' << dest_format_.fmt.pix.width << 'x' << dest_format_.fmt.pix.height << " size " << dest_format_.fmt.pix.sizeimage;
     }
 
     QImage::Format dst_fmt = QImage::Format_RGB888;

@@ -8,10 +8,8 @@ namespace Das {
 Camera_Stream_Iface::Camera_Stream_Iface() :
     _skip_frame_count(0)
 {
-    QRandomGenerator rnd(time(nullptr));
-
     QDataStream ds(&_param, QIODevice::WriteOnly);
-    ds << uint32_t(rnd.generate()) << uint32_t(rnd.generate());
+    ds << uint32_t(QRandomGenerator::system()->generate()) << uint32_t(QRandomGenerator::system()->generate());
 }
 
 void Camera_Stream_Iface::set_skip_frame_count(uint32_t count)

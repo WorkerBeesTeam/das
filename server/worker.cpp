@@ -190,12 +190,12 @@ void Worker::init_server(QSettings* s)
 
             const std::string& ver_str = proto_arr.back();
 
-            if (ver_str == "2.5")
+            if (ver_str == "2.6")
             {
                 *choose_out = proto;
                 return std::make_shared<Ver::Server::Protocol>(this);
             }
-            else if (ver_str == "2.4")
+            else if (ver_str == "2.5")
             {
                 *choose_out = proto;
             }
@@ -210,7 +210,7 @@ void Worker::init_server(QSettings* s)
             }
         }
 
-        if (*choose_out == "das/2.4")
+        if (*choose_out == "das/2.5")
         {
             auto ptr = std::make_shared<Ver::Server::Protocol>(this);
             ptr->disable_sync();

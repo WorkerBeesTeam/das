@@ -220,8 +220,12 @@ void global::check_auth(const Authentication_Info &auth_info, Server::Protocol_B
             device_connection_id = using_key;
 
             info_out->set_id(query.value(0).toUInt());
-            info_out->set_parent_id(query.value(4).toUInt());
             info_out->set_name(query.value(1).toString());
+
+            std::set<uint32_t> extending_ids;
+            if (!query.isNull(4)) // TODO: get array from specific table
+                extending_ids.insert(query.value(4).toUInt());
+            info_out->set_extending_scheme_ids(std::move(extending_ids));
 //            info_out->set_scheme_title(query.value(2).toString());
 
             std::shared_ptr<Helpz::Net::Protocol_Writer> writer = info_out->writer();

@@ -9,6 +9,7 @@
 
 #include <Das/log/log_value_item.h>
 
+#include "json_helper.h"
 #include "auth_middleware.h"
 #include "rest_scheme.h"
 #include "rest_chart_value.h"
@@ -143,19 +144,10 @@ QString Chart_Value::get_data_in_where() const
     return get_field_name(FT_ITEM_ID) + " IN (" + _data_in_list.join(',') + ')';
 }
 
-template<typename T>
-T stoa_or_0(T(*func)(const std::string&, size_t*, int), const std::string& text, T default_value = static_cast<T>(0))
-{
-    try {
-        return func(text, 0, 10);
-    } catch(...) {}
-    return default_value;
-}
-
 void Chart_Value::parse_limits(const std::string &offset_str, const std::string &limit_str)
 {
-    _offset = stoa_or_0(std::stoul, offset_str);
-    _limit = stoa_or_0(std::stoul, limit_str, 1000000UL);
+    _offset = stoa_or(offset_str);
+    _limit = stoa_or(limit_str, 1000000UL);
     if (_limit == 0 || _limit > 1000000)
         _limit = 1000000;
 }

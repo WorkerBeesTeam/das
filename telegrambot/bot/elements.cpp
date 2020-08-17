@@ -30,7 +30,7 @@ void Elements::generate_answer()
 {
     create_keyboard();
     back_data_ = msg_data_.substr(0, msg_data_.size() - cmd_.back().size() - 1);
-    scheme_suffix_ = "WHERE scheme_id = " + QString::number(scheme_.parent_id_or_id());
+    scheme_suffix_ = "WHERE " + scheme_.ids_to_sql();
 
     text_ = '*';
     text_ += scheme_.title_.toStdString();
@@ -137,7 +137,7 @@ void Elements::fill_groups(uint32_t sct_id)
             "SELECT dst1.id FROM das_dig_status_type dst1 WHERE "
             + status_id_sql +
             " ORDER BY dst1.category_id DESC LIMIT 1"
-            ") WHERE dig.scheme_id = " + QString::number(scheme_.parent_id_or_id())
+            ") WHERE dig." + scheme_.ids_to_sql()
             + " AND dig.section_id = " + QString::number(sct_id);
 
     QSqlQuery q = db.exec(sql);
@@ -183,7 +183,7 @@ void Elements::fill_group_info(uint32_t dig_id)
     QString sql =
             "SELECT IF(dig.title IS NULL OR dig.title = '', dt.title, dig.title) as title FROM das_device_item_group dig "
             "LEFT JOIN das_dig_type dt ON dt.id = dig.type_id "
-            "WHERE dig.scheme_id = " + QString::number(scheme_.parent_id_or_id())
+            "WHERE dig." + scheme_.ids_to_sql()
             + " AND dig.id = " + QString::number(dig_id);
 
     Base& db = Base::get_thread_local_instance();
@@ -199,8 +199,8 @@ void Elements::fill_group_info(uint32_t dig_id)
             "LEFT JOIN das_device_item_value dv ON dv.item_id = di.id AND dv.scheme_id = "
             + QString::number(scheme_.id()) +
             " LEFT JOIN das_sign_type s ON s.id = dit.sign_id "
-            "WHERE di.scheme_id = "
-            + QString::number(scheme_.parent_id_or_id()) +
+            "WHERE di."
+            + scheme_.ids_to_sql() +
             " AND di.group_id = "
             + QString::number(dig_id) +
             " ORDER BY di.device_id ASC";
@@ -251,8 +251,8 @@ void Elements::fill_group_info(uint32_t dig_id)
     if (!scheme_status.status_set_.empty())
     {
         QString status_text;
-        QString status_sql = "WHERE scheme_id = ";
-        status_sql += QString::number(scheme_.parent_id_or_id());
+        QString status_sql = "WHERE ";
+        status_sql += scheme_.ids_to_sql();
         status_sql += " AND id IN (";
 
         for (const DIG_Status& status: scheme_status.status_set_)
@@ -353,8 +353,8 @@ void Elements::fill_group_param(uint32_t dig_id)
             "LEFT JOIN das_dig_param_type dptp ON dptp.id = dpt.parent_id "
             "LEFT JOIN das_dig_param_value dpv ON dpv.group_param_id = dp.id AND dpv.scheme_id = "
             + QString::number(scheme_.id()) +
-            " WHERE dpt.value_type != 7 AND dp.scheme_id = "
-            + QString::number(scheme_.parent_id_or_id()) +
+            " WHERE dpt.value_type != 7 AND dp."
+            + scheme_.ids_to_sql() +
             " AND dp.group_id = "
             + QString::number(dig_id);
 
@@ -398,7 +398,7 @@ void Elements::fill_group_param(uint32_t dig_id)
         if (cmd_.size() > 7) // User data confirmed
         {
             string user_data;
-            for (int i = 7; i < cmd_.size(); ++i)
+            for (size_t i = 7; i < cmd_.size(); ++i)
             {
                 if (!user_data.empty())
                     user_data += '.';

@@ -1,6 +1,7 @@
 #ifndef DAS_STRUCTURE_SYNCHRONIZER_BASE_H
 #define DAS_STRUCTURE_SYNCHRONIZER_BASE_H
 
+#include <set>
 #include <future>
 
 #include <QLoggingCategory>
@@ -18,6 +19,8 @@
 //#include <Das/db/device_item_value.h>
 //#include <Das/db/dig_param_value.h>
 //#include <Das/db/dig_mode.h>
+
+#include "scheme_info.h"
 
 namespace Das {
 
@@ -62,8 +65,8 @@ public:
                                 uint32_t scheme_id, std::function<std::shared_ptr<Bad_Fix>()> get_bad_fix);
 
 protected:
-    QByteArray get_structure_hash(uint8_t struct_type, Helpz::DB::Base& db, uint32_t scheme_id);
-    QByteArray get_structure_hash_for_all(Helpz::DB::Base& db, uint32_t scheme_id);
+    QByteArray get_structure_hash(uint8_t struct_type, Helpz::DB::Base& db, const Scheme_Info& scheme);
+    QByteArray get_structure_hash_for_all(Helpz::DB::Base& db, const Scheme_Info& scheme);
 
     Helpz::DB::Thread *db_thread() const;
 
@@ -72,32 +75,34 @@ protected:
     virtual bool is_can_modify(uint8_t struct_type) const;
     virtual void fill_suffix(uint8_t struct_type, QString &where_str);
 
-    void add_structure_data(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, uint32_t scheme_id);
-    void add_structure_items_data(uint8_t struct_type, const QVector<uint32_t>& id_vect, QDataStream& ds, Helpz::DB::Base& db, uint32_t scheme_id);
+    void add_structure_data(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, const Scheme_Info& scheme);
+    void add_structure_items_data(uint8_t struct_type, const QVector<uint32_t>& id_vect, QDataStream& ds, Helpz::DB::Base& db, const Scheme_Info &scheme);
 
-    QMap<uint32_t, uint16_t> get_structure_hash_map_by_type(uint8_t struct_type, Helpz::DB::Base& db, uint32_t scheme_id);
+    QMap<uint32_t, uint16_t> get_structure_hash_map_by_type(uint8_t struct_type, Helpz::DB::Base& db, const Scheme_Info& scheme);
 private:
     template<typename T>
-    QString get_db_list_suffix(uint8_t struct_type, const QVector<uint32_t>& id_vect, uint32_t scheme_id);
+    QString get_db_list_suffix(uint8_t struct_type, const QVector<uint32_t>& id_vect, const Scheme_Info& scheme);
 
     template<typename T>
-    QVector<T> get_db_list(uint8_t struct_type, Helpz::DB::Base& db, uint32_t scheme_id, const QVector<uint32_t>& id_vect);
+    QVector<T> get_db_list(uint8_t struct_type, Helpz::DB::Base& db, const Scheme_Info& scheme,
+                           const QVector<uint32_t>& id_vect);
 
-    void add_structure_template(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, uint32_t scheme_id, const QVector<uint32_t>& id_vect = {});
+    void add_structure_template(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, const Scheme_Info& scheme, const QVector<uint32_t>& id_vect = {});
     template<typename T>
-    QMap<uint32_t, uint16_t> get_structure_hash_map(uint8_t struct_type, Helpz::DB::Base& db, uint32_t scheme_id);
+    QMap<uint32_t, uint16_t> get_structure_hash_map(uint8_t struct_type, Helpz::DB::Base& db, const Scheme_Info& scheme);
 
     virtual void send_modify_response(uint8_t struct_type, const QByteArray &buffer, uint32_t user_id) = 0;
 
     template<typename T>
     void modify(QVector<T>&& upd_vect, QVector<T>&& insrt_vect, QVector<uint32_t>&& del_vect, uint32_t user_id,
-                uint8_t struct_type, uint32_t scheme_id, std::function<std::shared_ptr<Bad_Fix>()> get_bad_fix);
+                uint8_t struct_type, const Scheme_Info& scheme,
+                std::function<std::shared_ptr<Bad_Fix>()> get_bad_fix);
 
     template<class T>
     bool modify_table(uint8_t struct_type, Helpz::DB::Base& db,
                       const QVector<T>& update_vect,
                       QVector<T>& insert_vect,
-                      const QVector<uint32_t>& delete_vect, uint32_t scheme_id);
+                      const QVector<uint32_t>& delete_vect, const Scheme_Info& scheme);
 
 private:
     bool modified_;

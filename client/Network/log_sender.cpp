@@ -18,38 +18,6 @@ Log_Sender::Log_Sender(Protocol_Base *protocol) :
 {
 }
 
-template<typename T>
-void Log_Sender::send_log_data(const Log_Type_Wrapper& log_type)
-{
-    Base& db = Base::get_thread_local_instance();
-    QVector<T> log_data = db_build_list<T>(db, DB::Helper::get_default_where_suffix() + " LIMIT " + QString::number(request_data_size_));
-    if (!log_data.empty())
-    {
-        protocol_->send(Cmd::LOG_DATA_REQUEST).answer([log_data](QIODevice& /*dev*/)
-        {
-            QString where = DB::Helper::get_default_suffix() + " AND "
-                    + T::table_column_names().at(T::COL_timestamp_msecs) + " IN (";
-            for (const T& item: log_data)
-            {
-                where += QString::number(item.timestamp_msecs()) + ',';
-            }
-            where.replace(where.length() - 1, 1, ')');
-
-            Base& db = Base::get_thread_local_instance();
-            db.del(db_table_name<T>(), where);
-        })
-        .timeout([this, log_type]()
-        {
-//            qWarning(Sync_Log) << log_type.to_string() << "log send timeout. request_data_size_:" << request_data_size_;
-            request_data_size_ /= 2;
-            if (request_data_size_ < 5)
-            {
-                request_data_size_ = 5;
-            }
-        }, std::chrono::seconds{23}, std::chrono::seconds{10}) << log_type << log_data;
-    }
-}
-
 void Log_Sender::send_data(Log_Type_Wrapper log_type, uint8_t msg_id)
 {
     if (log_type.is_valid())
@@ -66,6 +34,59 @@ void Log_Sender::send_data(Log_Type_Wrapper log_type, uint8_t msg_id)
             break;
         }
     }
+}
+
+template<typename T>
+void prepare_pack(QVector<T>& /*log_data*/) {}
+
+template<>
+void prepare_pack<Log_Value_Item>(QVector<Log_Value_Item>& log_data)
+{
+    for (auto it = log_data.begin(); it != log_data.end(); ++it)
+    {
+        if (it->is_big_value())
+        {
+            log_data.erase(++it, log_data.end());
+            break;
+        }
+    }
+}
+
+template<typename T>
+void Log_Sender::send_log_data(const Log_Type_Wrapper& log_type)
+{
+    Base& db = Base::get_thread_local_instance();
+    QVector<T> log_data = db_build_list<T>(db, DB::Helper::get_default_where_suffix() + " LIMIT " + QString::number(request_data_size_));
+    if (!log_data.empty())
+    {
+        prepare_pack(log_data);
+        send_log_data(log_type, std::make_shared<QVector<T>>(std::move(log_data)));
+    }
+}
+
+template<typename T>
+void Log_Sender::send_log_data(const Log_Type_Wrapper &log_type, std::shared_ptr<QVector<T>> log_data)
+{
+    protocol_->send(Cmd::LOG_DATA_REQUEST).answer([log_data](QIODevice& /*dev*/)
+    {
+        QString where = DB::Helper::get_default_suffix() + " AND "
+                + T::table_column_names().at(T::COL_timestamp_msecs) + " IN (";
+        for (const T& item: *log_data)
+            where += QString::number(item.timestamp_msecs()) + ',';
+        where.replace(where.length() - 1, 1, ')');
+
+        Base& db = Base::get_thread_local_instance();
+        db.del(db_table_name<T>(), where);
+    })
+    .timeout([this, log_type, log_data]()
+    {
+//            qWarning(Sync_Log) << log_type.to_string() << "log send timeout. request_data_size_:" << request_data_size_;
+        request_data_size_ /= 2;
+        if (request_data_size_ < 5)
+            request_data_size_ = 5;
+
+        send_log_data<T>(log_type, log_data);
+    }, std::chrono::seconds{23}, std::chrono::seconds{10}) << log_type << *log_data;
 }
 
 } // namespace Client

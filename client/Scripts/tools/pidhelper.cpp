@@ -72,7 +72,7 @@ void PIDHelper::onPWM()
 
     if (m_step == 0)
         calculatePID( current_time );
-    m_step = (m_step + 1) % 2;
+    ++m_step %= 2;
 
     bool state = false; // group()->isControlOn(type());
 
