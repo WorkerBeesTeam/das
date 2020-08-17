@@ -1,49 +1,71 @@
+#include <Helpz/db_builder.h>
+
 #include "scheme_info.h"
 
 namespace Das {
 
 Scheme_Info::Scheme_Info(Scheme_Info *obj) :
-    id_(obj->id_), parent_id_(obj->parent_id_), scheme_groups_(obj->scheme_groups_) {}
+    _id(obj->_id), _extending_id_set(obj->_extending_id_set), _scheme_groups(obj->_scheme_groups) {}
 
-Scheme_Info::Scheme_Info(uint32_t id, uint32_t parent_id, const std::set<uint32_t>& scheme_groups) :
-    id_(id), parent_id_(parent_id), scheme_groups_(scheme_groups)
+Scheme_Info::Scheme_Info(uint32_t id, const std::set<uint32_t> &ids, const std::set<uint32_t>& scheme_groups) :
+    _id(id), _extending_id_set(ids), _scheme_groups(scheme_groups)
 {
 }
 
-uint32_t Scheme_Info::id() const { return id_; }
-void Scheme_Info::set_id(uint32_t id) { id_ = id; }
+uint32_t Scheme_Info::id() const { return _id; }
+void Scheme_Info::set_id(uint32_t id)
+{
+    _id = id;
+    _sql_cache.clear();
+}
 
 //QString Scheme_Info::scheme_title() const { return scheme_title_; }
 //void Scheme_Info::set_scheme_title(const QString& title) { scheme_title_ = title; }
 
-uint32_t Scheme_Info::parent_id() const { return parent_id_; }
-void Scheme_Info::set_parent_id(uint32_t id) { parent_id_ = id; }
-
-uint32_t Scheme_Info::parent_id_or_id() const
+const std::set<uint32_t> &Scheme_Info::extending_scheme_ids() const { return _extending_id_set; }
+void Scheme_Info::set_extending_scheme_ids(const std::set<uint32_t> &ids)
 {
-    return parent_id_ ? parent_id_ : id_;
+    _extending_id_set = ids;
+    _sql_cache.clear();
 }
+void Scheme_Info::set_extending_scheme_ids(std::set<uint32_t> &&ids)
+{
+    _extending_id_set = std::move(ids);
+    _sql_cache.clear();
+}
+
+const QString &Scheme_Info::ids_to_sql() const
+{
+    if (_sql_cache.isEmpty())
+        _sql_cache = Helpz::DB::get_db_field_in_sql("scheme_id", _extending_id_set, _id);
+    return _sql_cache;
+}
+
+//uint32_t Scheme_Info::parent_id_or_id() const
+//{
+//    return _parent_id ? _parent_id : _id;
+//}
 
 const std::set<uint32_t> &Scheme_Info::scheme_groups() const
 {
-    return scheme_groups_;
+    return _scheme_groups;
 }
 
 void Scheme_Info::set_scheme_groups(const std::set<uint32_t> &scheme_groups)
 {
-    scheme_groups_ = scheme_groups;
+    _scheme_groups = scheme_groups;
 //    std::sort(scheme_groups_.begin(), scheme_groups_.end());
 }
 
 void Scheme_Info::set_scheme_groups(std::set<uint32_t>&& scheme_groups)
 {
-    scheme_groups_ = std::move(scheme_groups);
+    _scheme_groups = std::move(scheme_groups);
 //    std::sort(scheme_groups_.begin(), scheme_groups_.end());
 }
 
 bool Scheme_Info::check_scheme_groups(const std::set<uint32_t>& scheme_groups) const
 {
-    for (uint32_t scheme_group_id: scheme_groups_)
+    for (uint32_t scheme_group_id: _scheme_groups)
         if (scheme_groups.find(scheme_group_id) != scheme_groups.cend())
             return true;
     return false;
@@ -51,7 +73,7 @@ bool Scheme_Info::check_scheme_groups(const std::set<uint32_t>& scheme_groups) c
 
 bool Scheme_Info::operator ==(const Scheme_Info& o) const
 {
-    return id_ == o.id_;
+    return _id == o._id;
 }
 
 } // namespace Das

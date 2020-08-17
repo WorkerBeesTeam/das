@@ -369,8 +369,8 @@ std::set<int64_t> Informer::get_disabled_chats(uint32_t status_type_id, uint32_t
 {
     Base& db = Base::get_thread_local_instance();
 
-    const QString where_tpl = "WHERE status_id = %1 AND (scheme_id = %2 OR scheme_id = %3) AND (dig_id IS NULL OR dig_id = %4)";
-    QString sql = where_tpl.arg(status_type_id).arg(scheme.id()).arg(scheme.parent_id()).arg(dig_id);
+    const QString where_tpl = "WHERE status_id = %1 AND %2 AND (dig_id IS NULL OR dig_id = %3)";
+    QString sql = where_tpl.arg(status_type_id).arg(scheme.ids_to_sql()).arg(dig_id);
     auto disabled_statuses = db_build_list<Das::DB::Disabled_Status>(db, sql);
     if (disabled_statuses.empty())
         return {};
@@ -531,14 +531,12 @@ std::vector<Informer::Prepared_Status> Informer::get_prepared_statuses(Status *d
         group_id_set.insert(item.group_id());
     }
 
-    uint32_t scheme_id = data->scheme_.parent_id_or_id();
-
     Base& db = Base::get_thread_local_instance();
-    std::vector<Informer::Section> group_names = get_group_names(group_id_set, db, scheme_id);
+    std::vector<Informer::Section> group_names = get_group_names(group_id_set, db, data->scheme_);
 
     QString suffix = db_get_items_list_suffix<DIG_Status_Type>(info_id_set);
-    suffix += " AND scheme_id = ";
-    suffix += QString::number(scheme_id);
+    suffix += " AND ";
+    suffix += data->scheme_.ids_to_sql();
 
     const QVector<DIG_Status_Type> info_vect = db_build_list<DIG_Status_Type>(db, suffix);
 

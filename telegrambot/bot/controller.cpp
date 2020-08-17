@@ -567,13 +567,13 @@ void Controller::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
     {
         sql = "SELECT dig.id, s.name, dig.title, gt.title "
               "FROM das_device_item_group dig "
-              "LEFT JOIN das_section s ON s.id = dig.section_id AND s.scheme_id = %1 "
-              "LEFT JOIN das_dig_type gt ON gt.id = dig.type_id AND gt.scheme_id = %1 "
-              "WHERE dig.scheme_id = %1 AND dig.id IN (";
-        sql = sql.arg(scheme.parent_id_or_id());
+              "LEFT JOIN das_section s ON s.id = dig.section_id "
+              "LEFT JOIN das_dig_type gt ON gt.id = dig.type_id "
+              "WHERE dig.%1 AND dig.id IN (";
+        sql = sql.arg(scheme.ids_to_sql());
 
-        status_sql = "WHERE scheme_id = ";
-        status_sql += QString::number(scheme.parent_id_or_id());
+        status_sql = "WHERE ";
+        status_sql += scheme.ids_to_sql();
         status_sql += " AND id IN (";
 
         for (const DIG_Status& status: scheme_status.status_set_)
@@ -970,7 +970,7 @@ void Controller::fill_scheme(uint32_t user_id, Scheme_Item &scheme) const
     QSqlQuery q = db.exec(sql);
     if (q.isActive() && q.next())
     {
-        scheme.set_parent_id(q.value(0).toUInt());
+        scheme.set_extending_scheme_ids({q.value(0).toUInt()});
         scheme.title_ = q.value(1).toString();
     }
     else

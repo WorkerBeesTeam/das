@@ -62,7 +62,7 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
             if (!err.empty() || !val.is<picojson::object>())
                 throw served::request_error(served::status_4XX::BAD_REQUEST, err);
 
-            const picojson::object obj = val.get<picojson::object>();
+            const picojson::object& obj = val.get<picojson::object>();
             const std::string username = obj.at("username").get<std::string>();
             const std::string password = obj.at("password").get<std::string>();
 

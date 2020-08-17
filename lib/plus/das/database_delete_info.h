@@ -8,6 +8,7 @@
 #include <QBitArray>
 
 #include <Helpz/db_base.h>
+#include <Helpz/db_builder.h>
 #include <Helpz/db_delete_row.h>
 
 #include <Das/section.h>
@@ -26,6 +27,8 @@
 #include <Das/db/auth_group.h>
 #include <Das/device.h>
 #include <Das/type_managers.h>
+
+#include "scheme_info.h"
 
 namespace Das {
 namespace DB {
@@ -265,7 +268,7 @@ struct Scheme_Table_Helper<User_Groups> :
 
 // db_delete_rows
 template<typename T, typename PK_Type = typename Scheme_Table_Helper<T>::PK_Type>
-bool db_delete_rows(Helpz::DB::Base& db, const QVector<PK_Type>& delete_vect, uint32_t scheme_id,
+bool db_delete_rows(Helpz::DB::Base& db, const QVector<PK_Type>& delete_vect, const Scheme_Info& scheme,
                     const QString& db_name = QString())
 {
     using namespace Helpz::DB;
@@ -278,10 +281,11 @@ bool db_delete_rows(Helpz::DB::Base& db, const QVector<PK_Type>& delete_vect, ui
     Delete_Row_Helper::FILL_WHERE_FUNC_T fill_where_func;
     if (has_scheme_id<T>())
     {
-        fill_where_func = [scheme_id](const Delete_Row_Info& info, QString& where_str) -> void
+        const QString where = scheme.ids_to_sql();
+        fill_where_func = [where](const Delete_Row_Info& info, QString& where_str) -> void
         {
             Q_UNUSED(info)
-            where_str += " AND scheme_id = " + QString::number(scheme_id);
+            where_str += " AND " + where;
         };
     }
 

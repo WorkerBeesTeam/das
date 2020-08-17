@@ -22,8 +22,8 @@ std::string DIG_Param::get_value() const
             "LEFT JOIN das_dig_param_type dpt ON dpt.id = dp.param_id "
             "LEFT JOIN das_dig_param_value dpv ON dpv.group_param_id = dp.id AND dpv.scheme_id = "
             + QString::number(parameters().scheme_->id()) +
-            " WHERE dp.scheme_id = "
-            + QString::number(parameters().scheme_->parent_id_or_id()) +
+            " WHERE dp."
+            + parameters().scheme_->ids_to_sql() +
             " AND dp.id = "
             + QString::number(id());
 
@@ -64,8 +64,8 @@ std::string DIG_Param::get_name() const
             "SELECT dptp.title, dpt.title FROM das_dig_param dp "
             "LEFT JOIN das_dig_param_type dpt ON dpt.id = dp.param_id "
             "LEFT JOIN das_dig_param_type dptp ON dptp.id = dpt.parent_id "
-            " WHERE dpt.value_type != 7 AND dp.scheme_id = "
-            + QString::number(parameters().scheme_->parent_id_or_id()) +
+            " WHERE dpt.value_type != 7 AND dp."
+            + parameters().scheme_->ids_to_sql() +
             " AND dp.id = "
             + QString::number(id());
 

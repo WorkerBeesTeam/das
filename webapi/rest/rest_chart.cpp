@@ -39,7 +39,7 @@ void Chart::remove(served::response &res, const served::request &req)
     const Scheme_Info scheme = Scheme::get_info(req);
 
     Base& db = Base::get_thread_local_instance();
-    if (!DB::db_delete_rows<DB::Chart>(db, {chart_id}, scheme.parent_id_or_id()))
+    if (!DB::db_delete_rows<DB::Chart>(db, {chart_id}, scheme))
         throw served::request_error(served::status_4XX::BAD_REQUEST, "Delete chart failed");
 
     res << "{\"result\": true}\n";
@@ -64,7 +64,6 @@ void Chart::upsert(served::response &res, const served::request &req)
     Auth_Middleware::check_permission(chart_id ? "change_chart" : "add_chart");
 
     const Scheme_Info scheme = Scheme::get_info(req);
-    const uint32_t scheme_id = scheme.parent_id_or_id();
 
     Base& db = Base::get_thread_local_instance();
 
@@ -72,7 +71,7 @@ void Chart::upsert(served::response &res, const served::request &req)
 
     if (chart_id)
     {
-        const QString where = "scheme_id = " + QString::number(scheme_id) + " AND id = " + QString::number(chart_id);
+        const QString where = scheme.ids_to_sql() + " AND id = " + QString::number(chart_id);
         auto q = db.select(table, "WHERE " + where);
         if (!q.isActive() || !q.next())
             throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, q.lastError().text().toStdString());
@@ -90,7 +89,7 @@ void Chart::upsert(served::response &res, const served::request &req)
     }
     else
     {
-        const DB::Chart chart{0, new_name, scheme_id};
+        const DB::Chart chart{0, new_name, scheme.id()};
         QVariant new_id;
         bool res = db.insert(table, DB::Chart::to_variantlist(chart), &new_id);
         chart_id = new_id.toUInt();
@@ -115,10 +114,10 @@ void Chart::upsert(served::response &res, const served::request &req)
     std::vector<DB::Chart_Item> chart_item_vect, del_vect, upd_vect, not_modified_vect;
     for (const picojson::value& val: chart_items)
         chart_item_vect.push_back(DB::Chart_Item{0, chart_id, QString::fromStdString(val.get("color").get<std::string>()),
-                                                 get_uint32_or_zero(val, "item_id"), get_uint32_or_zero(val, "param_id"), scheme_id});
+                                                 get_uint32_or_zero(val, "item_id"), get_uint32_or_zero(val, "param_id"), scheme.id()});
 
     const Table item_table = db_table<DB::Chart_Item>();
-    const QString where = "scheme_id = " + QString::number(scheme_id) + " AND chart_id = " + QString::number(chart_id);
+    const QString where = scheme.ids_to_sql() + " AND chart_id = " + QString::number(chart_id);
 
     DB::Chart_Item chart_item;
     QSqlQuery q = db.select(item_table, "WHERE " + where);

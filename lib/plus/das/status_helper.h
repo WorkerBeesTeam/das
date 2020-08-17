@@ -6,6 +6,8 @@
 #include <Das/db/dig_status_type.h>
 #include <Das/db/dig_status.h>
 
+#include "scheme_info.h"
+
 namespace Das {
 
 class Status_Helper
@@ -33,7 +35,7 @@ public:
         std::vector<Group> group_vect_;
     };
 
-    static std::vector<Section> get_group_names(const QSet<uint32_t>& group_id_set, Helpz::DB::Base& db, uint32_t scheme_id);
+    static std::vector<Section> get_group_names(const QSet<uint32_t>& group_id_set, Helpz::DB::Base& db, const Scheme_Info& scheme);
     static void fill_group_status_text(std::vector<Section>& group_names, const DIG_Status_Type& info, const DIG_Status& item, bool is_up = false);
     static void fill_dig_status_text(std::vector<Section>& group_names, const QVector<DIG_Status_Type>& info_vect, const DIG_Status& item, bool is_up = false);
 };

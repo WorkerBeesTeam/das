@@ -138,18 +138,18 @@ void Structure_Synchronizer_Base::process_modify_message(uint32_t user_id, uint8
     }
 }
 
-QByteArray Structure_Synchronizer_Base::get_structure_hash(uint8_t struct_type, Helpz::DB::Base& db, uint32_t scheme_id)
+QByteArray Structure_Synchronizer_Base::get_structure_hash(uint8_t struct_type, Helpz::DB::Base& db, const Scheme_Info &scheme)
 {
     QBuffer buffer;
     buffer.open(QIODevice::ReadWrite);
     QDataStream ds(&buffer);
     ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
-    add_structure_data(struct_type, ds, db, scheme_id);
+    add_structure_data(struct_type, ds, db, scheme);
 
     return QCryptographicHash::hash(buffer.buffer(), QCryptographicHash::Sha1);
 }
 
-QByteArray Structure_Synchronizer_Base::get_structure_hash_for_all(Helpz::DB::Base& db, uint32_t scheme_id)
+QByteArray Structure_Synchronizer_Base::get_structure_hash_for_all(Helpz::DB::Base& db, const Scheme_Info &scheme)
 {
     std::vector<uint8_t> struct_type_array = get_main_table_types();
     QBuffer buffer;
@@ -157,7 +157,7 @@ QByteArray Structure_Synchronizer_Base::get_structure_hash_for_all(Helpz::DB::Ba
     QDataStream ds(&buffer);
     ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
     for (const uint8_t struct_type: struct_type_array)
-        add_structure_data(struct_type, ds, db, scheme_id);
+        add_structure_data(struct_type, ds, db, scheme);
 
     return QCryptographicHash::hash(buffer.buffer(), QCryptographicHash::Sha1);
 }
@@ -182,12 +182,12 @@ bool Structure_Synchronizer_Base::is_can_modify(uint8_t /*struct_type*/) const
 
 void Structure_Synchronizer_Base::fill_suffix(uint8_t /*struct_type*/, QString &/*where_str*/) {}
 
-void Structure_Synchronizer_Base::add_structure_data(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, uint32_t scheme_id)
+void Structure_Synchronizer_Base::add_structure_data(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, const Scheme_Info &scheme)
 {
-    add_structure_template(struct_type, ds, db, scheme_id);
+    add_structure_template(struct_type, ds, db, scheme);
 }
 
-void Structure_Synchronizer_Base::add_structure_items_data(uint8_t struct_type, const QVector<uint32_t>& id_vect, QDataStream& ds, Helpz::DB::Base& db, uint32_t scheme_id)
+void Structure_Synchronizer_Base::add_structure_items_data(uint8_t struct_type, const QVector<uint32_t>& id_vect, QDataStream& ds, Helpz::DB::Base& db, const Scheme_Info &scheme)
 {
     if (id_vect.isEmpty())
     {
@@ -195,43 +195,43 @@ void Structure_Synchronizer_Base::add_structure_items_data(uint8_t struct_type, 
     }
     else
     {
-        add_structure_template(struct_type, ds, db, scheme_id, id_vect);
+        add_structure_template(struct_type, ds, db, scheme, id_vect);
     }
 }
 
-QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_type(uint8_t struct_type, Helpz::DB::Base& db, uint32_t scheme_id)
+QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_type(uint8_t struct_type, Helpz::DB::Base& db, const Scheme_Info &scheme)
 {
     switch (struct_type)
     {
-    case ST_DEVICE:                return get_structure_hash_map<Device>                  (struct_type, db, scheme_id); break;
-    case ST_PLUGIN_TYPE:           return get_structure_hash_map<Plugin_Type>             (struct_type, db, scheme_id); break;
-    case ST_DEVICE_ITEM:           return get_structure_hash_map<Device_Item>             (struct_type, db, scheme_id); break;
-    case ST_DEVICE_ITEM_TYPE:      return get_structure_hash_map<Device_Item_Type>        (struct_type, db, scheme_id); break;
-    case ST_SECTION:               return get_structure_hash_map<Section>                 (struct_type, db, scheme_id); break;
-    case ST_DEVICE_ITEM_GROUP:     return get_structure_hash_map<Device_item_Group>       (struct_type, db, scheme_id); break;
-    case ST_DIG_TYPE:              return get_structure_hash_map<DIG_Type>                (struct_type, db, scheme_id); break;
-    case ST_DIG_MODE_TYPE:         return get_structure_hash_map<DIG_Mode_Type>           (struct_type, db, scheme_id); break;
-    case ST_DIG_PARAM:             return get_structure_hash_map<DIG_Param>               (struct_type, db, scheme_id); break;
-    case ST_DIG_PARAM_TYPE:        return get_structure_hash_map<DIG_Param_Type>          (struct_type, db, scheme_id); break;
-    case ST_DIG_STATUS_TYPE:       return get_structure_hash_map<DIG_Status_Type>         (struct_type, db, scheme_id); break;
-    case ST_DIG_STATUS_CATEGORY:   return get_structure_hash_map<DIG_Status_Category>     (struct_type, db, scheme_id); break;
-    case ST_SIGN_TYPE:             return get_structure_hash_map<Sign_Type>               (struct_type, db, scheme_id); break;
-    case ST_CODES:                 return get_structure_hash_map<Code_Item>               (struct_type, db, scheme_id); break;
-    case ST_SAVE_TIMER:            return get_structure_hash_map<Save_Timer>              (struct_type, db, scheme_id); break;
-    case ST_TRANSLATION:           return get_structure_hash_map<Translation>             (struct_type, db, scheme_id); break;
-    case ST_NODE:                  return get_structure_hash_map<DB::Node>                (struct_type, db, scheme_id); break;
-    case ST_DISABLED_PARAM:        return get_structure_hash_map<DB::Disabled_Param>      (struct_type, db, scheme_id); break;
-    case ST_DISABLED_STATUS:       return get_structure_hash_map<DB::Disabled_Status>     (struct_type, db, scheme_id); break;
-    case ST_CHART:                 return get_structure_hash_map<DB::Chart>               (struct_type, db, scheme_id); break;
-    case ST_CHART_ITEM:            return get_structure_hash_map<DB::Chart_Item>          (struct_type, db, scheme_id); break;
-    case ST_AUTH_GROUP:            return get_structure_hash_map<Auth_Group>              (struct_type, db, scheme_id); break;
-    case ST_AUTH_GROUP_PERMISSION: return get_structure_hash_map<Auth_Group_Permission>   (struct_type, db, scheme_id); break;
-    case ST_USER:                  return get_structure_hash_map<User>                    (struct_type, db, scheme_id); break;
-    case ST_USER_GROUP:            return get_structure_hash_map<User_Groups>             (struct_type, db, scheme_id); break;
+    case ST_DEVICE:                return get_structure_hash_map<Device>                  (struct_type, db, scheme); break;
+    case ST_PLUGIN_TYPE:           return get_structure_hash_map<Plugin_Type>             (struct_type, db, scheme); break;
+    case ST_DEVICE_ITEM:           return get_structure_hash_map<Device_Item>             (struct_type, db, scheme); break;
+    case ST_DEVICE_ITEM_TYPE:      return get_structure_hash_map<Device_Item_Type>        (struct_type, db, scheme); break;
+    case ST_SECTION:               return get_structure_hash_map<Section>                 (struct_type, db, scheme); break;
+    case ST_DEVICE_ITEM_GROUP:     return get_structure_hash_map<Device_item_Group>       (struct_type, db, scheme); break;
+    case ST_DIG_TYPE:              return get_structure_hash_map<DIG_Type>                (struct_type, db, scheme); break;
+    case ST_DIG_MODE_TYPE:         return get_structure_hash_map<DIG_Mode_Type>           (struct_type, db, scheme); break;
+    case ST_DIG_PARAM:             return get_structure_hash_map<DIG_Param>               (struct_type, db, scheme); break;
+    case ST_DIG_PARAM_TYPE:        return get_structure_hash_map<DIG_Param_Type>          (struct_type, db, scheme); break;
+    case ST_DIG_STATUS_TYPE:       return get_structure_hash_map<DIG_Status_Type>         (struct_type, db, scheme); break;
+    case ST_DIG_STATUS_CATEGORY:   return get_structure_hash_map<DIG_Status_Category>     (struct_type, db, scheme); break;
+    case ST_SIGN_TYPE:             return get_structure_hash_map<Sign_Type>               (struct_type, db, scheme); break;
+    case ST_CODES:                 return get_structure_hash_map<Code_Item>               (struct_type, db, scheme); break;
+    case ST_SAVE_TIMER:            return get_structure_hash_map<Save_Timer>              (struct_type, db, scheme); break;
+    case ST_TRANSLATION:           return get_structure_hash_map<Translation>             (struct_type, db, scheme); break;
+    case ST_NODE:                  return get_structure_hash_map<DB::Node>                (struct_type, db, scheme); break;
+    case ST_DISABLED_PARAM:        return get_structure_hash_map<DB::Disabled_Param>      (struct_type, db, scheme); break;
+    case ST_DISABLED_STATUS:       return get_structure_hash_map<DB::Disabled_Status>     (struct_type, db, scheme); break;
+    case ST_CHART:                 return get_structure_hash_map<DB::Chart>               (struct_type, db, scheme); break;
+    case ST_CHART_ITEM:            return get_structure_hash_map<DB::Chart_Item>          (struct_type, db, scheme); break;
+    case ST_AUTH_GROUP:            return get_structure_hash_map<Auth_Group>              (struct_type, db, scheme); break;
+    case ST_AUTH_GROUP_PERMISSION: return get_structure_hash_map<Auth_Group_Permission>   (struct_type, db, scheme); break;
+    case ST_USER:                  return get_structure_hash_map<User>                    (struct_type, db, scheme); break;
+    case ST_USER_GROUP:            return get_structure_hash_map<User_Groups>             (struct_type, db, scheme); break;
 
-    case ST_DEVICE_ITEM_VALUE:     return get_structure_hash_map<Device_Item_Value>       (struct_type, db, scheme_id); break;
-    case ST_DIG_MODE:              return get_structure_hash_map<DIG_Mode>                (struct_type, db, scheme_id); break;
-    case ST_DIG_PARAM_VALUE:       return get_structure_hash_map<DIG_Param_Value>         (struct_type, db, scheme_id); break;
+    case ST_DEVICE_ITEM_VALUE:     return get_structure_hash_map<Device_Item_Value>       (struct_type, db, scheme); break;
+    case ST_DIG_MODE:              return get_structure_hash_map<DIG_Mode>                (struct_type, db, scheme); break;
+    case ST_DIG_PARAM_VALUE:       return get_structure_hash_map<DIG_Param_Value>         (struct_type, db, scheme); break;
 
     default:
         qCWarning(Struct_Log) << "get_structure_hash_map_by_type unprocessed" << struct_type;
@@ -241,7 +241,8 @@ QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_
 }
 
 template<typename T>
-QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, const QVector<uint32_t>& id_vect, uint32_t scheme_id)
+QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, const QVector<uint32_t>& id_vect,
+                                                        const Scheme_Info &scheme)
 {
     using Helper = DB::Scheme_Table_Helper<T>;
     QString suffix = Helpz::DB::db_get_items_list_suffix<T>(id_vect, Helper::pk_num);
@@ -253,7 +254,8 @@ QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, con
         else
             suffix += " AND";
 
-        suffix += " scheme_id = " + QString::number(scheme_id);
+        suffix += ' ';
+        suffix += scheme.ids_to_sql();
     }
 
     fill_suffix(struct_type, suffix);
@@ -277,44 +279,44 @@ QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, con
 }
 
 template<typename T>
-QVector<T> Structure_Synchronizer_Base::get_db_list(uint8_t struct_type, Helpz::DB::Base& db, uint32_t scheme_id, const QVector<uint32_t>& id_vect)
+QVector<T> Structure_Synchronizer_Base::get_db_list(uint8_t struct_type, Helpz::DB::Base& db, const Scheme_Info &scheme, const QVector<uint32_t>& id_vect)
 {
-    return Helpz::DB::db_build_list<T>(db, get_db_list_suffix<T>(struct_type, id_vect, scheme_id));
+    return Helpz::DB::db_build_list<T>(db, get_db_list_suffix<T>(struct_type, id_vect, scheme));
 }
 
-void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, uint32_t scheme_id, const QVector<uint32_t>& id_vect)
+void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, const Scheme_Info &scheme, const QVector<uint32_t>& id_vect)
 {
     switch (struct_type)
     {
-    case ST_DEVICE:                ds << get_db_list<Device>               (struct_type, db, scheme_id, id_vect); break;
-    case ST_PLUGIN_TYPE:           ds << get_db_list<Plugin_Type>          (struct_type, db, scheme_id, id_vect); break;
-    case ST_DEVICE_ITEM:           ds << get_db_list<Device_Item>          (struct_type, db, scheme_id, id_vect); break;
-    case ST_DEVICE_ITEM_TYPE:      ds << get_db_list<Device_Item_Type>     (struct_type, db, scheme_id, id_vect); break;
-    case ST_SAVE_TIMER:            ds << get_db_list<Save_Timer>           (struct_type, db, scheme_id, id_vect); break;
-    case ST_SECTION:               ds << get_db_list<Section>              (struct_type, db, scheme_id, id_vect); break;
-    case ST_DEVICE_ITEM_GROUP:     ds << get_db_list<Device_item_Group>    (struct_type, db, scheme_id, id_vect); break;
-    case ST_DIG_TYPE:              ds << get_db_list<DIG_Type>             (struct_type, db, scheme_id, id_vect); break;
-    case ST_DIG_MODE_TYPE:         ds << get_db_list<DIG_Mode_Type>        (struct_type, db, scheme_id, id_vect); break;
-    case ST_DIG_PARAM_TYPE:        ds << get_db_list<DIG_Param_Type>       (struct_type, db, scheme_id, id_vect); break;
-    case ST_DIG_STATUS_TYPE:       ds << get_db_list<DIG_Status_Type>      (struct_type, db, scheme_id, id_vect); break;
-    case ST_DIG_STATUS_CATEGORY:   ds << get_db_list<DIG_Status_Category>  (struct_type, db, scheme_id, id_vect); break;
-    case ST_DIG_PARAM:             ds << get_db_list<DIG_Param>            (struct_type, db, scheme_id, id_vect); break;
-    case ST_SIGN_TYPE:             ds << get_db_list<Sign_Type>            (struct_type, db, scheme_id, id_vect); break;
-    case ST_CODES:                 ds << get_db_list<Code_Item>            (struct_type, db, scheme_id, id_vect); break;
-    case ST_TRANSLATION:           ds << get_db_list<Translation>          (struct_type, db, scheme_id, id_vect); break;
-    case ST_NODE:                  ds << get_db_list<DB::Node>             (struct_type, db, scheme_id, id_vect); break;
-    case ST_DISABLED_PARAM:        ds << get_db_list<DB::Disabled_Param>   (struct_type, db, scheme_id, id_vect); break;
-    case ST_DISABLED_STATUS:       ds << get_db_list<DB::Disabled_Status>  (struct_type, db, scheme_id, id_vect); break;
-    case ST_CHART:                 ds << get_db_list<DB::Chart>            (struct_type, db, scheme_id, id_vect); break;
-    case ST_CHART_ITEM:            ds << get_db_list<DB::Chart_Item>       (struct_type, db, scheme_id, id_vect); break;
-    case ST_AUTH_GROUP:            ds << get_db_list<Auth_Group>           (struct_type, db, scheme_id, id_vect); break;
-    case ST_AUTH_GROUP_PERMISSION: ds << get_db_list<Auth_Group_Permission>(struct_type, db, scheme_id, id_vect); break;
-    case ST_USER:                  ds << get_db_list<User>                 (struct_type, db, scheme_id, id_vect); break;
-    case ST_USER_GROUP:            ds << get_db_list<User_Groups>          (struct_type, db, scheme_id, id_vect); break;
+    case ST_DEVICE:                ds << get_db_list<Device>               (struct_type, db, scheme, id_vect); break;
+    case ST_PLUGIN_TYPE:           ds << get_db_list<Plugin_Type>          (struct_type, db, scheme, id_vect); break;
+    case ST_DEVICE_ITEM:           ds << get_db_list<Device_Item>          (struct_type, db, scheme, id_vect); break;
+    case ST_DEVICE_ITEM_TYPE:      ds << get_db_list<Device_Item_Type>     (struct_type, db, scheme, id_vect); break;
+    case ST_SAVE_TIMER:            ds << get_db_list<Save_Timer>           (struct_type, db, scheme, id_vect); break;
+    case ST_SECTION:               ds << get_db_list<Section>              (struct_type, db, scheme, id_vect); break;
+    case ST_DEVICE_ITEM_GROUP:     ds << get_db_list<Device_item_Group>    (struct_type, db, scheme, id_vect); break;
+    case ST_DIG_TYPE:              ds << get_db_list<DIG_Type>             (struct_type, db, scheme, id_vect); break;
+    case ST_DIG_MODE_TYPE:         ds << get_db_list<DIG_Mode_Type>        (struct_type, db, scheme, id_vect); break;
+    case ST_DIG_PARAM_TYPE:        ds << get_db_list<DIG_Param_Type>       (struct_type, db, scheme, id_vect); break;
+    case ST_DIG_STATUS_TYPE:       ds << get_db_list<DIG_Status_Type>      (struct_type, db, scheme, id_vect); break;
+    case ST_DIG_STATUS_CATEGORY:   ds << get_db_list<DIG_Status_Category>  (struct_type, db, scheme, id_vect); break;
+    case ST_DIG_PARAM:             ds << get_db_list<DIG_Param>            (struct_type, db, scheme, id_vect); break;
+    case ST_SIGN_TYPE:             ds << get_db_list<Sign_Type>            (struct_type, db, scheme, id_vect); break;
+    case ST_CODES:                 ds << get_db_list<Code_Item>            (struct_type, db, scheme, id_vect); break;
+    case ST_TRANSLATION:           ds << get_db_list<Translation>          (struct_type, db, scheme, id_vect); break;
+    case ST_NODE:                  ds << get_db_list<DB::Node>             (struct_type, db, scheme, id_vect); break;
+    case ST_DISABLED_PARAM:        ds << get_db_list<DB::Disabled_Param>   (struct_type, db, scheme, id_vect); break;
+    case ST_DISABLED_STATUS:       ds << get_db_list<DB::Disabled_Status>  (struct_type, db, scheme, id_vect); break;
+    case ST_CHART:                 ds << get_db_list<DB::Chart>            (struct_type, db, scheme, id_vect); break;
+    case ST_CHART_ITEM:            ds << get_db_list<DB::Chart_Item>       (struct_type, db, scheme, id_vect); break;
+    case ST_AUTH_GROUP:            ds << get_db_list<Auth_Group>           (struct_type, db, scheme, id_vect); break;
+    case ST_AUTH_GROUP_PERMISSION: ds << get_db_list<Auth_Group_Permission>(struct_type, db, scheme, id_vect); break;
+    case ST_USER:                  ds << get_db_list<User>                 (struct_type, db, scheme, id_vect); break;
+    case ST_USER_GROUP:            ds << get_db_list<User_Groups>          (struct_type, db, scheme, id_vect); break;
 
-    case ST_DEVICE_ITEM_VALUE:     ds << get_db_list<Device_Item_Value>    (struct_type, db, scheme_id, id_vect); break;
-    case ST_DIG_MODE:              ds << get_db_list<DIG_Mode>             (struct_type, db, scheme_id, id_vect); break;
-    case ST_DIG_PARAM_VALUE:       ds << get_db_list<DIG_Param_Value>      (struct_type, db, scheme_id, id_vect); break;
+    case ST_DEVICE_ITEM_VALUE:     ds << get_db_list<Device_Item_Value>    (struct_type, db, scheme, id_vect); break;
+    case ST_DIG_MODE:              ds << get_db_list<DIG_Mode>             (struct_type, db, scheme, id_vect); break;
+    case ST_DIG_PARAM_VALUE:       ds << get_db_list<DIG_Param_Value>      (struct_type, db, scheme, id_vect); break;
 
     default:
         qCWarning(Struct_Log) << "add_structure_data unprocessed" << static_cast<Structure_Type>(struct_type);
@@ -323,7 +325,7 @@ void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QD
 }
 
 template<typename T>
-QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map(uint8_t struct_type, Helpz::DB::Base& db, uint32_t scheme_id)
+QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map(uint8_t struct_type, Helpz::DB::Base& db, const Scheme_Info &scheme)
 {
     using Helper = DB::Scheme_Table_Helper<T>;
     using PK_Type = typename Helper::PK_Type;
@@ -335,7 +337,7 @@ QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map(uin
 
     QString suffix;
     if (DB::has_scheme_id<T>())
-            suffix = "WHERE scheme_id = " + QString::number(scheme_id);
+            suffix = "WHERE " + scheme.ids_to_sql();
 
     fill_suffix(struct_type, suffix);
 
@@ -357,7 +359,7 @@ QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map(uin
 
 template<typename T>
 void Structure_Synchronizer_Base::modify(QVector<T>&& upd_vect, QVector<T>&& insrt_vect, QVector<uint32_t>&& del_vect, uint32_t user_id,
-                                    uint8_t struct_type, uint32_t scheme_id, std::function<std::shared_ptr<Bad_Fix>()> get_bad_fix)
+                                    uint8_t struct_type, const Scheme_Info &scheme, std::function<std::shared_ptr<Bad_Fix>()> get_bad_fix)
 {
     db_thread_->add([=](Helpz::DB::Base* db) mutable
     {
@@ -380,7 +382,7 @@ void Structure_Synchronizer_Base::modify(QVector<T>&& upd_vect, QVector<T>&& ins
 
         if (self)
         {
-            bool ok = self->modify_table(struct_type, *db, upd_vect, insrt_vect, del_vect, scheme_id);
+            bool ok = self->modify_table(struct_type, *db, upd_vect, insrt_vect, del_vect, scheme);
             if (ok)
             {
                 if (!self->modified_ && self->is_main_table(struct_type))
@@ -403,7 +405,7 @@ void Structure_Synchronizer_Base::modify(QVector<T>&& upd_vect, QVector<T>&& ins
         if (delta > std::chrono::milliseconds(100))
         {
             std::cout << "-----------> db freeze " << delta.count() << "ms Structure_Synchronizer_Base::modify vs"
-                      << (upd_vect.size() + insrt_vect.size() + del_vect.size()) << " scheme_id " << scheme_id << ' ' << typeid(T).name() << std::endl;
+                      << (upd_vect.size() + insrt_vect.size() + del_vect.size()) << " " << scheme.ids_to_sql().toStdString() << ' ' << typeid(T).name() << std::endl;
         }
     });
 }
@@ -412,7 +414,7 @@ template<class T>
 bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::Base& db,
                                           const QVector<T>& update_vect,
                                           QVector<T>& insert_vect,
-                                          const QVector<uint32_t>& delete_vect, uint32_t scheme_id)
+                                          const QVector<uint32_t>& delete_vect, const Scheme_Info &scheme)
 {
     using namespace Helpz::DB;
     using Helper = DB::Scheme_Table_Helper<T>;
@@ -423,9 +425,9 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
     Uncheck_Foreign uncheck_foreign(&db);
 
     // DELETE
-    if (!DB::db_delete_rows<T>(db, delete_vect, scheme_id))
+    if (!DB::db_delete_rows<T>(db, delete_vect, scheme))
     {
-        qWarning() << "modify_table: Failed delete row in" << table.name() << "scheme_id" << scheme_id;
+        qWarning() << "modify_table: Failed delete row in" << table.name() << scheme.ids_to_sql();
         return false;
     }
 
@@ -449,10 +451,10 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
         PK_Type id_value;
         QVariant sql_value, client_value;
 
-        QSqlQuery q = db.select(table, get_db_list_suffix<T>(struct_type, id_vect, scheme_id));
+        QSqlQuery q = db.select(table, get_db_list_suffix<T>(struct_type, id_vect, scheme));
         if (!q.isActive())
         {
-            qWarning() << "modify_table: Failed select from" << table.name() << "scheme_id" << scheme_id;
+            qWarning() << "modify_table: Failed select from" << table.name() << scheme.ids_to_sql();
             return false;
         }
 
@@ -500,7 +502,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
         if (!update_list.empty())
         {
             const QString where = table.field_names().at(Helper::pk_num) + "=?" +
-                    (DB::has_scheme_id<T>() ? " AND scheme_id=" + QString::number(scheme_id) : QString());
+                    (DB::has_scheme_id<T>() ? " AND scheme_id=" + QString::number(scheme.id()) : QString());
 
             Table upd_table{table.name(), {}, {}};
 
@@ -509,7 +511,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
                 upd_table.set_field_names(ui.changed_field_names_);
                 if (!db.update(upd_table, ui.changed_fields_, where).isActive())
                 {
-                    qWarning() << "modify_table: Failed update row in" << table.name() << "scheme_id" << scheme_id;
+                    qWarning() << "modify_table: Failed update row in" << table.name() << scheme.ids_to_sql();
                     return false;
                 }
             }
@@ -531,7 +533,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
     for (T& item: insert_vect)
     {
         if constexpr (DB::has_scheme_id<T>())
-            item.set_scheme_id(scheme_id);
+            item.set_scheme_id(scheme.id());
 
         values = T::to_variantlist(item);
         if (Helper::pk_num != T::COL_id)
@@ -541,7 +543,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
 
         if (!db.insert(table, values, &id))
         {
-            qWarning() << "modify_table: Failed insert row to" << table.name() << "scheme_id" << scheme_id;
+            qWarning() << "modify_table: Failed insert row to" << table.name() << scheme.ids_to_sql();
             return false;
         }
 

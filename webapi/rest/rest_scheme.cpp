@@ -49,7 +49,10 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
     mux.handle(scheme_path + "/dig_status").get([this](served::response& res, const served::request& req) { get_dig_status(res, req); });
     mux.handle(scheme_path + "/dig_status_type").get([this](served::response& res, const served::request& req) { get_dig_status_type(res, req); });
     mux.handle(scheme_path + "/device_item_value").get([this](served::response& res, const served::request& req) { get_device_item_value(res, req); });
-    mux.handle(scheme_path + "/disabled_status").get([this](served::response& res, const served::request& req) { get_disabled_status(res, req); });
+    mux.handle(scheme_path + "/disabled_status")
+            .get([this](served::response& res, const served::request& req) { get_disabled_status(res, req); })
+            .del([this](served::response& res, const served::request& req) { del_disabled_status(res, req); })
+            .post([this](served::response& res, const served::request& req) { add_disabled_status(res, req); });
     mux.handle(scheme_path + "/set_name/").post([this](served::response& res, const served::request& req) { set_name(res, req); });
     mux.handle(scheme_path + "/copy/").post([this](served::response& res, const served::request& req) { copy(res, req); });
     mux.handle(scheme_path).get([this](served::response& res, const served::request& req) { get(res, req); });
@@ -94,7 +97,7 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
         Base& db = Base::get_thread_local_instance();
         QSqlQuery q = db.exec(sql.arg(scheme_id).arg(user_id));
         if (q.next())
-            return {q.value(0).toUInt(), q.value(1).toUInt()};
+            return {q.value(0).toUInt(), {q.value(1).toUInt()}}; // TODO: get array from specific table for extending ids
     }
 
     return {};
@@ -128,7 +131,7 @@ void Scheme::get_dig_status(served::response &res, const served::request &req)
                   "FROM das_device_item_group g "
                   "LEFT JOIN das_section s ON s.id = g.section_id "
                   "LEFT JOIN das_dig_type gt ON gt.id = g.type_id "
-                  "WHERE g.scheme_id = " + QString::number(scheme.parent_id_or_id()) + " AND g.id IN (";
+                  "WHERE g." + scheme.ids_to_sql() + " AND g.id IN (";
 
             for (const DIG_Status& status: scheme_status.status_set_)
                 sql += QString::number(status.group_id()) + ',';
@@ -194,7 +197,7 @@ void Scheme::get_dig_status_type(served::response &res, const served::request &r
     const Scheme_Info scheme = get_info(req);
 
     res.set_header("Content-Type", "application/json");
-    res << gen_json_list<DIG_Status_Type>("WHERE scheme_id=" + QString::number(scheme.parent_id_or_id()));
+    res << gen_json_list<DIG_Status_Type>("WHERE " + scheme.ids_to_sql());
 }
 
 void Scheme::get_device_item_value(served::response &res, const served::request &req)
@@ -270,16 +273,159 @@ void Scheme::get_device_item_value(served::response &res, const served::request 
 
 void Scheme::get_disabled_status(served::response &res, const served::request &req)
 {
-    Auth_Middleware::check_permission("add_scheme");
+    Auth_Middleware::check_permission("view_disabled_status");
 
     const Scheme_Info scheme = get_info(req);
 
     uint32_t dig_id = stoa_or(req.query["dig_id"]);
 
-    const QString sql = "WHERE (scheme_id=%1 OR scheme_id=%2) AND (dig_id IS NULL OR dig_id = %3)";
+    const QString sql = "WHERE %1 AND (dig_id IS NULL OR dig_id = %2)";
 
     res.set_header("Content-Type", "application/json");
-    res << gen_json_list<DB::Disabled_Status>(sql.arg(scheme.id()).arg(scheme.parent_id()).arg(dig_id));
+    res << gen_json_list<DB::Disabled_Status>(sql.arg(scheme.ids_to_sql()).arg(dig_id));
+}
+
+void Scheme::del_disabled_status(served::response &res, const served::request &req)
+{
+    picojson::value val;
+    const std::string err = picojson::parse(val, req.body());
+    if (!err.empty() || !val.is<picojson::array>())
+        throw served::request_error(served::status_4XX::BAD_REQUEST, err);
+
+    std::set<uint32_t> id_set;
+    uint32_t id;
+    auto checkAdd = [&id_set, &id](const picojson::value& value)
+    {
+        if (value.is<double>())
+        {
+            id = static_cast<uint32_t>(value.get<double>());
+            if (id)
+            {
+                id_set.insert(id);
+                return true;
+            }
+        }
+        return false;
+    };
+
+    const picojson::array& arr = val.get<picojson::array>();
+    for (const picojson::value& value: arr)
+    {
+        if (!checkAdd(value) && value.is<picojson::object>())
+        {
+            const picojson::object& obj = value.get<picojson::object>();
+            auto it = obj.find("id");
+            if (it != obj.cend())
+                checkAdd(it->second);
+        }
+    }
+
+    if (id_set.empty())
+        throw served::request_error(served::status_4XX::BAD_REQUEST, "Failed find item for delete");
+
+    Auth_Middleware::check_permission("delete_disabled_status");
+    const Scheme_Info scheme = get_info(req);
+
+    QString where = "scheme_id=";
+    where += QString::number(scheme.id());
+    where += " AND ";
+    where += get_db_field_in_sql("id", id_set);
+
+    Base& db = Base::get_thread_local_instance();
+    db.del(db_table_name<DB::Disabled_Status>(), where);
+
+    res.set_status(204);
+}
+
+inline QVariant pico_to_qvariant(const picojson::value& value)
+{
+    if (value.is<bool>())
+        return value.get<bool>();
+    else if (value.is<int64_t>())
+        return QVariant::fromValue(value.get<int64_t>());
+    else if (value.is<double>())
+        return value.get<double>();
+    else if (value.is<std::string>())
+        return QString::fromStdString(value.get<std::string>());
+    return {};
+}
+
+template<typename T>
+T obj_from_pico(const picojson::object& item, const Helpz::DB::Table& table)
+{
+    T obj;
+
+    int i;
+    for (const auto& it: item)
+    {
+        i = table.field_names().indexOf(QString::fromStdString(it.first));
+        if (i < 0 || i >= table.field_names().size())
+            throw std::runtime_error("Unknown property: " + it.first);
+        T::value_setter(obj, i, pico_to_qvariant(it.second));
+    }
+
+    return obj;
+}
+
+template<typename T>
+T obj_from_pico(const picojson::object& item)
+{
+    const auto table = db_table<T>();
+    return obj_from_pico<T>(item, table);
+}
+
+template<typename T>
+T obj_from_pico(const picojson::value& value, const Helpz::DB::Table& table)
+{
+    if (!value.is<picojson::object>())
+        throw std::runtime_error("Is not an object");
+    return obj_from_pico<T>(value.get<picojson::object>(), table);
+}
+
+template<typename T>
+T obj_from_pico(const picojson::value& value)
+{
+    const auto table = db_table<T>();
+    return obj_from_pico<T>(value, table);
+}
+
+void Scheme::add_disabled_status(served::response &res, const served::request &req)
+{
+    picojson::value val;
+    const std::string err = picojson::parse(val, req.body());
+    if (!err.empty() || !val.is<picojson::array>())
+        throw served::request_error(served::status_4XX::BAD_REQUEST, err);
+
+    Auth_Middleware::check_permission("add_disabled_status");
+    const Scheme_Info scheme = get_info(req);
+
+
+    QVariantList values, tmp_values;
+
+    Table table = db_table<DB::Disabled_Status>();
+    table.field_names().removeFirst();
+
+    const picojson::array& arr = val.get<picojson::array>();
+    for (const picojson::value& value: arr)
+    {
+        DB::Disabled_Status item = obj_from_pico<DB::Disabled_Status>(value, table);
+        item.set_scheme_id(scheme.id());
+
+        tmp_values = DB::Disabled_Status::to_variantlist(item);
+        tmp_values.removeFirst();
+        values += tmp_values;
+    }
+
+    if (values.empty())
+        throw served::request_error(served::status_4XX::BAD_REQUEST, "Failed find item for insert");
+
+    QString sql = "INSERT INTO " + table.name() + '(' + table.field_names().join(',') + ") VALUES" +
+            Base::get_q_array(table.field_names().size(), values.size() / table.field_names().size());
+
+    Base& db = Base::get_thread_local_instance();
+    db.exec(sql, values);
+
+    res.set_status(204);
 }
 
 void Scheme::get(served::response &res, const served::request &req)
@@ -431,7 +577,9 @@ void Scheme::copy(served::response &res, const served::request &req)
 
     const Scheme_Info scheme = Scheme::get_info(req);
     const Scheme_Info dest_scheme = Scheme::get_info(dest_scheme_id);
-    if (scheme.parent_id() || !dest_scheme.id() || dest_scheme.parent_id())
+    if (!dest_scheme.id()
+        || !scheme.extending_scheme_ids().empty()
+        || !dest_scheme.extending_scheme_ids().empty())
     {
         const std::string error_msg = "Not possible copy scheme " + std::to_string(scheme.id()) + " to " + std::to_string(dest_scheme_id);
         throw served::request_error(served::status_4XX::BAD_REQUEST, error_msg);

@@ -76,7 +76,7 @@ void load_to_setter(const QDBusArgument &arg, O& obj, void (OB::*setter)(T))
 QDBusArgument &operator<<(QDBusArgument &arg, const Das::Scheme_Info &item)
 {
     arg.beginStructure();
-    arg << item.id() << item.parent_id() << item.scheme_groups();
+    arg << item.id() << item.extending_scheme_ids() << item.scheme_groups();
     arg.endStructure();
     return arg;
 }
@@ -85,7 +85,7 @@ const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Scheme_Info &item
 {
     arg.beginStructure();
     load_to_setter(arg, item, &Das::Scheme_Info::set_id);
-    load_to_setter(arg, item, &Das::Scheme_Info::set_parent_id);
+    load_to_setter(arg, item, static_cast<void(Das::Scheme_Info::*)(std::set<uint32_t>&&)>(&Das::Scheme_Info::set_extending_scheme_ids));
     load_to_setter(arg, item, static_cast<void(Das::Scheme_Info::*)(std::set<uint32_t>&&)>(&Das::Scheme_Info::set_scheme_groups));
     arg.endStructure();
     return arg;
