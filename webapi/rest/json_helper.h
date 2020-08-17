@@ -118,6 +118,16 @@ T from_json(const picojson::object& obj)
     return item;
 }
 
+// stoa_or - Example: auto dig = stoa_or(std::stoul, str, 1000000UL)
+template<typename T = unsigned long>
+T stoa_or(const std::string& text, T default_value = static_cast<T>(0), T(*func)(const std::string&, size_t*, int) = std::stoul)
+{
+    try {
+        return func(text, 0, 10);
+    } catch(...) {}
+    return default_value;
+}
+
 } // namespace Rest
 } // namespace Das
 

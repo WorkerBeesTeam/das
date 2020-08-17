@@ -111,10 +111,8 @@ void Structure_Synchronizer::check(bool custom_only, bool force_clean)
 
 void Structure_Synchronizer::process_modify(uint32_t user_id, uint8_t struct_type, QIODevice *data_dev)
 {
-    if (protocol_->parent_id() && is_main_table(struct_type))
-    {
+    if (need_to_use_parent_table(struct_type))
         return;
-    }
 
     struct Server_Bad_Fix : public Bad_Fix
     {
@@ -147,7 +145,7 @@ void Structure_Synchronizer::process_modify(uint32_t user_id, uint8_t struct_typ
 
 bool Structure_Synchronizer::need_to_use_parent_table(uint8_t struct_type) const
 {
-    return protocol_->parent_id() && is_main_table(struct_type);
+    return !protocol_->extending_scheme_ids().empty() && is_main_table(struct_type);
 }
 
 void Structure_Synchronizer::check_values()
@@ -240,6 +238,14 @@ QVector<DIG_Status> Structure_Synchronizer::insert_statuses(const QVector<DIG_St
         }
     }
     return new_statuses;
+}
+
+Scheme_Info Structure_Synchronizer::get_scheme_info(uint8_t struct_type) const
+{
+    Scheme_Info scheme_info{scheme_id()};
+    if (need_to_use_parent_table(struct_type))
+        scheme_info.set_extending_scheme_ids(protocol()->extending_scheme_ids());
+    return scheme_info;
 }
 
 void Structure_Synchronizer::change_devitem_value_no_block(const Device_Item_Value &value)
@@ -465,7 +471,7 @@ void Structure_Synchronizer::process_scheme_items_hash(QMap<uint32_t,uint16_t>&&
     }
 
     bool is_cant_edit = need_to_use_parent_table(struct_type);
-    uint32_t s_id = is_cant_edit ? protocol()->parent_id() : scheme_id();
+    const Scheme_Info scheme_info = get_scheme_info(struct_type);
 
     switch (struct_type)
     {
@@ -479,7 +485,7 @@ void Structure_Synchronizer::process_scheme_items_hash(QMap<uint32_t,uint16_t>&&
         break;
     }
 
-    db_thread()->add([node, client_hash_map_arg, struct_type, is_cant_edit, s_id](Base* db) mutable
+    db_thread()->add([node, client_hash_map_arg, struct_type, is_cant_edit, scheme_info](Base* db) mutable
     {
         std::shared_ptr<Protocol> scheme = std::dynamic_pointer_cast<Protocol>(node->protocol());
         if (!scheme)
@@ -490,7 +496,7 @@ void Structure_Synchronizer::process_scheme_items_hash(QMap<uint32_t,uint16_t>&&
         auto start_point = std::chrono::system_clock::now();
 
         Structure_Synchronizer* self = scheme->structure_sync();
-        QMap<uint32_t,uint16_t> hash_map = self->get_structure_hash_map_by_type(struct_type, *db, s_id);
+        QMap<uint32_t,uint16_t> hash_map = self->get_structure_hash_map_by_type(struct_type, *db, scheme_info);
         QMap<uint32_t,uint16_t>::iterator hash_it;
 
         QVector<uint32_t> insert_id_vect, update_id_vect, del_id_vect;
@@ -533,8 +539,8 @@ void Structure_Synchronizer::process_scheme_items_hash(QMap<uint32_t,uint16_t>&&
                 Helpz::Net::Protocol_Sender sender = scheme->send(Cmd::MODIFY_SCHEME);
                 sender.timeout(nullptr, std::chrono::seconds(13));
                 sender << uint32_t(0) << struct_type;
-                self->add_structure_items_data(struct_type, update_id_vect, sender, *db, s_id);
-                self->add_structure_items_data(struct_type, del_id_vect, sender, *db, s_id);
+                self->add_structure_items_data(struct_type, update_id_vect, sender, *db, scheme_info);
+                self->add_structure_items_data(struct_type, del_id_vect, sender, *db, scheme_info);
                 sender << insert_id_vect;
             }
             else
@@ -570,7 +576,7 @@ void Structure_Synchronizer::process_scheme_items_hash(QMap<uint32_t,uint16_t>&&
         if (delta > std::chrono::milliseconds(100))
         {
             std::cout << "-----------> db freeze " << delta.count() << "ms Structure_Synchronizer::process_scheme_items_hash struct_type "
-                      << int(struct_type) << " scheme_id " << s_id << std::endl;
+                      << int(struct_type) << " " << scheme_info.ids_to_sql().toStdString() << std::endl;
         }
     });
 }
@@ -584,9 +590,9 @@ void Structure_Synchronizer::process_scheme_hash(const QByteArray& client_hash, 
         return;
     }
 
-    uint32_t s_id = need_to_use_parent_table(struct_type) ? protocol()->parent_id() : scheme_id();
+    const Scheme_Info scheme_info = get_scheme_info(struct_type);
 
-    db_thread()->add([node, client_hash, struct_type, s_id](Base* db)
+    db_thread()->add([node, client_hash, struct_type, scheme_info](Base* db)
     {
         std::shared_ptr<Protocol> scheme = std::dynamic_pointer_cast<Protocol>(node->protocol());
         if (!scheme)
@@ -599,9 +605,9 @@ void Structure_Synchronizer::process_scheme_hash(const QByteArray& client_hash, 
         Structure_Synchronizer* self = scheme->structure_sync();
         if (struct_type)
         {
-            if (client_hash != self->get_structure_hash(struct_type, *db, s_id))
+            if (client_hash != self->get_structure_hash(struct_type, *db, scheme_info))
             {
-                qCDebug(Struct_Log).noquote() << scheme->title() << '[' << type_name(struct_type) << "] Hash is diffrent. scheme_id:" << s_id;
+                qCDebug(Struct_Log).noquote() << scheme->title() << '[' << type_name(struct_type) << "] Hash is diffrent." << scheme_info.ids_to_sql();
                 self->send_scheme_request(struct_type | ST_FLAGS);
             }
             else
@@ -613,9 +619,9 @@ void Structure_Synchronizer::process_scheme_hash(const QByteArray& client_hash, 
         {
             std::vector<uint8_t> struct_type_array = self->get_main_table_types();
 
-            if (client_hash != self->get_structure_hash_for_all(*db, s_id))
+            if (client_hash != self->get_structure_hash_for_all(*db, scheme_info))
             {
-                qCDebug(Struct_Log).noquote() << scheme->title() << '[' << type_name(struct_type) << "] Common hash is diffrent. scheme_id:" << s_id;
+                qCDebug(Struct_Log).noquote() << scheme->title() << '[' << type_name(struct_type) << "] Common hash is diffrent." << scheme_info.ids_to_sql();
                 for (const uint8_t struct_type_item: struct_type_array)
                 {
                     self->send_scheme_request(struct_type_item | ST_HASH_FLAG);
@@ -635,50 +641,50 @@ void Structure_Synchronizer::process_scheme_hash(const QByteArray& client_hash, 
         {
             std::cout << "-----------> db freeze " << delta.count() << "ms Structure_Synchronizer::process_scheme_hash"
                                                                        " struct_type "
-                      << int(struct_type) << " scheme_id " << s_id << std::endl;
+                      << int(struct_type) << " " << scheme_info.ids_to_sql().toStdString() << std::endl;
         }
     });
 }
 
 void Structure_Synchronizer::process_scheme_data(uint8_t struct_type, QIODevice* data_dev, bool delete_if_not_exist)
 {
-    uint32_t s_id = need_to_use_parent_table(struct_type) ? protocol()->parent_id() : scheme_id();
+    const Scheme_Info scheme_info = get_scheme_info(struct_type);
 
     using T = Structure_Synchronizer;
     switch (struct_type)
     {
-    case ST_DEVICE:                apply_parse(*data_dev, &T::sync_table<Device>                       , s_id, delete_if_not_exist); break;
-    case ST_PLUGIN_TYPE:           apply_parse(*data_dev, &T::sync_table<Plugin_Type>                  , s_id, delete_if_not_exist); break;
-    case ST_DEVICE_ITEM:           apply_parse(*data_dev, &T::sync_table<DB::Device_Item>              , s_id, delete_if_not_exist); break;
-    case ST_DEVICE_ITEM_TYPE:      apply_parse(*data_dev, &T::sync_table<Device_Item_Type>             , s_id, delete_if_not_exist); break;
-    case ST_SAVE_TIMER:            apply_parse(*data_dev, &T::sync_table<Save_Timer>                   , s_id, delete_if_not_exist); break;
-    case ST_SECTION:               apply_parse(*data_dev, &T::sync_table<Section>                      , s_id, delete_if_not_exist); break;
-    case ST_DEVICE_ITEM_GROUP:     apply_parse(*data_dev, &T::sync_table<DB::Device_Item_Group>        , s_id, delete_if_not_exist); break;
-    case ST_DIG_TYPE:              apply_parse(*data_dev, &T::sync_table<DIG_Type>                     , s_id, delete_if_not_exist); break;
-    case ST_DIG_MODE_TYPE:         apply_parse(*data_dev, &T::sync_table<DIG_Mode_Type>                , s_id, delete_if_not_exist); break;
-    case ST_DIG_PARAM_TYPE:        apply_parse(*data_dev, &T::sync_table<DIG_Param_Type>               , s_id, delete_if_not_exist); break;
-    case ST_DIG_STATUS_TYPE:       apply_parse(*data_dev, &T::sync_table<DIG_Status_Type>              , s_id, delete_if_not_exist); break;
-    case ST_DIG_STATUS_CATEGORY:   apply_parse(*data_dev, &T::sync_table<DIG_Status_Category>          , s_id, delete_if_not_exist); break;
-    case ST_DIG_PARAM:             apply_parse(*data_dev, &T::sync_table<DIG_Param>                    , s_id, delete_if_not_exist); break;
-    case ST_SIGN_TYPE:             apply_parse(*data_dev, &T::sync_table<Sign_Type>                    , s_id, delete_if_not_exist); break;
-    case ST_CODES:                 apply_parse(*data_dev, &T::sync_table<Code_Item>                    , s_id, delete_if_not_exist); break;
-    case ST_TRANSLATION:           apply_parse(*data_dev, &T::sync_table<Translation>                  , s_id, delete_if_not_exist); break;
-    case ST_NODE:                  apply_parse(*data_dev, &T::sync_table<DB::Node>                     , s_id, delete_if_not_exist); break;
-    case ST_DISABLED_PARAM:        apply_parse(*data_dev, &T::sync_table<DB::Disabled_Param>           , s_id, delete_if_not_exist); break;
-    case ST_DISABLED_STATUS:       apply_parse(*data_dev, &T::sync_table<DB::Disabled_Status>          , s_id, delete_if_not_exist); break;
-    case ST_CHART:                 apply_parse(*data_dev, &T::sync_table<DB::Chart>                    , s_id, delete_if_not_exist); break;
-    case ST_CHART_ITEM:            apply_parse(*data_dev, &T::sync_table<DB::Chart_Item>               , s_id, delete_if_not_exist); break;
-//    case ST_AUTH_GROUP:            apply_parse(*data_dev, &T::sync_table<Auth_Group>                   , s_id, delete_if_not_exist); break;
-//    case ST_AUTH_GROUP_PERMISSION: apply_parse(*data_dev, &T::sync_table<Auth_Group_Permission>        , s_id, delete_if_not_exist); break;
-//    case ST_USER:                  apply_parse(*data_dev, &T::sync_table<User>                         , s_id, delete_if_not_exist); break;
-//    case ST_USER_GROUP:            apply_parse(*data_dev, &T::sync_table<User_Groups>                  , s_id, delete_if_not_exist); break;
+    case ST_DEVICE:                apply_parse(*data_dev, &T::sync_table<Device>                       , scheme_info, delete_if_not_exist); break;
+    case ST_PLUGIN_TYPE:           apply_parse(*data_dev, &T::sync_table<Plugin_Type>                  , scheme_info, delete_if_not_exist); break;
+    case ST_DEVICE_ITEM:           apply_parse(*data_dev, &T::sync_table<DB::Device_Item>              , scheme_info, delete_if_not_exist); break;
+    case ST_DEVICE_ITEM_TYPE:      apply_parse(*data_dev, &T::sync_table<Device_Item_Type>             , scheme_info, delete_if_not_exist); break;
+    case ST_SAVE_TIMER:            apply_parse(*data_dev, &T::sync_table<Save_Timer>                   , scheme_info, delete_if_not_exist); break;
+    case ST_SECTION:               apply_parse(*data_dev, &T::sync_table<Section>                      , scheme_info, delete_if_not_exist); break;
+    case ST_DEVICE_ITEM_GROUP:     apply_parse(*data_dev, &T::sync_table<DB::Device_Item_Group>        , scheme_info, delete_if_not_exist); break;
+    case ST_DIG_TYPE:              apply_parse(*data_dev, &T::sync_table<DIG_Type>                     , scheme_info, delete_if_not_exist); break;
+    case ST_DIG_MODE_TYPE:         apply_parse(*data_dev, &T::sync_table<DIG_Mode_Type>                , scheme_info, delete_if_not_exist); break;
+    case ST_DIG_PARAM_TYPE:        apply_parse(*data_dev, &T::sync_table<DIG_Param_Type>               , scheme_info, delete_if_not_exist); break;
+    case ST_DIG_STATUS_TYPE:       apply_parse(*data_dev, &T::sync_table<DIG_Status_Type>              , scheme_info, delete_if_not_exist); break;
+    case ST_DIG_STATUS_CATEGORY:   apply_parse(*data_dev, &T::sync_table<DIG_Status_Category>          , scheme_info, delete_if_not_exist); break;
+    case ST_DIG_PARAM:             apply_parse(*data_dev, &T::sync_table<DIG_Param>                    , scheme_info, delete_if_not_exist); break;
+    case ST_SIGN_TYPE:             apply_parse(*data_dev, &T::sync_table<Sign_Type>                    , scheme_info, delete_if_not_exist); break;
+    case ST_CODES:                 apply_parse(*data_dev, &T::sync_table<Code_Item>                    , scheme_info, delete_if_not_exist); break;
+    case ST_TRANSLATION:           apply_parse(*data_dev, &T::sync_table<Translation>                  , scheme_info, delete_if_not_exist); break;
+    case ST_NODE:                  apply_parse(*data_dev, &T::sync_table<DB::Node>                     , scheme_info, delete_if_not_exist); break;
+    case ST_DISABLED_PARAM:        apply_parse(*data_dev, &T::sync_table<DB::Disabled_Param>           , scheme_info, delete_if_not_exist); break;
+    case ST_DISABLED_STATUS:       apply_parse(*data_dev, &T::sync_table<DB::Disabled_Status>          , scheme_info, delete_if_not_exist); break;
+    case ST_CHART:                 apply_parse(*data_dev, &T::sync_table<DB::Chart>                    , scheme_info, delete_if_not_exist); break;
+    case ST_CHART_ITEM:            apply_parse(*data_dev, &T::sync_table<DB::Chart_Item>               , scheme_info, delete_if_not_exist); break;
+//    case ST_AUTH_GROUP:            apply_parse(*data_dev, &T::sync_table<Auth_Group>                   , scheme_info, delete_if_not_exist); break;
+//    case ST_AUTH_GROUP_PERMISSION: apply_parse(*data_dev, &T::sync_table<Auth_Group_Permission>        , scheme_info, delete_if_not_exist); break;
+//    case ST_USER:                  apply_parse(*data_dev, &T::sync_table<User>                         , scheme_info, delete_if_not_exist); break;
+//    case ST_USER_GROUP:            apply_parse(*data_dev, &T::sync_table<User_Groups>                  , scheme_info, delete_if_not_exist); break;
 
-    case ST_DEVICE_ITEM_VALUE:     apply_parse(*data_dev, &T::sync_table<Device_Item_Value>            , s_id, delete_if_not_exist); break;
-    case ST_DIG_MODE:              apply_parse(*data_dev, &T::sync_table<DIG_Mode>                     , s_id, delete_if_not_exist); break;
-    case ST_DIG_PARAM_VALUE:       apply_parse(*data_dev, &T::sync_table<DIG_Param_Value>              , s_id, delete_if_not_exist); break;
+    case ST_DEVICE_ITEM_VALUE:     apply_parse(*data_dev, &T::sync_table<Device_Item_Value>            , scheme_info, delete_if_not_exist); break;
+    case ST_DIG_MODE:              apply_parse(*data_dev, &T::sync_table<DIG_Mode>                     , scheme_info, delete_if_not_exist); break;
+    case ST_DIG_PARAM_VALUE:       apply_parse(*data_dev, &T::sync_table<DIG_Param_Value>              , scheme_info, delete_if_not_exist); break;
 
     default:
-        qWarning(Struct_Log) << "process_scheme_data unknown type: " << int(struct_type);
+        qWarning(Struct_Log) << "process_scheme_data unknown type: " << int(struct_type) << scheme_info.ids_to_sql();
         return;
     }
     set_synchronized(struct_type);
@@ -686,39 +692,39 @@ void Structure_Synchronizer::process_scheme_data(uint8_t struct_type, QIODevice*
 
 bool Structure_Synchronizer::remove_scheme_rows(Base& db, uint8_t struct_type, const QVector<uint32_t>& delete_vect)
 {
-    uint32_t s_id = need_to_use_parent_table(struct_type) ? protocol()->parent_id() : scheme_id();
+    const Scheme_Info scheme_info = get_scheme_info(struct_type);
 
     switch (struct_type)
     {
-    case ST_DEVICE:                return DB::db_delete_rows<Device>                     (db, delete_vect, s_id); break;
-    case ST_PLUGIN_TYPE:           return DB::db_delete_rows<Plugin_Type>                (db, delete_vect, s_id); break;
-    case ST_DEVICE_ITEM:           return DB::db_delete_rows<DB::Device_Item>            (db, delete_vect, s_id); break;
-    case ST_DEVICE_ITEM_TYPE:      return DB::db_delete_rows<Device_Item_Type>           (db, delete_vect, s_id); break;
-    case ST_SAVE_TIMER:            return DB::db_delete_rows<Save_Timer>                 (db, delete_vect, s_id); break;
-    case ST_SECTION:               return DB::db_delete_rows<Section>                    (db, delete_vect, s_id); break;
-    case ST_DEVICE_ITEM_GROUP:     return DB::db_delete_rows<DB::Device_Item_Group>      (db, delete_vect, s_id); break;
-    case ST_DIG_TYPE:              return DB::db_delete_rows<DIG_Type>                   (db, delete_vect, s_id); break;
-    case ST_DIG_MODE_TYPE:         return DB::db_delete_rows<DIG_Mode_Type>              (db, delete_vect, s_id); break;
-    case ST_DIG_PARAM_TYPE:        return DB::db_delete_rows<DIG_Param_Type>             (db, delete_vect, s_id); break;
-    case ST_DIG_STATUS_TYPE:       return DB::db_delete_rows<DIG_Status_Type>            (db, delete_vect, s_id); break;
-    case ST_DIG_STATUS_CATEGORY:   return DB::db_delete_rows<DIG_Status_Category>        (db, delete_vect, s_id); break;
-    case ST_DIG_PARAM:             return DB::db_delete_rows<DIG_Param>                  (db, delete_vect, s_id); break;
-    case ST_SIGN_TYPE:             return DB::db_delete_rows<Sign_Type>                  (db, delete_vect, s_id); break;
-    case ST_CODES:                 return DB::db_delete_rows<Code_Item>                  (db, delete_vect, s_id); break;
-    case ST_TRANSLATION:           return DB::db_delete_rows<Translation>                (db, delete_vect, s_id); break;
-    case ST_NODE:                  return DB::db_delete_rows<DB::Node>                   (db, delete_vect, s_id); break;
-    case ST_DISABLED_PARAM:        return DB::db_delete_rows<DB::Disabled_Param>         (db, delete_vect, s_id); break;
-    case ST_DISABLED_STATUS:       return DB::db_delete_rows<DB::Disabled_Status>        (db, delete_vect, s_id); break;
-    case ST_CHART:                 return DB::db_delete_rows<DB::Chart>                  (db, delete_vect, s_id); break;
-    case ST_CHART_ITEM:            return DB::db_delete_rows<DB::Chart_Item>             (db, delete_vect, s_id); break;
-//    case ST_AUTH_GROUP:            return DB::db_delete_rows<Auth_Group>                 (db, delete_vect, s_id); break;
-//    case ST_AUTH_GROUP_PERMISSION: return DB::db_delete_rows<Auth_Group_Permission>      (db, delete_vect, s_id); break;
-//    case ST_USER:                  return DB::db_delete_rows<User>                       (db, delete_vect, s_id); break;
-//    case ST_USER_GROUP:            return DB::db_delete_rows<User_Groups>                (db, delete_vect, s_id); break;
+    case ST_DEVICE:                return DB::db_delete_rows<Device>                     (db, delete_vect, scheme_info); break;
+    case ST_PLUGIN_TYPE:           return DB::db_delete_rows<Plugin_Type>                (db, delete_vect, scheme_info); break;
+    case ST_DEVICE_ITEM:           return DB::db_delete_rows<DB::Device_Item>            (db, delete_vect, scheme_info); break;
+    case ST_DEVICE_ITEM_TYPE:      return DB::db_delete_rows<Device_Item_Type>           (db, delete_vect, scheme_info); break;
+    case ST_SAVE_TIMER:            return DB::db_delete_rows<Save_Timer>                 (db, delete_vect, scheme_info); break;
+    case ST_SECTION:               return DB::db_delete_rows<Section>                    (db, delete_vect, scheme_info); break;
+    case ST_DEVICE_ITEM_GROUP:     return DB::db_delete_rows<DB::Device_Item_Group>      (db, delete_vect, scheme_info); break;
+    case ST_DIG_TYPE:              return DB::db_delete_rows<DIG_Type>                   (db, delete_vect, scheme_info); break;
+    case ST_DIG_MODE_TYPE:         return DB::db_delete_rows<DIG_Mode_Type>              (db, delete_vect, scheme_info); break;
+    case ST_DIG_PARAM_TYPE:        return DB::db_delete_rows<DIG_Param_Type>             (db, delete_vect, scheme_info); break;
+    case ST_DIG_STATUS_TYPE:       return DB::db_delete_rows<DIG_Status_Type>            (db, delete_vect, scheme_info); break;
+    case ST_DIG_STATUS_CATEGORY:   return DB::db_delete_rows<DIG_Status_Category>        (db, delete_vect, scheme_info); break;
+    case ST_DIG_PARAM:             return DB::db_delete_rows<DIG_Param>                  (db, delete_vect, scheme_info); break;
+    case ST_SIGN_TYPE:             return DB::db_delete_rows<Sign_Type>                  (db, delete_vect, scheme_info); break;
+    case ST_CODES:                 return DB::db_delete_rows<Code_Item>                  (db, delete_vect, scheme_info); break;
+    case ST_TRANSLATION:           return DB::db_delete_rows<Translation>                (db, delete_vect, scheme_info); break;
+    case ST_NODE:                  return DB::db_delete_rows<DB::Node>                   (db, delete_vect, scheme_info); break;
+    case ST_DISABLED_PARAM:        return DB::db_delete_rows<DB::Disabled_Param>         (db, delete_vect, scheme_info); break;
+    case ST_DISABLED_STATUS:       return DB::db_delete_rows<DB::Disabled_Status>        (db, delete_vect, scheme_info); break;
+    case ST_CHART:                 return DB::db_delete_rows<DB::Chart>                  (db, delete_vect, scheme_info); break;
+    case ST_CHART_ITEM:            return DB::db_delete_rows<DB::Chart_Item>             (db, delete_vect, scheme_info); break;
+//    case ST_AUTH_GROUP:            return DB::db_delete_rows<Auth_Group>                 (db, delete_vect, scheme_info); break;
+//    case ST_AUTH_GROUP_PERMISSION: return DB::db_delete_rows<Auth_Group_Permission>      (db, delete_vect, scheme_info); break;
+//    case ST_USER:                  return DB::db_delete_rows<User>                       (db, delete_vect, scheme_info); break;
+//    case ST_USER_GROUP:            return DB::db_delete_rows<User_Groups>                (db, delete_vect, scheme_info); break;
 
-    case ST_DEVICE_ITEM_VALUE:     return DB::db_delete_rows<Device_Item_Value>          (db, delete_vect, s_id); break;
-    case ST_DIG_MODE:              return DB::db_delete_rows<DIG_Mode>                   (db, delete_vect, s_id); break;
-    case ST_DIG_PARAM_VALUE:       return DB::db_delete_rows<DIG_Param_Value>            (db, delete_vect, s_id); break;
+    case ST_DEVICE_ITEM_VALUE:     return DB::db_delete_rows<Device_Item_Value>          (db, delete_vect, scheme_info); break;
+    case ST_DIG_MODE:              return DB::db_delete_rows<DIG_Mode>                   (db, delete_vect, scheme_info); break;
+    case ST_DIG_PARAM_VALUE:       return DB::db_delete_rows<DIG_Param_Value>            (db, delete_vect, scheme_info); break;
 
     default:
         qWarning(Struct_Log) << "remove_scheme_rows unknown type: " << int(struct_type);
@@ -870,7 +876,7 @@ bool Structure_Synchronizer::is_can_modify(uint8_t struct_type) const
 //};
 
 template<class T>
-bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, bool delete_if_not_exist)
+bool Structure_Synchronizer::sync_table(QVector<T>&& items, const Scheme_Info &scheme, bool delete_if_not_exist)
 {
 #pragma GCC warning "Check if Code_Item::global_id exist and used for scheme_group"
 //    Sync_Process_Helper<T> sync_proc_helpher(this);
@@ -891,14 +897,14 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, 
         QString suffix;
         if (DB::has_scheme_id<T>())
         {
-            suffix = "WHERE scheme_id=" + QString::number(scheme_id);
+            suffix = "WHERE " + scheme.ids_to_sql();
             --compare_column_count;
         }
 
         QSqlQuery q = db_ptr->select(table, suffix);
         if (!q.isActive())
         {
-            qWarning() << "sync_table: Failed select from" << table.name() << "scheme_id" << scheme_id;
+            qWarning() << "sync_table: Failed select from" << table.name() << scheme.ids_to_sql();
             return false;
         }
 
@@ -956,9 +962,9 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, 
 
     if (delete_if_not_exist && !delete_vect.isEmpty())
     {
-        if (!DB::db_delete_rows<T>(*db_ptr.get(), delete_vect, scheme_id))
+        if (!DB::db_delete_rows<T>(*db_ptr.get(), delete_vect, scheme))
         {
-            qWarning() << "sync_table: Failed delete row in" << table.name() << "scheme_id" << scheme_id;
+            qWarning() << "sync_table: Failed delete row in" << table.name() << scheme.ids_to_sql();
             return false;
         }
     }
@@ -966,7 +972,7 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, 
     if (!update_list.empty())
     {
         const QString where = table.field_names().at(Helper::pk_num) + "=?" +
-                (DB::has_scheme_id<T>() ? " AND scheme_id=" + QString::number(scheme_id) : QString());
+                (DB::has_scheme_id<T>() ? " AND scheme_id=" + QString::number(scheme.id()) : QString());
 
         Table upd_table{table.name(), {}, {}};
 
@@ -975,7 +981,7 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, 
             upd_table.set_field_names(ui.changed_field_names_);
             if (!db_ptr->update(upd_table, ui.changed_fields_, where).isActive())
             {
-                qWarning() << "sync_table: Failed update row in" << table.name() << "scheme_id" << scheme_id;
+                qWarning() << "sync_table: Failed update row in" << table.name() << scheme.ids_to_sql();
                 return false;
             }
         }
@@ -992,7 +998,7 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, 
         for (T& item: items)
         {
             if constexpr (DB::has_scheme_id<T>())
-                item.set_scheme_id(scheme_id);
+                item.set_scheme_id(scheme.id());
 
             values = T::to_variantlist(item);
             if (Helper::pk_num != T::COL_id)
@@ -1000,7 +1006,7 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, uint32_t scheme_id, 
 
             if (!db_ptr->insert(table, values))
             {
-                qWarning() << "sync_table: Failed insert row to" << table.name() << "scheme_id" << scheme_id;
+                qWarning() << "sync_table: Failed insert row to" << table.name() << scheme.ids_to_sql();
                 return false;
             }
         }

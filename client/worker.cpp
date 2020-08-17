@@ -275,8 +275,8 @@ void Worker::init_network_client(QSettings* s)
     if (!auth_info)
         return;
 
-#define DAS_PROTOCOL_LATEST "das/2.5"
-#define DAS_PROTOCOL_SUPORTED DAS_PROTOCOL_LATEST",das/2.4"
+#define DAS_PROTOCOL_LATEST "das/2.6"
+#define DAS_PROTOCOL_SUPORTED DAS_PROTOCOL_LATEST",das/2.5"
 
     const QString default_dir = qApp->applicationDirPath() + '/';
     auto [ tls_policy_file, host, port, protocols, recpnnect_interval_sec ]

@@ -36,6 +36,7 @@ public:
     }
 
     Server::Protocol_Base *protocol();
+    const Server::Protocol_Base *protocol() const;
 
 protected:
     uint32_t scheme_id() const;

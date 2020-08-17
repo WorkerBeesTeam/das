@@ -14,6 +14,11 @@ Server::Protocol_Base* Base_Synchronizer::protocol()
     return protocol_;
 }
 
+const Server::Protocol_Base *Base_Synchronizer::protocol() const
+{
+    return protocol_;
+}
+
 uint32_t Base_Synchronizer::scheme_id() const
 {
     return protocol_->id();

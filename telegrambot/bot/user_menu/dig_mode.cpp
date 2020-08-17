@@ -17,7 +17,7 @@ std::string DIG_Mode::get_value() const
 {
     const uint32_t mode_id = get_mode_id(parameters().scheme_->id(), id());
 
-    QString suffix = "WHERE scheme_id = " + QString::number(parameters().scheme_->parent_id_or_id()) + " AND id = " + QString::number(mode_id);
+    QString suffix = "WHERE " + parameters().scheme_->ids_to_sql() + " AND id = " + QString::number(mode_id);
 
     Base& db = Base::get_thread_local_instance();
     QSqlQuery q = db.select(db_table<DB::DIG_Mode_Type>(), suffix);

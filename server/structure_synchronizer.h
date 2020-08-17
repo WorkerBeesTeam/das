@@ -38,6 +38,8 @@ public:
     void change_status(const QVector<Log_Status_Item> &pack);
     QVector<DIG_Status> insert_statuses(const QVector<DIG_Status> &statuses);
 private:
+    Scheme_Info get_scheme_info(uint8_t struct_type) const;
+
     void change_devitem_value_no_block(const Device_Item_Value& value);
     static bool devitem_value_compare(const Device_Item_Value& value1, const Device_Item_Value& value2);
     void insert_devitem_values(QVector<Device_Item_Value> &&value_vect);
@@ -64,7 +66,7 @@ private:
     bool is_can_modify(uint8_t struct_type) const override;
 
     template<class T>
-    bool sync_table(QVector<T>&& items, uint32_t scheme_id, bool delete_if_not_exist);
+    bool sync_table(QVector<T>&& items, const Scheme_Info& scheme, bool delete_if_not_exist);
 
     bool struct_sync_timeout_;
     std::set<uint8_t> struct_wait_set_, synchronized_;

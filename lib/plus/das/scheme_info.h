@@ -33,7 +33,7 @@ class Scheme_Info
 {
 public:
     Scheme_Info(Scheme_Info* obj);
-    Scheme_Info(uint32_t id = 0, uint32_t parent_id = 0, const std::set<uint32_t>& scheme_groups = {});
+    Scheme_Info(uint32_t id = 0, const std::set<uint32_t>& ids = {}, const std::set<uint32_t>& scheme_groups = {});
     Scheme_Info(Scheme_Info&&) = default;
     Scheme_Info(const Scheme_Info&) = default;
     Scheme_Info& operator=(Scheme_Info&&) = default;
@@ -46,10 +46,12 @@ public:
 //    QString scheme_title() const;
 //    void set_scheme_title(const QString& title);
 
-    uint32_t parent_id() const;
-    void set_parent_id(uint32_t id);
+    const std::set<uint32_t>& extending_scheme_ids() const;
+    void set_extending_scheme_ids(const std::set<uint32_t>& ids);
+    void set_extending_scheme_ids(std::set<uint32_t>&& ids);
 
-    uint32_t parent_id_or_id() const;
+    const QString& ids_to_sql() const;
+//    uint32_t parent_id_or_id() const;
 
     const std::set<uint32_t>& scheme_groups() const;
     void set_scheme_groups(const std::set<uint32_t>& scheme_groups);
@@ -59,8 +61,9 @@ public:
 
     bool operator == (const Scheme_Info& o) const;
 private:
-    uint32_t id_, parent_id_;
-    std::set<uint32_t> scheme_groups_;
+    uint32_t _id;
+    std::set<uint32_t> _extending_id_set, _scheme_groups;
+    mutable QString _sql_cache;
 };
 
 } // namespace Das
