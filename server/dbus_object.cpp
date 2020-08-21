@@ -12,7 +12,8 @@ namespace Server {
 
 Dbus_Object::Dbus_Object(Helpz::DTLS::Server* server, const QString& service_name, const QString& object_path) :
     DBus::Object_Base(service_name, object_path),
-    server_(server)
+    server_(server),
+    _is_sync_enabled(true)
 {
 }
 
