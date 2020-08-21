@@ -13,6 +13,10 @@ Dbus_Object::Dbus_Object(const QString &service_name, const QString &object_path
     QObject(),
     service_name_(service_name), object_path_(object_path)
 {
+    if (_self)
+        qCCritical(DBus_log) << "Dbus_Object already allocated";
+    _self = this;
+
     if (!QDBusConnection::systemBus().isConnected())
     {
         qCCritical(DBus_log) << "DBus не доступен";
