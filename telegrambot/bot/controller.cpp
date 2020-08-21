@@ -22,6 +22,7 @@
 
 #include <dbus/dbus_interface.h>
 #include <Das/db/dig_status_type.h>
+#include <Das/log/log_base_item.h>
 #include <Das/commands.h>
 
 #include "db/tg_auth.h"
@@ -914,7 +915,7 @@ void Controller::send_authorization_message(const TgBot::Message& msg) const
     QByteArray data;
     QDataStream ds(&data, QIODevice::WriteOnly);
 
-    qint64 now = QDateTime::currentMSecsSinceEpoch();
+    qint64 now = DB::Log_Base_Item::current_timestamp();
     ds << Tg_User::to_variantlist(tg_user) << now << "SomePassword";
     data = QCryptographicHash::hash(data, QCryptographicHash::Sha1).toHex();
 
@@ -938,6 +939,11 @@ void Controller::finished()
 {
     qDebug() << "finished";
     bot_->getApi().deleteWebhook();
+}
+
+void Controller::send_user_authorized(qint64 tg_user_id)
+{
+    send_message(tg_user_id, "Вы успешно авторизованы!");
 }
 
 void Controller::fill_templates(const std::string &templates_path)

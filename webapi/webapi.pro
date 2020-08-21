@@ -19,6 +19,7 @@ LIBS += -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzNetwork -lHe
 LIBS += -L/usr/local/lib -lserved
 
 SOURCES += main.cpp \
+    dbus_object.cpp \
     rest/csrf_middleware.cpp \
     rest/auth_middleware.cpp \
     rest/filter.cpp \
@@ -28,6 +29,7 @@ SOURCES += main.cpp \
     rest/rest_chart_data_controller.cpp \
     rest/rest_chart_param.cpp \
     rest/rest_chart_value.cpp \
+    rest/rest_config.cpp \
     rest/rest_scheme.cpp \
     rest/rest_scheme_group.cpp \
     rest/scheme_copier.cpp \
@@ -38,9 +40,12 @@ SOURCES += main.cpp \
     stream/stream_server.cpp \
     stream/stream_server_thread.cpp \
     stream/stream_server_controller.cpp \
-    stream/stream_node.cpp
+    stream/stream_node.cpp \
+    ../telegrambot/db/tg_auth.cpp \
+    ../telegrambot/db/tg_user.cpp
 
 HEADERS += \
+    dbus_object.h \
     rest/csrf_middleware.h \
     rest/auth_middleware.h \
     rest/filter.h \
@@ -51,6 +56,7 @@ HEADERS += \
     rest/rest_chart_data_controller.h \
     rest/rest_chart_param.h \
     rest/rest_chart_value.h \
+    rest/rest_config.h \
     rest/rest_scheme.h \
     rest/rest_scheme_group.h \
     rest/scheme_copier.h \
@@ -61,7 +67,9 @@ HEADERS += \
     stream/stream_server.h \
     stream/stream_server_thread.h \
     stream/stream_server_controller.h \
-    stream/stream_node.h
+    stream/stream_node.h \
+    ../telegrambot/db/tg_auth.h \
+    ../telegrambot/db/tg_user.h
 
 unix {
     target.path = /opt/das

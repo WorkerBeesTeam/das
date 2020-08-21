@@ -8,6 +8,12 @@
 #include <served/request_error.hpp>
 
 #include <Das/db/auth_group.h>
+#include <Das/log/log_base_item.h>
+
+#include "../telegrambot/db/tg_auth.h"
+#include "../telegrambot/db/tg_user.h"
+
+#include "dbus_object.h"
 
 #include "json_helper.h"
 #include "multipart_form_data_parser.h"
@@ -22,6 +28,7 @@ namespace Rest {
 
 Q_LOGGING_CATEGORY(Rest_Log, "rest")
 
+using namespace Helpz::DB;
 
 Restful::Restful(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_helper, const Config &config) :
     server_(nullptr),
@@ -79,6 +86,40 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
             Auth_Middleware::check_permission("view_group");
             res.set_header("Content-Type", "application/json");
             res << gen_json_list<DB::Auth_Group>();
+        });
+
+        mux.handle("bot/auth").post([](served::response &res, const served::request &req)
+        {
+            picojson::value val;
+            const std::string err = picojson::parse(val, req.body());
+            if (!err.empty() || !val.is<picojson::object>())
+                throw served::request_error(served::status_4XX::BAD_REQUEST, err);
+
+            const picojson::object& obj = val.get<picojson::object>();
+            const std::string token = obj.at("token").get<std::string>();
+
+            const qint64 now = DB::Log_Base_Item::current_timestamp();
+            const QString where = "WHERE expired > " + QString::number(now) + " AND token = ?";
+
+            Base& db = Base::get_thread_local_instance();
+            const QVector<DB::Tg_Auth> auth_vect = db_build_list<DB::Tg_Auth>(db, where, {QString::fromStdString(token)});
+            if (auth_vect.size() != 1)
+                throw served::request_error(served::status_4XX::BAD_REQUEST, "Bad request: Unknown token");
+
+            const DB::Tg_Auth& auth = auth_vect.front();
+
+            Table table = db_table<DB::Tg_User>();
+            table.field_names() = QStringList{table.field_names().at(DB::Tg_User::COL_user_id)};
+            const QVariantList values{{Auth_Middleware::get_thread_local_user().id_}};
+            bool ok = db.update(table, values, "id=" + QString::number(auth.tg_user_id())).numRowsAffected();
+            if (!ok)
+                throw served::request_error(served::status_4XX::BAD_REQUEST, "Bad request: Unknown user");
+
+            db.del(db_table_name<DB::Tg_Auth>(), "tg_user_id=" + QString::number(auth.tg_user_id()));
+
+            QMetaObject::invokeMethod(Server::WebApi::Dbus_Object::instance(), "tg_user_authorized", Qt::QueuedConnection, Q_ARG(qint64, auth.tg_user_id()));
+
+            res.set_status(204);
         });
 
         mux.handle("write_item_file").put([](served::response &res, const served::request &req)

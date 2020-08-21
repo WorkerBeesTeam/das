@@ -7,9 +7,6 @@
 #include "dbus_object_base.h"
 
 namespace Das {
-
-Q_LOGGING_CATEGORY(DBusLog, "dbus")
-
 namespace DBus {
 
 Object_Base::Object_Base(const QString& service_name, const QString& object_path) :
@@ -20,19 +17,19 @@ Object_Base::Object_Base(const QString& service_name, const QString& object_path
 
     if (!QDBusConnection::systemBus().isConnected())
     {
-        qCCritical(DBusLog) << "DBus не доступен";
+        qCCritical(DBus_log) << "DBus не доступен";
     }
     else if (!QDBusConnection::systemBus().registerService(service_name))
     {
-        qCCritical(DBusLog) << "DBus служба уже зарегистрированна" << service_name;
+        qCCritical(DBus_log) << "DBus служба уже зарегистрированна" << service_name;
     }
     else if (!QDBusConnection::systemBus().registerObject(object_path, this, QDBusConnection::ExportAllContents))
     {
-        qCCritical(DBusLog) << "DBus объект уже зарегистрирован" << object_path;
+        qCCritical(DBus_log) << "DBus объект уже зарегистрирован" << object_path;
     }
     else
     {
-        qCInfo(DBusLog) << "Dbus служба успешно зарегистрированна" << service_name << object_path;
+        qCInfo(DBus_log) << "Dbus служба успешно зарегистрированна" << service_name << object_path;
     }
 }
 
@@ -49,7 +46,7 @@ uint16_t Object_Base::cmd_from_web_command(quint8 cmd, int proto_version) const
 {
     if (proto_version != 206)
     {
-        qCWarning(DBusLog) << "cmd_from_web_command proto version:" << proto_version;
+        qCWarning(DBus_log) << "cmd_from_web_command proto version:" << proto_version;
 //        return 0;
     }
 

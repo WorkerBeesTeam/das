@@ -58,6 +58,7 @@ Worker::~Worker()
         websock_th_->terminate();
     delete websock_th_;
 
+    delete _webapi_dbus;
     delete dbus_;
     delete dbus_handler_;
     delete db_pending_thread_;
@@ -110,6 +111,12 @@ void Worker::init_dbus_interface(QSettings* s)
                 Helpz::Param{"Object", DAS_DBUS_DEFAULT_OBJECT},
                 Helpz::Param{"Interface", DAS_DBUS_DEFAULT_INTERFACE}
                 ).ptr<DBus::Interface>();
+
+    _webapi_dbus = Helpz::SettingsHelper(
+                s, "DBus",
+                Helpz::Param{"Service", DAS_DBUS_DEFAULT_SERVICE".WebApi"},
+                Helpz::Param{"Object", DAS_DBUS_DEFAULT_OBJECT}
+                ).ptr<Dbus_Object>();
 }
 
 void Worker::init_jwt_helper(QSettings* s)

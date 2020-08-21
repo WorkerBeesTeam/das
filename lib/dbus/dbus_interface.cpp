@@ -12,7 +12,7 @@ namespace DBus {
 
 Q_LOGGING_CATEGORY(DBus_log, "DBus")
 
-Interface::Interface(Handler_Object* handler, const QString& service_name, const QString& object_path, const QString& interface_name) :
+Interface_Impl::Interface_Impl(Handler_Object* handler, const QString& service_name, const QString& object_path, const QString& interface_name) :
     iface_(nullptr),
     watcher_(nullptr),
     handler_(handler), service_name_(service_name), object_path_(object_path), interface_name_(interface_name)
@@ -42,7 +42,7 @@ Interface::Interface(Handler_Object* handler, const QString& service_name, const
     }
 }
 
-Interface::~Interface()
+Interface_Impl::~Interface_Impl()
 {
     delete_iface();
     if (watcher_)
@@ -50,22 +50,22 @@ Interface::~Interface()
     delete bus_;
 }
 
-void Interface::service_registered(const QString& service)
+void Interface_Impl::service_registered(const QString& service)
 {
     if (service == service_name_)
         connect_to_interface();
 }
 
-void Interface::service_unregistered(const QString& service)
+void Interface_Impl::service_unregistered(const QString& service)
 {
     if (service == service_name_)
     {
         delete_iface();
-        handler_->server_down();
+        if (handler_) handler_->server_down();
     }
 }
 
-void Interface::delete_iface()
+void Interface_Impl::delete_iface()
 {
     if (iface_)
     {
@@ -74,30 +74,22 @@ void Interface::delete_iface()
     }
 }
 
-void Interface::connect_to_interface()
+void Interface_Impl::connect_to_interface()
 {
     delete_iface();
 
     iface_ = new QDBusInterface(service_name_, object_path_, interface_name_, *bus_);
     if (iface_->isValid())
     {
-        handler_->connect_to(iface_);
+        if (handler_)
+        {
+            handler_->connect_to(iface_);
 
-        if (handler_->is_manual_connect_)
-            return;
+            if (handler_->is_manual_connect_)
+                return;
 
-#define CONNECT_TO_HANDLER(name, ...) \
-    connect(iface_, SIGNAL(name(Scheme_Info, __VA_ARGS__)), \
-        handler_, SLOT(name(Scheme_Info, __VA_ARGS__)))
-
-        CONNECT_TO_HANDLER(connection_state_changed, uint8_t);
-        CONNECT_TO_HANDLER(device_item_values_available, QVector<Log_Value_Item>);
-        CONNECT_TO_HANDLER(event_message_available, QVector<Log_Event_Item>);
-        CONNECT_TO_HANDLER(time_info, QTimeZone, qint64);
-        CONNECT_TO_HANDLER(structure_changed, QByteArray);
-        CONNECT_TO_HANDLER(dig_param_values_changed, QVector<DIG_Param_Value>);
-        CONNECT_TO_HANDLER(dig_mode_changed, QVector<DIG_Mode>);
-        CONNECT_TO_HANDLER(status_changed, QVector<DIG_Status>);
+            connect_handler(handler_);
+        }
     }
     else
     {
@@ -107,7 +99,7 @@ void Interface::connect_to_interface()
 }
 
 template<typename Ret_Type, typename... Args>
-Ret_Type Interface::call_iface(const QString& name, const typename Non_Void<Ret_Type>::type ret, Args... args) const
+Ret_Type Interface_Impl::call_iface(const QString& name, const typename Non_Void<Ret_Type>::type ret, Args... args) const
 {
     if (iface_)
     {
@@ -125,7 +117,7 @@ Ret_Type Interface::call_iface(const QString& name, const typename Non_Void<Ret_
 }
 
 template<typename... Args>
-void Interface::call_iface_void(const QString& name, Args... args)
+void Interface_Impl::call_iface_void(const QString& name, Args... args)
 {
     if (iface_)
     {
@@ -135,6 +127,23 @@ void Interface::call_iface_void(const QString& name, Args... args)
     }
 }
 
+// Interface
+
+void Interface::connect_handler(Handler_Object *handler)
+{
+#define CONNECT_TO_HANDLER(name, ...) \
+    connect(iface_, SIGNAL(name(Scheme_Info, __VA_ARGS__)), \
+        handler, SLOT(name(Scheme_Info, __VA_ARGS__)))
+
+        CONNECT_TO_HANDLER(connection_state_changed, uint8_t);
+        CONNECT_TO_HANDLER(device_item_values_available, QVector<Log_Value_Item>);
+        CONNECT_TO_HANDLER(event_message_available, QVector<Log_Event_Item>);
+        CONNECT_TO_HANDLER(time_info, QTimeZone, qint64);
+        CONNECT_TO_HANDLER(structure_changed, QByteArray);
+        CONNECT_TO_HANDLER(dig_param_values_changed, QVector<DIG_Param_Value>);
+        CONNECT_TO_HANDLER(dig_mode_changed, QVector<DIG_Mode>);
+        CONNECT_TO_HANDLER(status_changed, QVector<DIG_Status>);
+}
 
 bool Interface::is_connected(uint32_t scheme_id)
 {

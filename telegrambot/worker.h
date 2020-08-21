@@ -7,6 +7,8 @@
 #include <Helpz/settingshelper.h>
 #include <Helpz/db_thread.h>
 
+#include "dbus_webapi_interface.h"
+
 namespace Das {
 namespace DBus {
 class Interface;
@@ -54,6 +56,9 @@ private:
     Dbus_Handler* dbus_handler_;
     DBus::Interface* dbus_;
     friend class Dbus_Handler;
+
+    DBus::WebApi_Interface_Handler* _webapi_dbus_handler;
+    DBus::Interface_Impl* _webapi_dbus;
 
     Informer* informer_;
 

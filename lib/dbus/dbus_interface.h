@@ -40,24 +40,49 @@ public:
 //    virtual void stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
     virtual void connect_to(QDBusInterface* iface) { Q_UNUSED(iface); }
 
-    bool is_manual_connect_ = false;
+    bool is_manual_connect_ = false; // deprecated
 };
 
-class Interface : public QObject
+class Interface_Impl : public QObject
 {
     Q_OBJECT
 public:
-    Interface(Handler_Object* handler,
+    Interface_Impl(Handler_Object* handler = nullptr,
                    const QString& service_name = DAS_DBUS_DEFAULT_SERVICE_SERVER,
                    const QString& object_path = DAS_DBUS_DEFAULT_OBJECT,
                    const QString& interface_name = DAS_DBUS_DEFAULT_INTERFACE);
-    virtual ~Interface();
+    virtual ~Interface_Impl();
 private:
     void service_registered(const QString &service);
     void service_unregistered(const QString &service);
     void delete_iface();
 
     void connect_to_interface();
+
+protected:
+    virtual void connect_handler(Handler_Object* handler) { Q_UNUSED(handler); } // deprecated
+
+    template<typename Ret_Type,  typename... Args>
+    Ret_Type call_iface(const QString& name, const typename Non_Void<Ret_Type>::type ret, Args... args) const;
+
+    template<typename... Args>
+    void call_iface_void(const QString& name, Args... args);
+
+    QDBusInterface* iface_;
+private:
+    QDBusConnection* bus_;
+    QDBusServiceWatcher* watcher_;
+    Handler_Object* handler_;
+    QString service_name_, object_path_, interface_name_;
+};
+
+class Interface : public Interface_Impl
+{
+    Q_OBJECT
+public:
+    using Interface_Impl::Interface_Impl;
+private:
+    void connect_handler(Handler_Object* handler) override; // deprecated
 public slots:
     bool is_connected(uint32_t scheme_id);
     uint8_t get_scheme_connection_state(const std::set<uint32_t> &scheme_group_set, uint32_t scheme_id);
@@ -66,19 +91,6 @@ public slots:
     void set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString& name);
     QVector<Device_Item_Value> get_device_item_values(uint32_t scheme_id) const;
     void send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& data);
-
-private:
-    template<typename Ret_Type,  typename... Args>
-    Ret_Type call_iface(const QString& name, const typename Non_Void<Ret_Type>::type ret, Args... args) const;
-
-    template<typename... Args>
-    void call_iface_void(const QString& name, Args... args);
-
-    QDBusConnection* bus_;
-    QDBusInterface* iface_;
-    QDBusServiceWatcher* watcher_;
-    Handler_Object* handler_;
-    QString service_name_, object_path_, interface_name_;
 };
 
 } // namespace DBus

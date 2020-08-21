@@ -77,6 +77,7 @@ protected:
     void sub_1(const Scheme_Item& scheme, TgBot::Message::Ptr message, uint32_t sub_id, uint32_t sub_1_id);
 public slots:
     void finished();
+    void send_user_authorized(qint64 tg_user_id);
 private:
     void fill_templates(const std::string& templates_path);
 
