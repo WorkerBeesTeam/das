@@ -369,8 +369,9 @@ std::set<int64_t> Informer::get_disabled_chats(uint32_t status_type_id, uint32_t
 {
     Base& db = Base::get_thread_local_instance();
 
-    const QString where_tpl = "WHERE status_id = %1 AND %2 AND (dig_id IS NULL OR dig_id = %3)";
-    QString sql = where_tpl.arg(status_type_id).arg(scheme.ids_to_sql()).arg(dig_id);
+    const QString status_str = status_type_id ? '=' + QString::number(status_type_id) : "IS NULL";
+    const QString where_tpl = "WHERE status_id %1 AND %2 AND (dig_id IS NULL OR dig_id = %3)";
+    QString sql = where_tpl.arg(status_str).arg(scheme.ids_to_sql()).arg(dig_id);
     auto disabled_statuses = db_build_list<Das::DB::Disabled_Status>(db, sql);
     if (disabled_statuses.empty())
         return {};
@@ -404,7 +405,7 @@ void Informer::process_data(Item* data)
 {
     auto add_connection_data = [this, data](const std::string& text)
     {
-        Prepared_Data::Data_Item prepared_data{text, {}};
+        Prepared_Data::Data_Item prepared_data{text, get_disabled_chats(0, 0, data->scheme_)};
         std::lock_guard lock(mutex_); // for prepared_data_map_
         Prepared_Data& p_data = get_prepared_data(data->scheme_);
         p_data.items_.push_back(std::move(prepared_data));
