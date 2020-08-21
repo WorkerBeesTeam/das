@@ -53,7 +53,7 @@ Log_Synchronizer *Protocol::log_sync()
 
 int Protocol::protocol_version() const
 {
-    return 205;
+    return 206;
 }
 
 void Protocol::send_file(uint32_t user_id, uint32_t dev_item_id, const QString& file_name, const QString& file_path)
