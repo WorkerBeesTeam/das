@@ -193,7 +193,10 @@ void Worker::init_server(QSettings* s)
             if (ver_str == "2.6")
             {
                 *choose_out = proto;
-                return std::make_shared<Ver::Server::Protocol>(this);
+                auto ptr = std::make_shared<Ver::Server::Protocol>(this);
+                if (!dbus_->is_sync_enabled())
+                    ptr->disable_sync();
+                return ptr;
             }
             else if (ver_str == "2.5")
             {

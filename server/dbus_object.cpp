@@ -20,6 +20,11 @@ Dbus_Object::~Dbus_Object()
 {
 }
 
+bool Dbus_Object::is_sync_enabled() const
+{
+    return _is_sync_enabled;
+}
+
 void Dbus_Object::set_server(Helpz::DTLS::Server *server)
 {
     server_ = server;
@@ -168,6 +173,11 @@ void Dbus_Object::write_item_file(uint32_t scheme_id, uint32_t user_id, uint32_t
 bool Dbus_Object::ping()
 {
     return true;
+}
+
+void Dbus_Object::toggle_sync(bool state)
+{
+    _is_sync_enabled = state;
 }
 
 } // namespace Server
