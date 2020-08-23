@@ -120,12 +120,16 @@ void Controller::init()
         if (user_id != 0)
             report(std::move(message));
     });
-    bot_->getEvents().onCommand("inform_onoff", [this](TgBot::Message::Ptr message)
+
+    auto inform_func = [this](TgBot::Message::Ptr message)
     {
         uint32_t user_id = get_authorized_user_id(message->from->id, message->chat->id);
         if (user_id != 0)
             inform_onoff(user_id, message->chat);
-    });
+    };
+    bot_->getEvents().onCommand("inform", inform_func); // deprecated
+    bot_->getEvents().onCommand("inform_onoff", inform_func);
+
     bot_->getEvents().onCommand("help", [this](TgBot::Message::Ptr message)
     {
         uint32_t user_id = get_authorized_user_id(message->from->id, message->chat->id);
