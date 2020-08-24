@@ -38,17 +38,18 @@ namespace Das {
 namespace Bot {
 
 using namespace std;
+namespace fs = std::filesystem;
+
 using namespace Helpz::DB;
 
-Controller::Controller(DBus::Interface *dbus_iface, const string &token, const string& webhook_url, uint16_t port, const string &webhook_cert,
-                       const string &auth_base_url, const string &templates_path) :
+Controller::Controller(DBus::Interface *dbus_iface, Config config) :
     QThread(), Bot_Base(dbus_iface),
-    stop_flag_(false), port_(port), bot_(nullptr), server_(nullptr), token_(token),
-    webhook_url_(webhook_url), webhook_cert_(webhook_cert), auth_base_url_(auth_base_url)
+    stop_flag_(false), bot_(nullptr), server_(nullptr),
+    _conf(std::move(config))
 {
     try
     {
-        fill_templates(templates_path);
+        fill_templates();
     }
     catch (const std::exception& e)
     {
@@ -83,7 +84,7 @@ void Controller::send_message(int64_t chat_id, const string& text) const
 
 void Controller::init()
 {
-    bot_ = new TgBot::Bot(token_);
+    bot_ = new TgBot::Bot(_conf._token);
 
     bot_user_ = bot_->getApi().getMe();
     if (bot_user_)
@@ -180,7 +181,7 @@ void Controller::run()
     qDebug() << "started thread";
     try
     {
-        if (token_.empty())
+        if (_conf._token.empty())
         {
             qWarning() << "TgBot token is empty";
             return;
@@ -188,13 +189,13 @@ void Controller::run()
         init();
 
 #ifdef WEBHOOK
-        server_ = new TgBot::TgWebhookTcpServer(port_, "/", bot_->getEventHandler());
+        server_ = new TgBot::TgWebhookTcpServer(_conf._port, "/", bot_->getEventHandler());
         TgBot::InputFile::Ptr certificate;
-        if (!webhook_cert_.empty())
+        if (!_conf._webhook_cert.empty())
         {
-            certificate = TgBot::InputFile::fromFile(webhook_cert_, "application/x-pem-file"); // or text/plain // or application/x-x509-ca-cert
+            certificate = TgBot::InputFile::fromFile(_conf._webhook_cert, "application/x-pem-file"); // or text/plain // or application/x-x509-ca-cert
         }
-        bot_->getApi().setWebhook(webhook_url_, std::move(certificate));
+        bot_->getApi().setWebhook(_conf._webhook_url, std::move(certificate));
         server_->start();
 #else
         qDebug() << "Use debug TgLongPoll";
@@ -284,19 +285,26 @@ void Controller::anyMessage(TgBot::Message::Ptr message)
 
         if (!message->text.empty())
         {
+            if (message->text == "/help")
+                return;
+
             auto it = waited_map_.find(message->chat->id);
             if (it != waited_map_.end() && it->second.tg_user_id_ == message->from->id)
             {
                 uint32_t user_id = get_authorized_user_id(message->from->id, message->chat->id);
-                if (user_id)
+                if (user_id && !it->second.data_.empty())
                 {
                     const vector<string> cmd = StringTools::split(it->second.data_, '.');
+                    if (cmd.front() == "scheme")
+                    {
+                        Elements elements(*this, user_id, it->second.scheme_, cmd, it->second.data_, message->text);
+                        elements.generate_answer();
 
-                    Elements elements(*this, user_id, it->second.scheme_, cmd, it->second.data_, message->text);
-                    elements.generate_answer();
-
-                    if (!elements.text_.empty())
-                        bot_->getApi().sendMessage(message->chat->id, elements.text_, false, 0, elements.keyboard_, "Markdown");
+                        if (!elements.text_.empty())
+                            bot_->getApi().sendMessage(message->chat->id, elements.text_, false, 0, elements.keyboard_, "Markdown");
+                    }
+                    else if (cmd.front() == "help")
+                        return;
                 }
 
                 waited_map_.erase(it);
@@ -484,7 +492,7 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
 }
 
 // Chat methods
-void Controller::find(uint32_t user_id, TgBot::Message::Ptr message) const
+void Controller::find(uint32_t user_id, TgBot::Message::Ptr message)
 {
     const string find_str = "/find ";
     if (message->text.size() < find_str.size() + 1)
@@ -545,9 +553,78 @@ void Controller::inform_onoff(uint32_t user_id, TgBot::Chat::Ptr chat, TgBot::Me
         bot_->getApi().sendMessage(chat->id, text, false, 0, keyboard);
 }
 
-void Controller::help(TgBot::Message::Ptr message) const
+string mimetype_from_extension(const string& ext)
 {
-    bot_->getApi().sendMessage(message->chat->id, "Найти инструкцию по работе с ботом вы можете на сайте, выбрав любой аппарат и перейдя в раздел \"Справка\".");
+    if (ext == ".ods")
+        return "application/vnd.oasis.opendocument.spreadsheet";
+    else if (ext == ".odt")
+        return "application/vnd.oasis.opendocument.text";
+    else if (ext == ".xlsx")
+        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    else if (ext == ".docx")
+        return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    else if (ext == ".pdf")
+        return "application/pdf";
+    else if (ext == ".txt")
+        return "text/plain";
+    return {};
+}
+
+void Controller::help(TgBot::Message::Ptr message)
+{
+    string text = "Найти инструкцию по работе с ботом вы можете на сайте, выбрав любой аппарат и перейдя в раздел \"Справка\".";
+
+    const fs::path help_file_path(_conf._help_file_path);
+    qDebug() << QString::fromStdString(help_file_path)
+             << "Empty" << _conf._help_file_path.empty()
+             << "Exist" << fs::exists(help_file_path)
+             << "Res" << (!_conf._help_file_path.empty() && fs::exists(help_file_path));
+
+    if (!_conf._help_file_path.empty() && fs::exists(help_file_path))
+    {
+        const string ext = help_file_path.extension();
+        const string mime_type = mimetype_from_extension(ext);
+
+        if (!mime_type.empty())
+        {
+            auto it = waited_map_.find(message->chat->id);
+            if (it != waited_map_.end()
+                && it->second.tg_user_id_ == message->from->id
+                && it->second.data_ == "help")
+            {
+                TgBot::InputFile::Ptr file = TgBot::InputFile::fromFile(help_file_path, mime_type);
+                bot_->getApi().sendDocument(message->chat->id, file);
+
+                waited_map_.erase(it);
+                return;
+            }
+            else
+            {
+                text += " Или отправьте команду /help ещё раз чтобы получить файл справки.";
+
+                Waited_Item& waited_item = waited_map_[message->chat->id];
+                waited_item.tg_user_id_ = message->from->id;
+                waited_item.time_ = std::chrono::system_clock::now().time_since_epoch().count();
+                waited_item.data_ = "help";
+            }
+        }
+    }
+
+    bot_->getApi().sendMessage(message->chat->id, text);
+}
+
+void Controller::help_send_file(int64_t chat_id) const
+{
+    const fs::path help_file_path(_conf._help_file_path);
+    if (!_conf._help_file_path.empty() && fs::exists(help_file_path))
+    {
+        const string ext = help_file_path.extension();
+        const string mime_type = mimetype_from_extension(ext);
+
+        if (!mime_type.empty())
+        {
+        }
+    }
 }
 
 void Controller::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
@@ -639,7 +716,12 @@ void Controller::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
 void Controller::elements(uint32_t user_id, const Scheme_Item &scheme, TgBot::Message::Ptr message,
                    vector<string>::const_iterator begin, const std::vector<string> &cmd, const std::string& msg_data)
 {
-
+    Q_UNUSED(user_id)
+    Q_UNUSED(scheme)
+    Q_UNUSED(message)
+    Q_UNUSED(begin)
+    Q_UNUSED(cmd)
+    Q_UNUSED(msg_data)
 }
 
 void Controller::restart(uint32_t user_id, const Scheme_Item& scheme, TgBot::Message::Ptr message)
@@ -790,17 +872,20 @@ map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t 
 
 string Controller::getReportFilepathForUser(TgBot::User::Ptr user) const
 {
+    Q_UNUSED(user)
     // TODO: generate filepath
     return "/opt/book1.xlsx";
 }
 
 unordered_map<uint32_t, string> Controller::get_sub_base_for_scheme(const Scheme_Item& scheme) const
 {
+    Q_UNUSED(scheme)
     return unordered_map<uint32_t, string> { {2, "Base 2"}, {1, "Base 1"} };
 }
 
 unordered_map<uint32_t, string> Controller::get_sub_1_names_for_scheme(const Scheme_Item& scheme) const
 {
+    Q_UNUSED(scheme)
     return unordered_map<uint32_t, string> { {2, "Item 2"}, {1, "Item 1"} };
 }
 
@@ -929,7 +1014,7 @@ void Controller::send_authorization_message(const TgBot::Message& msg) const
               "ON DUPLICATE KEY UPDATE expired = VALUES(expired), token = VALUES(token)"))
     {
         std::string text = "Чтобы продолжить, пожалуйста перейдите по ссылке ниже и авторизуйтесь.\n\n";
-        text += auth_base_url_;
+        text += _conf._auth_base_url;
         text += auth.token().toStdString();
 //        send_message(chat_id, text);
 
@@ -950,11 +1035,9 @@ void Controller::send_user_authorized(qint64 tg_user_id)
     send_message(tg_user_id, "Вы успешно авторизованы!");
 }
 
-void Controller::fill_templates(const std::string &templates_path)
+void Controller::fill_templates()
 {
-    namespace fs = std::filesystem;
-
-    for(auto& p: fs::directory_iterator(templates_path))
+    for(auto& p: fs::directory_iterator(_conf._templates_path))
         if (fs::is_regular_file(p.path()))
             user_menu_set_.emplace(p.path(), dbus_iface_);
 }

@@ -25,13 +25,21 @@
 namespace Das {
 namespace Bot {
 
+struct Config
+{
+    uint16_t _port = 8443;
+    std::string _token;
+    std::string _webhook_url, _webhook_cert;
+    std::string _auth_base_url = "https://deviceaccess.ru/tg_auth/";
+    std::string _templates_path;
+    std::string _help_file_path;
+};
+
 class Controller : public QThread, public Bot_Base
 {
     Q_OBJECT
 public:
-    Controller(DBus::Interface* dbus_iface, const std::string& token,
-        const std::string& webhook_url, uint16_t port = 8443, const std::string& webhook_cert = {},
-        const std::string& auth_base_url = "https://deviceaccess.ru/tg_auth/", const std::string& templates_path = {});
+    Controller(DBus::Interface* dbus_iface, Config config);
     ~Controller();
 
     void stop();
@@ -58,11 +66,12 @@ protected:
     void send_authorization_message(const TgBot::Message &msg) const;
 
     // Chat methods
-    void find(uint32_t user_id, TgBot::Message::Ptr message) const;
+    void find(uint32_t user_id, TgBot::Message::Ptr message);
     void list(uint32_t user_id, TgBot::Message::Ptr message) const;
     void report(TgBot::Message::Ptr message) const;
     void inform_onoff(uint32_t user_id, TgBot::Chat::Ptr chat, TgBot::Message::Ptr msg_to_update = nullptr);
-    void help(TgBot::Message::Ptr) const;
+    void help(TgBot::Message::Ptr message);
+    void help_send_file(int64_t chat_id) const;
 
     // Inline button query methods
     void status(const Scheme_Item& scheme, TgBot::Message::Ptr message);
@@ -79,18 +88,17 @@ public slots:
     void finished();
     void send_user_authorized(qint64 tg_user_id);
 private:
-    void fill_templates(const std::string& templates_path);
+    void fill_templates();
 
     Scheme_Item get_scheme(uint32_t user_id, const std::string& scheme_id) const;
     void fill_scheme(uint32_t user_id, Scheme_Item& scheme) const;
 
     bool stop_flag_;
-    uint16_t port_;
     TgBot::Bot* bot_;
     TgBot::User::Ptr bot_user_;
 
     TgBot::TgWebhookTcpServer* server_;
-    std::string token_, webhook_url_, webhook_cert_, auth_base_url_;
+    Config _conf;
 
     const uint32_t schemes_per_page_ = 5;
 
