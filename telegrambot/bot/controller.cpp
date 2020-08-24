@@ -547,7 +547,7 @@ void Controller::inform_onoff(uint32_t user_id, TgBot::Chat::Ptr chat, TgBot::Me
 
 void Controller::help(TgBot::Message::Ptr message) const
 {
-    bot_->getApi().sendMessage(message->chat->id, "(Ещё не реализованно) TODO: insert text here");
+    bot_->getApi().sendMessage(message->chat->id, "Найти инструкцию по работе с ботом вы можете на сайте, выбрав любой аппарат и перейдя в раздел \"Справка\".");
 }
 
 void Controller::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
