@@ -315,10 +315,7 @@ void Controller::anyMessage(TgBot::Message::Ptr message)
                 waited_map_.erase(it);
             }
 #ifdef QT_DEBUG
-            std::string user_text = message->text;
-            boost::replace_all(user_text, "*", "\\*");
-            boost::replace_all(user_text, "_", "\\_");
-            send_message(message->chat->id, "*You send*: " + user_text);
+            send_message(message->chat->id, "*You send*: " + prepare_str(message->text));
 #endif
         }
     }
@@ -828,41 +825,60 @@ void Controller::sub_2(const Scheme_Item& scheme, TgBot::Message::Ptr message, c
 
 // Helpers
 
-map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t page_number, const string &search_text) const
+map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t page_number, const string &search_text, size_t &result_count) const
 {
-    QString search_cond;
-    const QString sql = "SELECT s.id, s.title, s.parent_id FROM das_scheme s "
+    QVariantList values;
+    QString sql;
+    if (!search_text.empty())
+    {
+        sql = " AND s.title COLLATE UTF8_GENERAL_CI LIKE ? ESCAPE '@'";
+        values.push_back('%' + QString::fromStdString(search_text)
+                         .replace('@', "@@").replace('_', "@_").replace('@', "@@") + '%');
+        values.push_back(values.front());
+    }
+
+    sql = QString(" FROM das_scheme s "
             "LEFT JOIN das_scheme_groups sg ON sg.scheme_id = s.id "
             "LEFT JOIN das_scheme_group_user sgu ON sgu.group_id = sg.scheme_group_id "
-            "WHERE sgu.user_id = %1%4 GROUP BY s.id LIMIT %2, %3";
+            "WHERE sgu.user_id = %1%2 GROUP BY s.id").arg(user_id).arg(sql);
 
-    if (!search_text.empty())
-        search_cond = " AND s.title COLLATE UTF8_GENERAL_CI LIKE '%" + QString::fromStdString(search_text) + "%'";
+    sql = QString("SELECT s.id, s.title, s.parent_id%1 LIMIT %2, %3;\nSELECT COUNT(*) FROM (SELECT 1%1) as t;")
+            .arg(sql).arg(schemes_per_page_ * page_number).arg(schemes_per_page_);
+
+    struct MyScheme : Scheme_Info
+    {
+        MyScheme(uint32_t id, set<uint32_t> extending_ids, const QString& title) :
+            Scheme_Info(id, extending_ids), _title(title) {}
+        QString _title;
+    };
 
     Base& db = Base::get_thread_local_instance();
-    QSqlQuery q = db.exec(sql.arg(user_id).arg(schemes_per_page_ * page_number).arg(schemes_per_page_).arg(search_cond));
+    QSqlQuery q = db.exec(sql, values);
+
+    vector<MyScheme> scheme_vect;
+    while (q.next())
+        scheme_vect.push_back(MyScheme{q.value(0).toUInt(), {q.value(2).toUInt()}, q.value(1).toString()});
+
+    result_count = q.nextResult() && q.next() ? q.value(0).toUInt() : 0;
 
     map<uint32_t, string> res;
 
-    const QString status_sql = "SELECT category_id FROM das_dig_status_type WHERE scheme_id = %1 AND id IN (%2) ORDER BY category_id DESC LIMIT 1";
+    const QString status_sql = "SELECT category_id FROM das_dig_status_type WHERE %1 AND id IN (%2) ORDER BY category_id DESC LIMIT 1";
 
     QString status_id_sep;
     Scheme_Status scheme_status;
-    uint32_t scheme_id, parent_id;
     std::string name;
-    while (q.next())
+    for (const MyScheme& scheme : scheme_vect)
     {
-        scheme_id = q.value(0).toUInt();
-
         QMetaObject::invokeMethod(dbus_iface_, "get_scheme_status", Qt::BlockingQueuedConnection,
             Q_RETURN_ARG(Scheme_Status, scheme_status),
-            Q_ARG(uint32_t, scheme_id));
+            Q_ARG(uint32_t, scheme.id()));
 
         name = User_Menu::Connection_State::get_emoji(scheme_status.connection_state_);
 
         if ((scheme_status.connection_state_ & ~CS_FLAGS) < CS_CONNECTED_JUST_NOW)
             scheme_status.status_set_ =
-                    db_build_list<DIG_Status, std::set>(db, "WHERE scheme_id = " + QString::number(scheme_id));
+                    db_build_list<DIG_Status, std::set>(db, "WHERE scheme_id = " + QString::number(scheme.id()));
 
         status_id_sep.clear();
         for (const DIG_Status& status: scheme_status.status_set_)
@@ -873,16 +889,16 @@ map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t 
         if (!status_id_sep.isEmpty())
         {
             status_id_sep.remove(status_id_sep.size() - 1, 1);
-            parent_id = q.value(2).isNull() ? scheme_id : q.value(2).toUInt();
-            QSqlQuery status_q = db.exec(status_sql.arg(parent_id).arg(status_id_sep));
+            QSqlQuery status_q = db.exec(status_sql.arg(scheme.ids_to_sql()).arg(status_id_sep));
             if (status_q.next())
                 name += default_status_category_emoji(status_q.value(0).toUInt());
         }
 
         name += ' ';
-        name += q.value(1).toString().toStdString();
-        res.emplace(scheme_id, name);
+        name += scheme._title.toStdString();
+        res.emplace(scheme.id(), name);
     }
+
     return res;
 }
 
@@ -924,7 +940,8 @@ void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint
 {
     TgBot::InlineKeyboardMarkup::Ptr keyboard = std::make_shared<TgBot::InlineKeyboardMarkup>();
 
-    map<uint32_t, string> schemes_map = list_schemes_names(user_id, current_page, search_text);
+    size_t schemes_count;
+    map<uint32_t, string> schemes_map = list_schemes_names(user_id, current_page, search_text, schemes_count);
 
     for (const auto &scheme: schemes_map)
     {
@@ -944,7 +961,7 @@ void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint
         row.push_back(prev_page_button);
     }
 
-    if (schemes_map.size() >= schemes_per_page_)
+    if ((current_page + 1) * schemes_per_page_ < schemes_count)
     {
         TgBot::InlineKeyboardButton::Ptr next_page_button = std::make_shared<TgBot::InlineKeyboardButton>();
         next_page_button->text = ">>>";	// TODO: here you can change text of "next page" button
@@ -955,11 +972,31 @@ void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint
     if (!row.empty())
         keyboard->inlineKeyboard.push_back(row);
 
-    const string text = "Список аппаратов:";
+    string text = schemes_map.empty() ? "Нет" : "Список";
+
+    text += " аппаратов";
+    if (!search_text.empty())
+    {
+        text += " найденых по тексту _";
+        text += prepare_str(search_text);
+        text += "_";
+    }
+
+    if (current_page > 0 || schemes_count >= schemes_per_page_)
+    {
+        text += " (стр. ";
+        text += to_string(current_page + 1);
+        text += " из ";
+        text += to_string(static_cast<int>(schemes_count / schemes_per_page_) + 1);
+        text += ')';
+    }
+
+    text += ':';
+
     if (msg_to_update)
     {
 //        bot_->getApi().editMessageReplyMarkup(chat->id, msg_to_update->messageId, "", keyboard);
-        bot_->getApi().editMessageText(text, chat->id, msg_to_update->messageId, "", "", false, keyboard);
+        bot_->getApi().editMessageText(text, chat->id, msg_to_update->messageId, "", "Markdown", false, keyboard);
     }
     else
     {

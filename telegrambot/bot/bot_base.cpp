@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "bot_base.h"
 
 namespace Das {
@@ -9,6 +11,19 @@ Bot_Base::Bot_Base(DBus::Interface *dbus_iface) :
     dbus_iface_(dbus_iface)
 {
 
+}
+
+/*static*/ string Bot_Base::prepare_str(string text)
+{
+    int x = count(text.cbegin(), text.cend(), '*');
+    if (x % 2 != 0) text += '*';
+
+    x = count(text.cbegin(), text.cend(), '_');
+    if (x % 2 != 0) text += '_';
+
+    x = count(text.cbegin(), text.cend(), '`');
+    if (x % 2 != 0) text += '`';
+    return text;
 }
 
 TgBot::InlineKeyboardButton::Ptr Bot_Base::makeInlineButton(const string &data, const string &text) const

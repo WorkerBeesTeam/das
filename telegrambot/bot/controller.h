@@ -52,7 +52,7 @@ protected:
 
     std::string process_directory(uint32_t user_id, TgBot::Message::Ptr message, const std::string& msg_data, int32_t tg_user_id);
     // Helpers
-    std::map<uint32_t, std::string> list_schemes_names(uint32_t user_id, uint32_t page_number, const std::string &search_text) const;
+    std::map<uint32_t, std::string> list_schemes_names(uint32_t user_id, uint32_t page_number, const std::string &search_text, size_t& result_count) const;
     std::string getReportFilepathForUser(TgBot::User::Ptr user) const;
     std::unordered_map<uint32_t, std::string> get_sub_base_for_scheme(const Scheme_Item& scheme) const;
     std::unordered_map<uint32_t, std::string> get_sub_1_names_for_scheme(const Scheme_Item& scheme) const;

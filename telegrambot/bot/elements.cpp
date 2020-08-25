@@ -422,7 +422,7 @@ void Elements::fill_group_param(uint32_t dig_id)
         else // Confirm user data
         {
             text_ += "\nВы уверены что хотите изменить значение уставки \"" + param_title + "\" со значением \"" + param_value
-                    + "\", на новое значение: \"" + user_data_ + "\"";
+                    + "\", на новое значение: \"" + prepare_str(user_data_) + "\"";
             const string data = param_btn_base + '.' + user_data_;
             keyboard_->inlineKeyboard.push_back(makeInlineButtonRow(data, "Подтвердить"));
         }
