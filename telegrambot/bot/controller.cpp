@@ -38,6 +38,7 @@ namespace Das {
 namespace Bot {
 
 using namespace std;
+using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
 using namespace Helpz::DB;
@@ -303,6 +304,10 @@ void Controller::anyMessage(TgBot::Message::Ptr message)
                         if (!elements.text_.empty())
                             bot_->getApi().sendMessage(message->chat->id, elements.text_, false, 0, elements.keyboard_, "Markdown");
                     }
+                    else if (cmd.front() == "find")
+                    {
+                        find(user_id, message->chat, message->text);
+                    }
                     else if (cmd.front() == "help")
                         return;
                 }
@@ -386,7 +391,7 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
                     {
                         Waited_Item& waited_item = waited_map_[message->chat->id];
                         waited_item.tg_user_id_ = tg_user_id;
-                        waited_item.time_ = std::chrono::system_clock::now().time_since_epoch().count();
+                        waited_item.expired_time_ = std::chrono::system_clock::now() + 30s;
                         waited_item.data_ = msg_data;
                         waited_item.scheme_ = scheme;
 
@@ -497,19 +502,30 @@ void Controller::find(uint32_t user_id, TgBot::Message::Ptr message)
     const string find_str = "/find ";
     if (message->text.size() < find_str.size() + 1)
     {
-        help(message);
-        return;
+        Waited_Item& waited_item = waited_map_[message->chat->id];
+        waited_item.tg_user_id_ = message->from->id;
+        waited_item.expired_time_ = std::chrono::system_clock::now() + 30s;
+        waited_item.data_ = "find";
+
+        send_message(message->chat->id, "Отправьте текст для поиска аппарата:");
     }
+    else
+    {
+        string search_text = message->text.substr(find_str.size());
+        find(user_id, message->chat, std::move(search_text));
+    }
+}
 
-    string search_text = message->text.substr(find_str.size());
-    search_text.erase(std::remove(search_text.begin(), search_text.end(), '.'), search_text.end());
-    search_text.erase(std::remove(search_text.begin(), search_text.end(), '\''), search_text.end());
-    search_text.erase(std::remove(search_text.begin(), search_text.end(), '"'), search_text.end());
-    search_text.erase(std::remove(search_text.begin(), search_text.end(), ';'), search_text.end());
-    boost::trim(search_text);
+void Controller::find(uint32_t user_id, TgBot::Chat::Ptr chat, string text)
+{
+    text.erase(std::remove(text.begin(), text.end(), '.'), text.end());
+    text.erase(std::remove(text.begin(), text.end(), '\''), text.end());
+    text.erase(std::remove(text.begin(), text.end(), '"'), text.end());
+    text.erase(std::remove(text.begin(), text.end(), ';'), text.end());
+    boost::trim(text);
 
-    qDebug() << "Searching for:" << search_text.c_str();
-    send_schemes_list(user_id, message->chat, 0, nullptr, search_text);
+    qDebug() << "Searching for:" << text.c_str();
+    send_schemes_list(user_id, chat, 0, nullptr, text);
 }
 
 void Controller::list(uint32_t user_id, TgBot::Message::Ptr message) const
@@ -604,7 +620,7 @@ void Controller::help(TgBot::Message::Ptr message)
 
                 Waited_Item& waited_item = waited_map_[message->chat->id];
                 waited_item.tg_user_id_ = message->from->id;
-                waited_item.time_ = std::chrono::system_clock::now().time_since_epoch().count();
+                waited_item.expired_time_ = std::chrono::system_clock::now() + 30s;
                 waited_item.data_ = "help";
             }
         }
@@ -821,7 +837,7 @@ map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t 
             "WHERE sgu.user_id = %1%4 GROUP BY s.id LIMIT %2, %3";
 
     if (!search_text.empty())
-        search_cond = " AND s.title LIKE '%" + QString::fromStdString(search_text) + "%'";
+        search_cond = " AND s.title COLLATE UTF8_GENERAL_CI LIKE '%" + QString::fromStdString(search_text) + "%'";
 
     Base& db = Base::get_thread_local_instance();
     QSqlQuery q = db.exec(sql.arg(user_id).arg(schemes_per_page_ * page_number).arg(schemes_per_page_).arg(search_cond));

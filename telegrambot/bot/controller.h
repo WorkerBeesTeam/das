@@ -67,6 +67,7 @@ protected:
 
     // Chat methods
     void find(uint32_t user_id, TgBot::Message::Ptr message);
+    void find(uint32_t user_id, TgBot::Chat::Ptr chat, std::string text);
     void list(uint32_t user_id, TgBot::Message::Ptr message) const;
     void report(TgBot::Message::Ptr message) const;
     void inform_onoff(uint32_t user_id, TgBot::Chat::Ptr chat, TgBot::Message::Ptr msg_to_update = nullptr);
@@ -104,7 +105,7 @@ private:
 
     struct Waited_Item {
         int32_t tg_user_id_;
-        int64_t time_;
+        std::chrono::system_clock::time_point expired_time_;
         std::string data_;
         Scheme_Item scheme_;
     };
