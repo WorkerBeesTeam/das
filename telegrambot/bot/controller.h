@@ -62,7 +62,7 @@ protected:
     // Bot helpers
     void send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint32_t current_page = 0,
                              TgBot::Message::Ptr msg_to_update = nullptr, const std::string& search_text = {}) const;
-    void sendSchemeMenu(TgBot::Message::Ptr message, const Scheme_Item& scheme) const;
+    void sendSchemeMenu(TgBot::Message::Ptr message, const Scheme_Item& scheme, uint32_t user_id) const;
     void send_authorization_message(const TgBot::Message &msg) const;
 
     // Chat methods

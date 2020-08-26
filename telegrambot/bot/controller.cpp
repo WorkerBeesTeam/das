@@ -24,6 +24,7 @@
 #include <Das/db/dig_status_type.h>
 #include <Das/log/log_base_item.h>
 #include <Das/commands.h>
+#include <plus/das/database.h>
 
 #include "db/tg_auth.h"
 #include "db/tg_user.h"
@@ -446,7 +447,7 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
             }
         }
         else
-            sendSchemeMenu(message, scheme);
+            sendSchemeMenu(message, scheme, user_id);
     }
     else if (directory == "subscriber")
     {
@@ -739,6 +740,9 @@ void Controller::elements(uint32_t user_id, const Scheme_Item &scheme, TgBot::Me
 
 void Controller::restart(uint32_t user_id, const Scheme_Item& scheme, TgBot::Message::Ptr message)
 {
+    if (!DB::Helper::is_admin(user_id))
+        return;
+
     QMetaObject::invokeMethod(dbus_iface_, "send_message_to_scheme", Qt::QueuedConnection,
         Q_ARG(uint32_t, scheme.id()), Q_ARG(uint8_t, Das::WS_RESTART), Q_ARG(uint32_t, user_id), Q_ARG(QByteArray, QByteArray()));
 
@@ -1004,7 +1008,7 @@ void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint
     }
 }
 
-void Controller::sendSchemeMenu(TgBot::Message::Ptr message, const Scheme_Item& scheme) const
+void Controller::sendSchemeMenu(TgBot::Message::Ptr message, const Scheme_Item& scheme, uint32_t user_id) const
 {
     TgBot::InlineKeyboardMarkup::Ptr keyboard(new TgBot::InlineKeyboardMarkup);
 
@@ -1018,7 +1022,9 @@ void Controller::sendSchemeMenu(TgBot::Message::Ptr message, const Scheme_Item& 
     keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".elem", "Элементы"));
 //    keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".menu_sub_1", "Под меню 1")),
 //    keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".menu_sub_2", "Под меню 2"));
-    keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".restart", "Перезагрузка"));
+
+    if (DB::Helper::is_admin(user_id)) // isAdmin
+        keyboard->inlineKeyboard.push_back(makeInlineButtonRow(base_data + ".restart", "Перезагрузка"));
     keyboard->inlineKeyboard.push_back(makeInlineButtonRow("list", "Назад (<<)"));
 
 //    bot_->getApi().editMessageReplyMarkup(message->chat->id, message->messageId, "", keyboard);

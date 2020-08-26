@@ -269,5 +269,24 @@ void Helper::init_scheme(Scheme *scheme, bool typesAlreadyFilled)
         group.second->finalize();
 }
 
+/*static*/ bool Helper::check_permission(uint32_t user_id, const std::string &permission)
+{
+    const QString sql =
+            "SELECT COUNT(*) FROM das_user u "
+            "LEFT JOIN das_user_groups ug ON ug.user_id = u.id "
+            "LEFT JOIN auth_group_permissions gp ON gp.group_id = ug.group_id "
+            "LEFT JOIN auth_permission p ON p.id = gp.permission_id "
+            "WHERE u.id = ? AND p.codename = ?";
+
+    Base& db = Base::get_thread_local_instance();
+    QSqlQuery q = db.exec(sql, {user_id, QString::fromStdString(permission)});
+    return q.next() && q.value(0).toUInt() != 0;
+}
+
+bool Helper::is_admin(uint32_t user_id)
+{
+    return DB::Helper::check_permission(user_id, "change_logentry");
+}
+
 } // namespace DB
 } // namespace Das
