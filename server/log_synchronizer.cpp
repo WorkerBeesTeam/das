@@ -133,21 +133,16 @@ template<> void after_process_pack<Log_Mode_Item>(Base& db, uint32_t scheme_id, 
 // После вызова этой функции нельзя использовать pack_ptr в вызывающей функции
 // т.к pack_ptr уже начнёт использоваться в другом потоке
 template<typename T>
-void process_pack_impl(Server::Protocol_Base* proto, std::shared_ptr<QVector<T>> pack_ptr, uint32_t msg_id)
+void process_pack_impl(Server::Protocol_Base* proto, std::shared_ptr<QVector<T>> pack_ptr)
 {
     if (pack_ptr->empty())
-    {
-        proto->send_answer(Cmd::LOG_PACK, msg_id);
         return;
-    }
 
     uint32_t s_id = proto->id();
 
     Helpz::DB::Thread* log_thread = proto->work_object()->db_thread_mng_->log_thread();
 
-    auto node = std::dynamic_pointer_cast<Helpz::DTLS::Server_Node>(proto->writer());
-
-    log_thread->add([pack_ptr, s_id, node, msg_id](Base* db)
+    log_thread->add([pack_ptr, s_id](Base* db)
     {
         QVariantList values_pack, tmp_values;
         for (T& item: *pack_ptr)
@@ -162,23 +157,15 @@ void process_pack_impl(Server::Protocol_Base* proto, std::shared_ptr<QVector<T>>
             }
         }
 
-        auto protocol = node->protocol();
-
-        if (values_pack.empty())
-        {
-            if (protocol)
-                protocol->send_answer(Cmd::LOG_PACK, msg_id);
-        }
-        else
+        if (!values_pack.empty())
         {
             auto table = db_table<T>();
             table.field_names().removeFirst(); // remove id
 
             const QString sql = get_custom_q_array(table, values_pack.size() / table.field_names().size());
-            if (db->exec(sql, values_pack).isActive() && node)
+            if (!db->exec(sql, values_pack).isActive())
             {
-                if (protocol)
-                    protocol->send_answer(Cmd::LOG_PACK, msg_id);
+                // TODO: Do something
             }
         }
 
@@ -287,12 +274,16 @@ void Log_Sync_Values::process_pack(QVector<Log_Value_Item> &&pack, uint8_t msg_i
 {
     auto pack_ptr = std::make_shared<QVector<Log_Value_Item>>(std::move(pack));
 
+    proto->send_answer(Cmd::LOG_PACK, msg_id);
+
     for (Log_Value_Item& item: *pack_ptr)
     {
         static_cast<Protocol*>(protocol())->structure_sync()->change_devitem_value(item);
 
         // TODO: Remove after all clients updated
-        if (item.need_to_save() && item.raw_value() == item.value())
+        if (item.need_to_save()
+            && item.raw_value().type() == item.value().type()
+            && item.raw_value() == item.value())
             item.set_raw_value(QVariant());
     }
 

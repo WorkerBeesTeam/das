@@ -18,6 +18,7 @@ LIBS += -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzNetwork -lHe
 
 SOURCES += main.cpp \
     database/db_scheme.cpp \
+    log_saver.cpp \
     worker.cpp \
     server_protocol_base.cpp \
 #    old/server_protocol_2_0.cpp \
@@ -36,6 +37,7 @@ SOURCES += main.cpp \
 
 HEADERS += \
     database/db_scheme.h \
+    log_saver.h \
     worker.h \
     server.h \
     server_protocol_base.h \
