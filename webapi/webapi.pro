@@ -15,8 +15,8 @@ VER_MIN = 4
 include(../common.pri)
 
 LIBS += -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzNetwork -lHelpzDBMeta -lHelpzDB -lboost_system -lboost_thread
-
 LIBS += -L/usr/local/lib -lserved
+LIBS += -lfmt
 
 SOURCES += main.cpp \
     dbus_object.cpp \

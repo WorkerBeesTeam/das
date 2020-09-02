@@ -121,10 +121,11 @@ void Log_Value_Save_Timer::add_log_value_item(Log_Value_Item item)
 
 void Log_Value_Save_Timer::add_log_event_item(const Log_Event_Item &item)
 {
-    if (item.type_id() == QtDebugMsg && item.category().startsWith("net"))
+    if ((item.type_id() == QtDebugMsg && item.category().startsWith("net"))
+        || item.text().isEmpty() || item.category().isEmpty())
         return;
 
-    const QString item_text = item.text();
+    const QString& item_text = item.text();
 
     Log_Event_Item* finded_event = nullptr;
     for (Log_Event_Item& event: event_pack_)

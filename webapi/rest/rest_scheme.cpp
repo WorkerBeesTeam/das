@@ -1,9 +1,10 @@
-
 #include <served/status.hpp>
 #include <served/request_error.hpp>
 
 #include <QSqlError>
 #include <QUuid>
+
+#include <fmt/ranges.h>
 
 #include <Helpz/db_base.h>
 
@@ -594,7 +595,9 @@ void Scheme::copy(served::response &res, const served::request &req)
         || !scheme.extending_scheme_ids().empty()
         || !dest_scheme.extending_scheme_ids().empty())
     {
-        const std::string error_msg = "Not possible copy scheme " + std::to_string(scheme.id()) + " to " + std::to_string(dest_scheme_id);
+        const std::string error_msg = fmt::format("Not possible copy scheme {}({}) to {}({}).",
+                                                  scheme.id(), scheme.extending_scheme_ids(),
+                                                  dest_scheme_id, dest_scheme.extending_scheme_ids());
         throw served::request_error(served::status_4XX::BAD_REQUEST, error_msg);
     }
 

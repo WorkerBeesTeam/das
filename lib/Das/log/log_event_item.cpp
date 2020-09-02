@@ -10,11 +10,11 @@ Log_Event_Item::Log_Event_Item(qint64 timestamp_msecs, uint32_t user_id, bool ne
 uint8_t Log_Event_Item::type_id() const { return type_id_; }
 void Log_Event_Item::set_type_id(uint8_t type_id) { type_id_ = type_id; }
 
-QString Log_Event_Item::category() const { return category_; }
-void Log_Event_Item::set_category(QString category) { category_ = category; }
+const QString &Log_Event_Item::category() const { return category_; }
+void Log_Event_Item::set_category(const QString & category) { category_ = category; }
 
-QString Log_Event_Item::text() const { return text_; }
-void Log_Event_Item::set_text(QString text) { text_ = text; }
+const QString &Log_Event_Item::text() const { return text_; }
+void Log_Event_Item::set_text(const QString & text) { text_ = text; }
 
 bool Log_Event_Item::need_to_inform() const { return flag_; }
 void Log_Event_Item::set_need_to_inform(bool state) { flag_ = state; }
