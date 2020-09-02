@@ -112,7 +112,12 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
         Base& db = Base::get_thread_local_instance();
         QSqlQuery q = db.exec(sql.arg(scheme_id).arg(user_id));
         if (q.next())
-            return {q.value(0).toUInt(), {q.value(1).toUInt()}}; // TODO: get array from specific table for extending ids
+        {
+            std::set<uint32_t> extending_ids;
+            if (!q.isNull(1))
+                extending_ids.insert(q.value(1).toUInt());
+            return Scheme_Info{q.value(0).toUInt(), std::move(extending_ids)}; // TODO: get array from specific table for extending ids
+        }
     }
 
     return {};
@@ -595,7 +600,7 @@ void Scheme::copy(served::response &res, const served::request &req)
         || !scheme.extending_scheme_ids().empty()
         || !dest_scheme.extending_scheme_ids().empty())
     {
-        const std::string error_msg = fmt::format("Not possible copy scheme {}({}) to {}({}).",
+        const std::string error_msg = fmt::format("Not possible copy scheme {}{} to {}{}.",
                                                   scheme.id(), scheme.extending_scheme_ids(),
                                                   dest_scheme_id, dest_scheme.extending_scheme_ids());
         throw served::request_error(served::status_4XX::BAD_REQUEST, error_msg);
