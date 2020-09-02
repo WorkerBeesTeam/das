@@ -15,6 +15,7 @@
 #include <Helpz/dtls_tools.h>
 
 //--------
+
 #include "bot/controller.h"
 #include "dbus_handler.h"
 #include "informer.h"
@@ -39,6 +40,8 @@ Worker::Worker(QObject *parent) :
 
 Worker::~Worker()
 {
+    delete _webapi_dbus; _webapi_dbus = nullptr;
+    delete _webapi_dbus_handler;
     delete dbus_;
     delete dbus_handler_;
     delete informer_;
@@ -102,17 +105,22 @@ void Worker::init_bot(QSettings* s)
 //                Helpz::Param{"ResponseTimeout", uint32_t(5000)}
 //                ).obj<SMTP_Config>();
 
-    bot_ = Helpz::SettingsHelper(
+    auto config = Helpz::SettingsHelper(
         s, "Bot",
-        dbus_,
+        Helpz::Param<uint16_t>{"WebHookPort", 8033},
         Helpz::Param<std::string>{"Token", std::string()},
         Helpz::Param<std::string>{"WebHook", "https://deviceaccess.ru/tg_bot"},
-        Helpz::Param<uint16_t>{"WebHookPort", 8033},
         Helpz::Param<std::string>{"WebHookCert", std::string()},
         Helpz::Param<std::string>{"AuthBaseUrl", "https://deviceaccess.ru/tg_auth/"},
-        Helpz::Param<std::string>{"TemplatesPath", std::string()}
-        ).ptr<Bot::Controller>();
+        Helpz::Param<std::string>{"TemplatesPath", std::string()},
+        Helpz::Param<std::string>{"HelpFilePath", std::string()}
+        ).obj<Bot::Config>();
+
+    bot_ = new Bot::Controller(dbus_, std::move(config));
     bot_->start();
+
+    connect(_webapi_dbus_handler, &DBus::WebApi_Interface_Handler::tg_user_authorized,
+            bot_, &Bot::Controller::send_user_authorized, Qt::QueuedConnection);
 }
 
 void Worker::init_informer(QSettings* s)
@@ -136,6 +144,15 @@ void Worker::init_dbus_interface(QSettings* s)
                 Helpz::Param{"Object", DAS_DBUS_DEFAULT_OBJECT},
                 Helpz::Param{"Interface", DAS_DBUS_DEFAULT_INTERFACE}
                 ).ptr<DBus::Interface>();
+
+    _webapi_dbus_handler = new DBus::WebApi_Interface_Handler;
+    _webapi_dbus = Helpz::SettingsHelper(
+                s, "DBus_WebApi_Interface",
+                _webapi_dbus_handler,
+                Helpz::Param{"Service", DAS_DBUS_DEFAULT_SERVICE".WebApi"},
+                Helpz::Param{"Object", DAS_DBUS_DEFAULT_OBJECT},
+                Helpz::Param{"Interface", DAS_DBUS_DEFAULT_WEBAPI_INTERFACE}
+                ).ptr<DBus::Interface_Impl>();
 }
 
 void Worker::processCommands(const QStringList &args)

@@ -36,6 +36,9 @@ public:
     void fill_section(Scheme *scheme, std::map<uint32_t, Device_item_Group *> *groups = nullptr);
 
     void init_scheme(Scheme* scheme, bool typesAlreadyFilled = false);
+
+    static bool check_permission(uint32_t user_id, const std::string& permission);
+    static bool is_admin(uint32_t user_id);
 private:
 };
 

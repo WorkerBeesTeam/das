@@ -32,11 +32,11 @@ public:
     uint8_t type_id() const;
     void set_type_id(uint8_t type_id);
 
-    QString category() const;
-    void set_category(QString category);
+    const QString& category() const;
+    void set_category(const QString &category);
 
-    QString text() const;
-    void set_text(QString text);
+    const QString& text() const;
+    void set_text(const QString &text);
 
     bool need_to_inform() const;
     void set_need_to_inform(bool state);

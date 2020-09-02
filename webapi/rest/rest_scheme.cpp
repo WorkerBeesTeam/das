@@ -1,9 +1,10 @@
-
 #include <served/status.hpp>
 #include <served/request_error.hpp>
 
 #include <QSqlError>
 #include <QUuid>
+
+#include <fmt/ranges.h>
 
 #include <Helpz/db_base.h>
 
@@ -11,6 +12,7 @@
 #include <Das/db/scheme.h>
 #include <Das/db/dig_status_type.h>
 #include <Das/db/disabled_status.h>
+#include <Das/db/help.h>
 //#include <Das/db/dig_status.h>
 //#include <Das/db/device_item_value.h>
 //#include <Das/db/chart.h>
@@ -53,6 +55,19 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
             .get([this](served::response& res, const served::request& req) { get_disabled_status(res, req); })
             .method(served::method::PATCH, [this](served::response& res, const served::request& req) { del_disabled_status(res, req); })
             .post([this](served::response& res, const served::request& req) { add_disabled_status(res, req); });
+
+    mux.handle(scheme_path + "/help").get([](served::response &res, const served::request &req)
+    {
+        Auth_Middleware::check_permission("view_help");
+
+        const Scheme_Info scheme = get_info(req);
+
+        const QString sql = "WHERE scheme_id IS NULL OR %1 ORDER BY parent_id";
+
+        res.set_header("Content-Type", "application/json");
+        res << gen_json_list<DB::Help>(sql.arg(scheme.ids_to_sql()));
+    });
+
     mux.handle(scheme_path + "/set_name/").post([this](served::response& res, const served::request& req) { set_name(res, req); });
     mux.handle(scheme_path + "/copy/").post([this](served::response& res, const served::request& req) { copy(res, req); });
     mux.handle(scheme_path).get([this](served::response& res, const served::request& req) { get(res, req); });
@@ -97,7 +112,12 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
         Base& db = Base::get_thread_local_instance();
         QSqlQuery q = db.exec(sql.arg(scheme_id).arg(user_id));
         if (q.next())
-            return {q.value(0).toUInt(), {q.value(1).toUInt()}}; // TODO: get array from specific table for extending ids
+        {
+            std::set<uint32_t> extending_ids;
+            if (!q.isNull(1))
+                extending_ids.insert(q.value(1).toUInt());
+            return Scheme_Info{q.value(0).toUInt(), std::move(extending_ids)}; // TODO: get array from specific table for extending ids
+        }
     }
 
     return {};
@@ -580,7 +600,9 @@ void Scheme::copy(served::response &res, const served::request &req)
         || !scheme.extending_scheme_ids().empty()
         || !dest_scheme.extending_scheme_ids().empty())
     {
-        const std::string error_msg = "Not possible copy scheme " + std::to_string(scheme.id()) + " to " + std::to_string(dest_scheme_id);
+        const std::string error_msg = fmt::format("Not possible copy scheme {}{} to {}{}.",
+                                                  scheme.id(), scheme.extending_scheme_ids(),
+                                                  dest_scheme_id, dest_scheme.extending_scheme_ids());
         throw served::request_error(served::status_4XX::BAD_REQUEST, error_msg);
     }
 

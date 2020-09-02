@@ -13,9 +13,6 @@
 #include <dbus/dbus_common.h>
 
 namespace Das {
-
-Q_DECLARE_LOGGING_CATEGORY(DBusLog)
-
 namespace DBus {
 
 /*

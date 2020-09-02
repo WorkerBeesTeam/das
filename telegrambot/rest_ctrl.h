@@ -1,11 +1,9 @@
-#ifndef DAS_REST_RESTFUL_H
-#define DAS_REST_RESTFUL_H
+#ifndef DAS_REST_BOT_CONTROLLER_H
+#define DAS_REST_BOT_CONTROLLER_H
 
 #include <thread>
 
-#include <QLoggingCategory>
-
-#include "rest_config.h"
+#include "../webapi/rest/rest_config.h"
 
 namespace served {
 namespace net {
@@ -14,6 +12,7 @@ class server;
 } // namespace served
 
 namespace Das {
+
 namespace DBus {
 class Interface;
 } // namespace Dbus
@@ -21,14 +20,13 @@ class Interface;
 class JWT_Helper;
 
 namespace Rest {
+namespace Bot {
 
-Q_DECLARE_LOGGING_CATEGORY(Rest_Log)
-
-class Restful
+class Controller
 {
 public:
-    Restful(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_helper, const Config& config);
-    ~Restful();
+    Controller(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_helper, const Config& config);
+    ~Controller();
 
     void stop();
     void join();
@@ -39,7 +37,8 @@ private:
     std::thread thread_;
 };
 
+} // namespace Bot
 } // namespace Rest
 } // namespace Das
 
-#endif // DAS_REST_RESTFUL_H
+#endif // DAS_REST_BOT_CONTROLLER_H

@@ -7,6 +7,7 @@
 #include <Helpz/settingshelper.h>
 #include <Helpz/db_thread.h>
 
+#include "dbus_object.h"
 #include "webcommand.h"
 #include "stream/stream_server_thread.h"
 
@@ -51,6 +52,8 @@ private:
     Dbus_Handler* dbus_handler_;
     DBus::Interface* dbus_;
     friend class Dbus_Handler;
+
+    Dbus_Object* _webapi_dbus;
 
     using Websocket_Thread = Helpz::SettingsThreadHelper<Net::WebSocket, std::shared_ptr<JWT_Helper>, QString, quint16, QString, QString>;
     Websocket_Thread::Type* websock_th_;

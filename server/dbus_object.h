@@ -25,6 +25,8 @@ public:
                          const QString& object_path = DAS_DBUS_DEFAULT_OBJECT);
     ~Dbus_Object();
 
+    bool is_sync_enabled() const;
+
     void set_server(Helpz::DTLS::Server* server);
 
     std::shared_ptr<Helpz::DTLS::Server_Node> find_client(uint32_t scheme_id) const;
@@ -44,8 +46,12 @@ public slots:
     void write_item_file(uint32_t scheme_id, uint32_t user_id, uint32_t dev_item_id, const QString& file_name, const QString& file_path) override;
 
     bool ping();
+
+    void toggle_sync(bool state);
 private:
     Helpz::DTLS::Server* server_;
+
+    bool _is_sync_enabled;
 };
 
 } // namespace Server

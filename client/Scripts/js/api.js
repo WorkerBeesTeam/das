@@ -68,6 +68,28 @@ api.get_number_raw_value = function(item, default_value)
     return api.get_number_from_property(item, default_value, 'raw_value');
 };
 
+api.set_default_param_value = function(param_or_group, value, param_name)
+{
+    var param = param_name ? param_or_group.param : param_or_group;
+    if (param_name)
+    {
+        var name_list = param_name.split('.');
+        for (var i in name_list)
+        {
+            var name = name_list[i];
+            param = param[name];
+            if (!param)
+            {
+                console.warm("api.set_default_param_value: unknown param_name " + param_name + " in group " + group);
+                return;
+            }
+        }
+    }
+
+    if (!param.value)
+        param.value = value;
+};
+
 api.extend = function(Child, Parent)
 {
     var F = function() {};

@@ -42,7 +42,7 @@ Filter::Result Filter::get_result(const std::vector<Filter::Item> &items, bool i
         else
         {
             if (filter.is_like_)
-                suffix += "LIKE ";
+                suffix += "COLLATE UTF8_GENERAL_CI LIKE ";
             else
             {
                 if (filter.is_not_)
@@ -52,7 +52,14 @@ Filter::Result Filter::get_result(const std::vector<Filter::Item> &items, bool i
 
             suffix += '?';
 
-            values.push_back(filter.value_);
+            if (filter.is_like_)
+            {
+                suffix += " ESCAPE '@'";
+                values.push_back('%' + filter.value_.toString()
+                                 .replace('@', "@@").replace('_', "@_").replace('@', "@@") + '%');
+            }
+            else
+                values.push_back(filter.value_);
         }
     }
 

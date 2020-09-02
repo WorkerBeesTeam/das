@@ -18,6 +18,8 @@ class Bot_Base
 public:
     Bot_Base(DBus::Interface* dbus_iface);
     Bot_Base(const Bot_Base&) = default;
+
+    static std::string prepare_str(std::string text);
 protected:
     TgBot::InlineKeyboardButton::Ptr makeInlineButton(const std::string& data, const std::string& text) const;
     std::vector<TgBot::InlineKeyboardButton::Ptr> makeInlineButtonRow(const std::string& data, const std::string& text) const;

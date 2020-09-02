@@ -178,7 +178,7 @@ QScriptValue::PropertyFlags ParamGroupClass::propertyFlags(const QScriptValue &o
     Param* param = nullptr;
     fromScriptValue(object, param);
     if (!param)
-        return 0;
+        return 0; // QFlags<QScriptValue::PropertyFlag>();
 
     QScriptValue::PropertyFlags flags = QScriptValue::Undeletable;
 

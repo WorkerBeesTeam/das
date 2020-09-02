@@ -35,6 +35,7 @@ SOURCES += main.cpp \
     db/tg_chat.cpp \
     db/tg_subscriber.cpp \
     db/tg_user.cpp \
+    dbus_webapi_interface.cpp \
     worker.cpp \
     informer.cpp \
     smtp_client.cpp \
@@ -60,6 +61,8 @@ HEADERS += \
     db/tg_chat.h \
     db/tg_subscriber.h \
     db/tg_user.h \
+    dbus_webapi_interface.h \
+    rest_ctrl.h \
     worker.h \
     informer.h \
     smtp_client.h \
