@@ -182,20 +182,21 @@ void Structure_Synchronizer::check_statuses()
 
 QVector<Device_Item_Value> Structure_Synchronizer::get_devitem_values() const
 {
-    std::lock_guard lock(data_mutex_);
+    boost::shared_lock lock(data_mutex_);
     return devitem_value_vect_;
 }
 
 std::set<DIG_Status> Structure_Synchronizer::get_statuses()
 {
-    std::lock_guard lock(data_mutex_);
+    boost::shared_lock lock(data_mutex_);
     return status_set_;
 }
 
-void Structure_Synchronizer::change_devitem_value(const Device_Item_Value &value)
+void Structure_Synchronizer::change_devitem_values(const QVector<Log_Value_Item> &values)
 {
     std::lock_guard lock(data_mutex_);
-    change_devitem_value_no_block(value);
+    for (const Device_Item_Value& value: values)
+        change_devitem_value_no_block(value);
 }
 
 void Structure_Synchronizer::change_status(const QVector<Log_Status_Item> &pack)
@@ -221,9 +222,7 @@ QVector<DIG_Status> Structure_Synchronizer::insert_statuses(const QVector<DIG_St
 {
     clear_statuses();
     if (statuses.empty())
-    {
         return {};
-    }
 
     QVector<DIG_Status> new_statuses;
     std::lock_guard lock(data_mutex_);
@@ -257,10 +256,14 @@ void Structure_Synchronizer::change_devitem_value_no_block(const Device_Item_Val
     if (it != devitem_value_vect_.end() && it->item_id() == value.item_id())
     {
         Device_Item_Value& item = *it;
-        item.set_raw_value(value.raw_value());
-        item.set_value(value.value());
-        item.set_timestamp_msecs(value.timestamp_msecs());
-        item.set_user_id(value.user_id());
+
+        if (item.timestamp_msecs() < value.timestamp_msecs())
+        {
+            item.set_raw_value(value.raw_value());
+            item.set_value(value.value());
+            item.set_timestamp_msecs(value.timestamp_msecs());
+            item.set_user_id(value.user_id());
+        }
     }
     else
     {
@@ -300,9 +303,7 @@ bool Structure_Synchronizer::clear_devitem_values_with_save()
     }
 
     if (old_value_vect.empty())
-    {
         return false;
-    }
 
     uint32_t s_id = scheme_id();
     db_thread()->add([old_value_vect, s_id](Base* db)

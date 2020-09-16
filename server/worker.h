@@ -14,8 +14,6 @@
 //#include "server.h"
 //#include "work_object.h"
 
-
-
 QT_FORWARD_DECLARE_CLASS(QSettings)
 
 namespace Helpz {
@@ -36,7 +34,11 @@ class Thread_Manager;
 
 namespace Server {
 
-class Informer;
+namespace Log_Saver {
+class Controller;
+} // namespace Log_Saver
+
+//class Informer;
 class Dbus_Object;
 
 class Worker : public QObject
@@ -63,6 +65,7 @@ private slots:
 private:
 
     void init_database(QSettings *s);
+    void init_log_saver(QSettings* s);
     void init_server(QSettings *s);
     void init_dbus(QSettings* s);
 
@@ -115,6 +118,8 @@ public:
     } recently_connected_;
 
     Dbus_Object* dbus_;
+
+    Log_Saver::Controller* _log_saver;
 };
 
 } // namespace Server

@@ -3,6 +3,8 @@
 
 #include <set>
 
+#include <boost/thread/shared_mutex.hpp>
+
 #include <Das/type_managers.h>
 #include <Das/device.h>
 #include <Das/db/dig_status.h>
@@ -34,7 +36,8 @@ public:
     QVector<Device_Item_Value> get_devitem_values() const;
     std::set<DIG_Status> get_statuses();
 
-    void change_devitem_value(const Device_Item_Value& value);
+    void change_devitem_values(const QVector<Log_Value_Item>& values);
+//    void change_devitem_value(const Device_Item_Value& value);
     void change_status(const QVector<Log_Status_Item> &pack);
     QVector<DIG_Status> insert_statuses(const QVector<DIG_Status> &statuses);
 private:
@@ -71,7 +74,7 @@ private:
     bool struct_sync_timeout_;
     std::set<uint8_t> struct_wait_set_, synchronized_;
 
-    mutable std::mutex data_mutex_;
+    mutable boost::shared_mutex data_mutex_;
     QVector<Device_Item_Value> devitem_value_vect_;
     std::set<DIG_Status> status_set_;
 };

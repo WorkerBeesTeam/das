@@ -23,6 +23,8 @@
 //#include "server_protocol.h"
 //#include "dbus_object.h"
 
+#include "log_saver/log_saver_controller.h"
+
 #include "database/db_thread_manager.h"
 #include "dbus_object.h"
 #include "worker.h"
@@ -52,6 +54,7 @@ Worker::Worker(QObject *parent) :
 
     init_logging(&s);
     init_database(&s);
+    init_log_saver(&s);
     init_server(&s);
     init_dbus(&s);
 
@@ -69,6 +72,8 @@ Worker::~Worker()
 
     delete server_thread_;
     server_thread_ = nullptr;
+
+    delete _log_saver;
 
     delete db_thread_mng_;
     delete db_conn_info_; db_conn_info = nullptr;
@@ -171,6 +176,12 @@ void Worker::init_database(QSettings* s)
     Helpz::DB::Connection_Info::set_common(*db_conn_info_);
 
     db_thread_mng_ = new DB::Thread_Manager{*db_conn_info_};
+}
+
+void Worker::init_log_saver(QSettings *s)
+{
+    Q_UNUSED(s)
+    _log_saver = new Log_Saver::Controller;
 }
 
 void Worker::init_server(QSettings* s)

@@ -9,6 +9,7 @@
 #include "server_protocol.h"
 #include "dbus_object.h"
 
+#include "log_saver/log_saver_controller.h"
 #include "log_synchronizer.h"
 
 namespace Das {
@@ -47,130 +48,6 @@ void fill_log_data_impl(uint32_t scheme_id, QIODevice &data_dev, QString &sql, Q
     auto table = db_table<T>();
     table.field_names().removeFirst(); // remove id
     sql = get_custom_q_array(table, data.size());
-}
-
-template<typename T> bool can_log_item_save(const T& /*item*/) { return true; }
-template<> bool can_log_item_save<Log_Value_Item>(const Log_Value_Item& item) { return item.need_to_save(); }
-
-template<typename T> void after_process_pack(Base& /*db*/, uint32_t /*scheme_id*/, const QVector<T>& /*pack*/) {}
-template<> void after_process_pack<Log_Param_Item>(Base& db, uint32_t scheme_id, const QVector<Log_Param_Item>& pack)
-{
-    // Save current param value
-
-    Table table = db_table<DIG_Param_Value>();
-
-    using T = DIG_Param_Value;
-    QStringList field_names{
-        table.field_names().at(T::COL_timestamp_msecs),
-        table.field_names().at(T::COL_user_id),
-        table.field_names().at(T::COL_value)
-    };
-
-    table.field_names() = std::move(field_names);
-
-    const QString where = "scheme_id = " + QString::number(scheme_id) + " AND group_param_id = ";
-    QVariantList values{QVariant(), QVariant(), QVariant()};
-
-    for(const Log_Param_Item& item: pack)
-    {
-        values.front() = item.timestamp_msecs();
-        values[1] = item.user_id();
-        values.back() = item.value();
-
-        const QSqlQuery q = db.update(table, values, where + QString::number(item.group_param_id()));
-        if (!q.isActive() || q.numRowsAffected() <= 0)
-        {
-            Table ins_table = db_table<DIG_Param_Value>();
-            ins_table.field_names().removeFirst(); // remove id
-
-            const QVariantList ins_values{ item.timestamp_msecs(), item.user_id(), item.group_param_id(),
-                                           item.value(), scheme_id };
-            if (!db.insert(ins_table, ins_values))
-            {
-                // TODO: do something
-            }
-        }
-    }
-}
-
-template<> void after_process_pack<Log_Mode_Item>(Base& db, uint32_t scheme_id, const QVector<Log_Mode_Item>& pack)
-{
-    Table table = db_table<DIG_Mode>();
-
-    using T = DIG_Mode;
-    QStringList field_names{
-        table.field_names().at(T::COL_timestamp_msecs),
-        table.field_names().at(T::COL_user_id),
-        table.field_names().at(T::COL_mode_id)
-    };
-
-    table.field_names() = std::move(field_names);
-
-    const QString where = "scheme_id = " + QString::number(scheme_id) + " AND group_id = ";
-    QVariantList values{QVariant(), QVariant(), QVariant()};
-
-    for(const Log_Mode_Item& mode: pack)
-    {
-        values.front() = mode.timestamp_msecs();
-        values[1] = mode.user_id();
-        values.back() = mode.mode_id();
-
-        const QSqlQuery q = db.update(table, values, where + QString::number(mode.group_id()));
-        if (!q.isActive() || q.numRowsAffected() <= 0)
-        {
-            Table ins_table = db_table<DIG_Mode>();
-            ins_table.field_names().removeFirst(); // remove id
-
-            QVariantList ins_values{ mode.timestamp_msecs(), mode.user_id(), mode.group_id(), mode.mode_id(), scheme_id };
-            if (!db.insert(ins_table, ins_values))
-            {
-                // TODO: do something
-            }
-        }
-    }
-}
-
-// После вызова этой функции нельзя использовать pack_ptr в вызывающей функции
-// т.к pack_ptr уже начнёт использоваться в другом потоке
-template<typename T>
-void process_pack_impl(Server::Protocol_Base* proto, std::shared_ptr<QVector<T>> pack_ptr)
-{
-    if (pack_ptr->empty())
-        return;
-
-    uint32_t s_id = proto->id();
-
-    Helpz::DB::Thread* log_thread = proto->work_object()->db_thread_mng_->log_thread();
-
-    log_thread->add([pack_ptr, s_id](Base* db)
-    {
-        QVariantList values_pack, tmp_values;
-        for (T& item: *pack_ptr)
-        {
-            if (can_log_item_save<T>(item))
-            {
-                item.set_scheme_id(s_id);
-                tmp_values = T::to_variantlist(item);
-                tmp_values.removeFirst();
-
-                values_pack += tmp_values;
-            }
-        }
-
-        if (!values_pack.empty())
-        {
-            auto table = db_table<T>();
-            table.field_names().removeFirst(); // remove id
-
-            const QString sql = get_custom_q_array(table, values_pack.size() / table.field_names().size());
-            if (!db->exec(sql, values_pack).isActive())
-            {
-                // TODO: Do something
-            }
-        }
-
-        after_process_pack<T>(*db, s_id, *pack_ptr);
-    });
 }
 
 // ------------------------------------------------------
@@ -272,26 +149,16 @@ Log_Sync_Values::Log_Sync_Values(Protocol_Base *protocol) :
 
 void Log_Sync_Values::process_pack(QVector<Log_Value_Item> &&pack, uint8_t msg_id)
 {
-    auto pack_ptr = std::make_shared<QVector<Log_Value_Item>>(std::move(pack));
+    if (pack.empty())
+        return;
 
-    proto->send_answer(Cmd::LOG_PACK, msg_id);
+    if (Log_Saver::instance()->add(protocol()->id(), pack))
+        protocol()->send_answer(Cmd::LOG_PACK, msg_id);
 
-    for (Log_Value_Item& item: *pack_ptr)
-    {
-        static_cast<Protocol*>(protocol())->structure_sync()->change_devitem_value(item);
+    static_cast<Protocol*>(protocol())->structure_sync()->change_devitem_values(pack);
 
-        // TODO: Remove after all clients updated
-        if (item.need_to_save()
-            && item.raw_value().type() == item.value().type()
-            && item.raw_value() == item.value())
-            item.set_raw_value(QVariant());
-    }
-
-    if (!pack_ptr->empty())
-        QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "device_item_values_available", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *protocol_), Q_ARG(QVector<Log_Value_Item>, *pack_ptr));
-
-    process_pack_impl(protocol(), pack_ptr, msg_id);
+    QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "device_item_values_available", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, *protocol_), Q_ARG(QVector<Log_Value_Item>, std::move(pack)));
 }
 
 QString Log_Sync_Values::get_param_name() const
@@ -313,13 +180,14 @@ Log_Sync_Events::Log_Sync_Events(Protocol_Base *protocol) :
 
 void Log_Sync_Events::process_pack(QVector<Log_Event_Item>&& pack, uint8_t msg_id)
 {
-    auto pack_ptr = std::make_shared<QVector<Log_Event_Item>>(std::move(pack));
+    if (pack.empty())
+        return;
 
-    if (!pack_ptr->empty())
-        QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "event_message_available", Qt::QueuedConnection,
-                                  Q_ARG(Scheme_Info, *protocol_), Q_ARG(QVector<Log_Event_Item>, *pack_ptr));
+    if (Log_Saver::instance()->add(protocol()->id(), pack))
+        protocol()->send_answer(Cmd::LOG_PACK, msg_id);
 
-    process_pack_impl(protocol(), pack_ptr, msg_id);
+    QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "event_message_available", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, *protocol_), Q_ARG(QVector<Log_Event_Item>, std::move(pack)));
 }
 
 QString Log_Sync_Events::get_param_name() const
@@ -341,17 +209,15 @@ Log_Sync_Params::Log_Sync_Params(Protocol_Base *protocol) :
 
 void Log_Sync_Params::process_pack(QVector<Log_Param_Item> &&pack, uint8_t msg_id)
 {
-    auto pack_ptr = std::make_shared<QVector<Log_Param_Item>>(std::move(pack));
+    if (pack.empty())
+        return;
 
-    if (!pack_ptr->empty())
-    {
-        const QVector<DIG_Param_Value>& param_pack = reinterpret_cast<QVector<DIG_Param_Value>&>(*pack_ptr);
+    if (Log_Saver::instance()->add(protocol()->id(), pack))
+        protocol()->send_answer(Cmd::LOG_PACK, msg_id);
 
-        QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "dig_param_values_changed", Qt::QueuedConnection,
-                                  Q_ARG(Scheme_Info, *protocol()), Q_ARG(QVector<DIG_Param_Value>, param_pack));
-    }
-
-    process_pack_impl(protocol(), pack_ptr, msg_id);
+    QVector<DIG_Param_Value>&& param_pack = reinterpret_cast<QVector<DIG_Param_Value>&&>(pack);
+    QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "dig_param_values_changed", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, *protocol()), Q_ARG(QVector<DIG_Param_Value>, std::move(param_pack)));
 }
 
 void Log_Sync_Params::fill_log_data(QIODevice &data_dev, QString &sql, QVariantList &values_pack, int &row_count)
@@ -368,19 +234,17 @@ Log_Sync_Statuses::Log_Sync_Statuses(Protocol_Base *protocol) :
 
 void Log_Sync_Statuses::process_pack(QVector<Log_Status_Item> &&pack, uint8_t msg_id)
 {
-    auto pack_ptr = std::make_shared<QVector<Log_Status_Item>>(std::move(pack));
+    if (pack.empty())
+        return;
 
-    static_cast<Ver::Server::Protocol*>(protocol())->structure_sync()->change_status(*pack_ptr);
+    if (Log_Saver::instance()->add(protocol()->id(), pack))
+        protocol()->send_answer(Cmd::LOG_PACK, msg_id);
 
+    static_cast<Ver::Server::Protocol*>(protocol())->structure_sync()->change_status(pack);
 
-    if (!pack_ptr->empty())
-    {
-        const QVector<DIG_Status>& status_pack = reinterpret_cast<QVector<DIG_Status>&>(*pack_ptr);
-        QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "status_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *protocol()), Q_ARG(QVector<DIG_Status>, status_pack));
-    }
-
-    process_pack_impl(protocol(), pack_ptr, msg_id);
+    QVector<DIG_Status>&& status_pack = reinterpret_cast<QVector<DIG_Status>&&>(pack);
+    QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "status_changed", Qt::QueuedConnection,
+                          Q_ARG(Scheme_Info, *protocol()), Q_ARG(QVector<DIG_Status>, std::move(status_pack)));
 }
 
 void Log_Sync_Statuses::fill_log_data(QIODevice &data_dev, QString &sql, QVariantList &values_pack, int &row_count)
@@ -397,16 +261,15 @@ Log_Sync_Modes::Log_Sync_Modes(Protocol_Base *protocol) :
 
 void Log_Sync_Modes::process_pack(QVector<Log_Mode_Item> &&pack, uint8_t msg_id)
 {
-    auto pack_ptr = std::make_shared<QVector<Log_Mode_Item>>(std::move(pack));
+    if (pack.empty())
+        return;
 
-    if (!pack_ptr->empty())
-    {
-        const QVector<DIG_Mode>& mode_pack = reinterpret_cast<QVector<DIG_Mode>&>(*pack_ptr);
-        QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "dig_mode_changed", Qt::QueuedConnection,
-                                  Q_ARG(Scheme_Info, *protocol()), Q_ARG(QVector<DIG_Mode>, mode_pack));
-    }
+    if (Log_Saver::instance()->add(protocol()->id(), pack))
+        protocol()->send_answer(Cmd::LOG_PACK, msg_id);
 
-    process_pack_impl(protocol(), pack_ptr, msg_id);
+    QVector<DIG_Mode>&& mode_pack = reinterpret_cast<QVector<DIG_Mode>&&>(pack);
+    QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "dig_mode_changed", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, *protocol()), Q_ARG(QVector<DIG_Mode>, std::move(mode_pack)));
 }
 
 void Log_Sync_Modes::fill_log_data(QIODevice &data_dev, QString &sql, QVariantList &values_pack, int &row_count)
