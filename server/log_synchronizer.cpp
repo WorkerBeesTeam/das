@@ -155,8 +155,6 @@ void Log_Sync_Values::process_pack(QVector<Log_Value_Item> &&pack, uint8_t msg_i
     if (Log_Saver::instance()->add(protocol()->id(), pack))
         protocol()->send_answer(Cmd::LOG_PACK, msg_id);
 
-    static_cast<Protocol*>(protocol())->structure_sync()->change_devitem_values(pack);
-
     QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "device_item_values_available", Qt::QueuedConnection,
                               Q_ARG(Scheme_Info, *protocol_), Q_ARG(QVector<Log_Value_Item>, std::move(pack)));
 }
@@ -239,8 +237,6 @@ void Log_Sync_Statuses::process_pack(QVector<Log_Status_Item> &&pack, uint8_t ms
 
     if (Log_Saver::instance()->add(protocol()->id(), pack))
         protocol()->send_answer(Cmd::LOG_PACK, msg_id);
-
-    static_cast<Ver::Server::Protocol*>(protocol())->structure_sync()->change_status(pack);
 
     QVector<DIG_Status>&& status_pack = reinterpret_cast<QVector<DIG_Status>&&>(pack);
     QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "status_changed", Qt::QueuedConnection,

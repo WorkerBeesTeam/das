@@ -61,6 +61,26 @@ void Controller::erase_empty_cache()
         saver.second->erase_empty_cache();
 }
 
+void Controller::set_devitem_values(QVector<Log_Value_Item> &&data)
+{
+
+}
+
+QVector<Device_Item_Value> Controller::get_devitem_values(uint32_t scheme_id)
+{
+
+}
+
+void Controller::set_statuses(QVector<Log_Status_Item> &&data)
+{
+
+}
+
+set<DIG_Status> Controller::get_statuses(uint32_t scheme_id)
+{
+    return get_cache_data<Log_Status_Item, set, DIG_Status>(scheme_id);
+}
+
 void Controller::run()
 {
     unique_lock lock(_mutex, defer_lock);

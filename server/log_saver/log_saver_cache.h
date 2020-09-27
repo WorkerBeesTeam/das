@@ -4,6 +4,8 @@
 #include <atomic>
 #include <boost/thread/shared_mutex.hpp>
 
+#include <QVector>
+
 #include "log_saver_helper.h"
 
 namespace Das {
@@ -91,13 +93,14 @@ public:
         return oldest_cache_time;
     }
 
-    QVector<typename Helper<T>::Value_Type> get_data() const
+    template<template<typename...> class Container = QVector, typename K = typename Helper<T>::Value_Type>
+    Container<K> get_data() const
     {
-        QVector<typename Helper<T>::Value_Type> data;
+        Container<K> data;
 
         boost::shared_lock lock(_mutex);
         for (const Cache_Item<T>& item: _data)
-            data.push_back(item._item);
+            data.insert( data.end(), item._item );
         return data;
     }
 

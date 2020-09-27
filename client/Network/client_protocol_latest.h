@@ -31,8 +31,6 @@ public:
     Log_Sender& log_sender();
     Structure_Synchronizer& structure_sync();
 
-    void send_statuses();
-
     void send_stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state);
     void send_stream_param(uint32_t dev_item_id, const QByteArray& data);
     void send_stream_data(uint32_t dev_item_id, const QByteArray& data);

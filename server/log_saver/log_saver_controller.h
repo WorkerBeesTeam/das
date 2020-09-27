@@ -1,6 +1,7 @@
 #ifndef DAS_SERVER_LOG_SAVER_CONTROLLER_H
 #define DAS_SERVER_LOG_SAVER_CONTROLLER_H
 
+#include <set>
 #include <typeindex>
 #include <thread>
 #include <mutex>
@@ -47,16 +48,22 @@ public:
         return false;
     }
 
-    template<typename T>
-    QVector<typename Helper<T>::Value_Type> get_cache_data(uint32_t scheme_id)
+    template<typename T, template<typename...> class Container = QVector, typename K = typename Helper<T>::Value_Type>
+    Container<K> get_cache_data(uint32_t scheme_id)
     {
         auto it = _savers.find(typeid(T));
         if (it != _savers.cend())
-            return static_pointer_cast<Saver<T>>(it->second)->get_cache_data(scheme_id);
+            return static_pointer_cast<Saver<T>>(it->second)->template get_cache_data<Container, K>(scheme_id);
         return {};
     }
 
     void erase_empty_cache();
+
+    void set_devitem_values(QVector<Log_Value_Item>&& data);
+    QVector<Device_Item_Value> get_devitem_values(uint32_t scheme_id);
+
+    void set_statuses(QVector<Log_Status_Item>&& data);
+    set<DIG_Status> get_statuses(uint32_t scheme_id);
 
 private:
     void run();

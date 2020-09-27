@@ -142,10 +142,6 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
         Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Synchronizer::process_pack, &log_sync_, &data_dev, msg_id);
         break;
 
-    case Cmd::GROUP_STATUSES:
-        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Structure_Synchronizer::insert_statuses, &structure_sync_);
-        break;
-
     case Cmd::MODIFY_SCHEME:
         send_answer(cmd, msg_id);
 

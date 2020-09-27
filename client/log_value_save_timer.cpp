@@ -432,9 +432,6 @@ void Log_Value_Save_Timer::save_dig_param_values(std::shared_ptr<QVector<Log_Par
 //    return log_increaser;
 //}
 
-template<typename T> void send_pack_timeout(Ver::Client::Protocol& /*proto*/) {}
-template<> void send_pack_timeout<Log_Status_Item>(Ver::Client::Protocol& proto) { proto.send_statuses(); }
-
 template<typename T>
 void Log_Value_Save_Timer::send(Log_Type_Wrapper log_type, std::shared_ptr<QVector<T> > pack)
 {

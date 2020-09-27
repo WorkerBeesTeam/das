@@ -5,11 +5,13 @@
 
 #include <boost/thread/shared_mutex.hpp>
 
+#include <Das/commands.h>
 #include <Das/type_managers.h>
 #include <Das/device.h>
 #include <Das/db/dig_status.h>
 #include <plus/das/structure_synchronizer_base.h>
 
+#include "log_saver/log_saver_controller.h"
 #include "database/db_scheme.h"
 #include "base_synchronizer.h"
 
@@ -32,24 +34,12 @@ public:
 
     void check_values();
     void check_statuses();
-
-    QVector<Device_Item_Value> get_devitem_values() const;
-    std::set<DIG_Status> get_statuses();
-
-    void change_devitem_values(const QVector<Log_Value_Item>& values);
-//    void change_devitem_value(const Device_Item_Value& value);
-    void change_status(const QVector<Log_Status_Item> &pack);
-    QVector<DIG_Status> insert_statuses(const QVector<DIG_Status> &statuses);
 private:
-    Scheme_Info get_scheme_info(uint8_t struct_type) const;
+    template<typename T>
+    void check_values_or_statuses(Cmd::Command_Type cmd, void (Log_Saver::Controller::*set_cache)(QVector<T>&&));
 
-    void change_devitem_value_no_block(const Device_Item_Value& value);
-    static bool devitem_value_compare(const Device_Item_Value& value1, const Device_Item_Value& value2);
-    void insert_devitem_values(QVector<Device_Item_Value> &&value_vect);
-    bool clear_devitem_values_with_save();
-    static void save_devitem_values(Helpz::DB::Base* db, const QVector<Device_Item_Value>& value_vect, uint32_t scheme_id);
-    void clear_devitem_values();
-    void clear_statuses();
+
+    Scheme_Info get_scheme_info(uint8_t struct_type) const;
 
     void set_synchronized(uint8_t struct_type);
 
@@ -73,10 +63,6 @@ private:
 
     bool struct_sync_timeout_;
     std::set<uint8_t> struct_wait_set_, synchronized_;
-
-    mutable boost::shared_mutex data_mutex_;
-    QVector<Device_Item_Value> devitem_value_vect_;
-    std::set<DIG_Status> status_set_;
 };
 
 } // namespace Server

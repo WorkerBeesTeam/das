@@ -50,11 +50,6 @@ Structure_Synchronizer& Protocol::structure_sync()
     return structure_sync_;
 }
 
-void Protocol::send_statuses()
-{
-    send(Cmd::GROUP_STATUSES) << get_group_statuses();
-}
-
 void Protocol::send_stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state)
 {
     send(Cmd::STREAM_TOGGLE).timeout(nullptr, std::chrono::seconds(6)) << user_id << dev_item_id << state;

@@ -47,13 +47,15 @@ public:
         }
     }
 
-    QVector<typename Helper<T>::Value_Type> get_cache_data(uint32_t scheme_id)
+    template<template<typename...> class Container = QVector, typename K = typename Helper<T>::Value_Type>
+    Container<K> get_cache_data(uint32_t scheme_id)
     {
         boost::shared_lock lock(_cache_mutex);
         auto it = _scheme_cache.find(scheme_id);
         if (it == _scheme_cache.cend())
             return {};
-        return it->get_data();
+
+        return it->second.template get_data<Container, K>();
     }
 
     bool empty_data() const override
