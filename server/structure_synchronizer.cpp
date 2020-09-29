@@ -128,12 +128,13 @@ void Structure_Synchronizer::check_statuses()
 }
 
 template<typename T>
-void Structure_Synchronizer::check_values_or_statuses(Cmd::Command_Type cmd, void (Log_Saver::Controller::*set_cache)(QVector<T>&&))
+void Structure_Synchronizer::check_values_or_statuses(Cmd::Command_Type cmd, void (Log_Saver::Controller::*set_cache)(QVector<T>&&, uint32_t))
 {
+    uint32_t scheme_id = protocol_->id();
     protocol_->send(cmd)
-            .answer([this, set_cache](QIODevice& data_dev)
+            .answer([set_cache, scheme_id](QIODevice& data_dev)
     {
-        Helpz::apply_parse(data_dev, QDataStream::Qt_DefaultCompiledVersion, set_cache, Log_Saver::instance());
+        Helpz::apply_parse(data_dev, QDataStream::Qt_DefaultCompiledVersion, set_cache, Log_Saver::instance(), scheme_id);
     })
             .timeout([this, cmd, set_cache]()
     {

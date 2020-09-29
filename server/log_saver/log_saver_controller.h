@@ -48,6 +48,13 @@ public:
         return false;
     }
 
+    void set_cache_data(QVector<T>&& data, uint32_t scheme_id)
+    {
+        auto it = _savers.find(typeid(T));
+        if (it != _savers.cend())
+            return static_pointer_cast<Saver<T>>(it->second)->set_cache_data(move(data), scheme_id);
+    }
+
     template<typename T, template<typename...> class Container = QVector, typename K = typename Helper<T>::Value_Type>
     Container<K> get_cache_data(uint32_t scheme_id)
     {
@@ -59,10 +66,10 @@ public:
 
     void erase_empty_cache();
 
-    void set_devitem_values(QVector<Log_Value_Item>&& data);
+    void set_devitem_values(QVector<Log_Value_Item>&& data, uint32_t scheme_id);
     QVector<Device_Item_Value> get_devitem_values(uint32_t scheme_id);
 
-    void set_statuses(QVector<Log_Status_Item>&& data);
+    void set_statuses(QVector<Log_Status_Item>&& data, uint32_t scheme_id);
     set<DIG_Status> get_statuses(uint32_t scheme_id);
 
 private:

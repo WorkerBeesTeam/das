@@ -61,19 +61,20 @@ void Controller::erase_empty_cache()
         saver.second->erase_empty_cache();
 }
 
-void Controller::set_devitem_values(QVector<Log_Value_Item> &&data)
+void Controller::set_devitem_values(QVector<Log_Value_Item> &&data, uint32_t scheme_id)
 {
-
+    set_cache_data(move(data), scheme_id);
 }
 
 QVector<Device_Item_Value> Controller::get_devitem_values(uint32_t scheme_id)
 {
-
+    return get_cache_data<Log_Value_Item>(scheme_id);
 }
 
-void Controller::set_statuses(QVector<Log_Status_Item> &&data)
+void Controller::set_statuses(QVector<Log_Status_Item> &&data, uint32_t scheme_id)
 {
-
+    // Достать из базы текущие состояние и Составить актуальный массив с данными
+    set_cache_data(move(data), scheme_id);
 }
 
 set<DIG_Status> Controller::get_statuses(uint32_t scheme_id)

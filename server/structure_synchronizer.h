@@ -36,7 +36,7 @@ public:
     void check_statuses();
 private:
     template<typename T>
-    void check_values_or_statuses(Cmd::Command_Type cmd, void (Log_Saver::Controller::*set_cache)(QVector<T>&&));
+    void check_values_or_statuses(Cmd::Command_Type cmd, void (Log_Saver::Controller::*set_cache)(QVector<T>&&, uint32_t));
 
 
     Scheme_Info get_scheme_info(uint8_t struct_type) const;

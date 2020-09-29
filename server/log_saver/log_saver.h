@@ -47,6 +47,13 @@ public:
         }
     }
 
+    void set_cache_data(QVector<T>&& data, uint32_t scheme_id)
+    {
+        boost::upgrade_lock shared_lock(_cache_mutex);
+        Cache_Data<T>& cache = get_cache(scheme_id, shared_lock);
+        cache.set_data(move(data), get_save_time());
+    }
+
     template<template<typename...> class Container = QVector, typename K = typename Helper<T>::Value_Type>
     Container<K> get_cache_data(uint32_t scheme_id)
     {

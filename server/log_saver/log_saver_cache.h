@@ -93,6 +93,18 @@ public:
         return oldest_cache_time;
     }
 
+    void set_data(QVector<T>&& data, const time_point save_time_point)
+    {
+        _oldest_cache_time = save_time_point;
+        lock_guard lock(_mutex);
+        _data.clear();
+        for (T& item: data)
+        {
+            auto it = lower_bound(_data.begin(), _data.end(), item, is_item_less);
+            _data.emplace(it, save_time_point, move(item));
+        }
+    }
+
     template<template<typename...> class Container = QVector, typename K = typename Helper<T>::Value_Type>
     Container<K> get_data() const
     {
