@@ -1,10 +1,13 @@
 
+#include <QFile>
+
 #include <Helpz/db_base.h>
 
 #include "log_saver.h"
 
 namespace Das {
 namespace Server {
+namespace Log_Saver {
 
 using namespace std;
 using namespace Helpz::DB;
@@ -87,5 +90,22 @@ template<> void after_process_pack<Log_Mode_Item>(Base& db, uint32_t scheme_id, 
     }
 }
 
+void save_dump_to_file(size_t type_code, const QVariantList &data)
+{
+    const QString file_name = QString("fail_log_%1.dat").arg(type_code);
+    QFile file(file_name);
+
+    static mutex m;
+    lock_guard lock(m);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Append))
+    {
+        QDataStream ds(&file);
+        ds << data;
+    }
+    else
+        qCritical() << "Log finally lost. Can't open dump file: " << file_name << file.errorString();
+}
+
+} // namespace Log_Saver
 } // namespace Server
 } // namespace Das

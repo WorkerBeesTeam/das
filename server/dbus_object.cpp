@@ -4,7 +4,7 @@
 
 #include <Das/commands.h>
 
-#include "log_saver/log_saver_controller.h"
+#include "log_manager.h"
 #include "server_protocol.h"
 #include "dbus_object.h"
 
@@ -96,7 +96,7 @@ Scheme_Status Dbus_Object::get_scheme_status(uint32_t scheme_id) const
 //        Ver::Server::Protocol* proto = dynamic_cast<Ver::Server::Protocol*>(p.get());
 //        if (proto)
         {
-            scheme_status.status_set_ = Log_Saver::instance()->get_statuses(scheme_id);
+            scheme_status.status_set_ = Log_Manager::instance()->get_statuses(scheme_id);
         }
     }
     else
@@ -125,7 +125,7 @@ QVector<Device_Item_Value> Dbus_Object::get_device_item_values(uint32_t scheme_i
 //        std::shared_ptr<Ver::Server::Protocol> proto = std::dynamic_pointer_cast<Ver::Server::Protocol>(node->protocol());
 //        if (proto)
         {
-            return Log_Saver::instance()->get_devitem_values(scheme_id);
+            return Log_Manager::instance()->get_devitem_values(scheme_id);
         }
     }
     return {};

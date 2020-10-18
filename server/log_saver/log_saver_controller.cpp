@@ -7,12 +7,6 @@ namespace Log_Saver {
 using namespace std;
 using namespace Helpz::DB;
 
-/*static*/ Controller* Controller::_instance = nullptr;
-Controller *Controller::instance()
-{
-    return _instance;
-}
-
 Controller::Controller(int thread_count) :
     _break_flag(false)
 {
@@ -24,8 +18,6 @@ Controller::Controller(int thread_count) :
 
     _current_saver = _savers.cbegin();
 
-    _instance = this;
-
     for (int i = 0; i < thread_count; ++i)
         _threads.emplace_back(&Controller::run, this);
 }
@@ -34,8 +26,6 @@ Controller::~Controller()
 {
     stop();
     join();
-
-    _instance = nullptr;
 }
 
 void Controller::stop()
@@ -61,27 +51,6 @@ void Controller::erase_empty_cache()
         saver.second->erase_empty_cache();
 }
 
-void Controller::set_devitem_values(QVector<Log_Value_Item> &&data, uint32_t scheme_id)
-{
-    set_cache_data(move(data), scheme_id);
-}
-
-QVector<Device_Item_Value> Controller::get_devitem_values(uint32_t scheme_id)
-{
-    return get_cache_data<Log_Value_Item>(scheme_id);
-}
-
-void Controller::set_statuses(QVector<Log_Status_Item> &&data, uint32_t scheme_id)
-{
-    // Достать из базы текущие состояние и Составить актуальный массив с данными
-    set_cache_data(move(data), scheme_id);
-}
-
-set<DIG_Status> Controller::get_statuses(uint32_t scheme_id)
-{
-    return get_cache_data<Log_Status_Item, set, DIG_Status>(scheme_id);
-}
-
 void Controller::run()
 {
     unique_lock lock(_mutex, defer_lock);
@@ -89,10 +58,13 @@ void Controller::run()
     while (true)
     {
         lock.lock();
-        if (empty_data() && !empty_cache())
-            _cond.wait_until(lock, get_oldest_cache_time());
-        else
-            _cond.wait(lock, [this]() { return _break_flag || !empty(); });
+        if (!_break_flag)
+        {
+            if (empty_data() && !empty_cache())
+                _cond.wait_until(lock, get_oldest_cache_time());
+            else
+                _cond.wait(lock, [this]() { return _break_flag || !empty(); });
+        }
 
         if (!empty())
         {

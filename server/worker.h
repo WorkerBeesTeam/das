@@ -34,12 +34,9 @@ class Thread_Manager;
 
 namespace Server {
 
-namespace Log_Saver {
-class Controller;
-} // namespace Log_Saver
-
 //class Informer;
 class Dbus_Object;
+class Log_Manager;
 
 class Worker : public QObject
 {
@@ -119,7 +116,7 @@ public:
 
     Dbus_Object* dbus_;
 
-    Log_Saver::Controller* _log_saver;
+    Log_Manager* _log_mng;
 };
 
 } // namespace Server

@@ -11,7 +11,7 @@
 #include <Das/db/dig_status.h>
 #include <plus/das/structure_synchronizer_base.h>
 
-#include "log_saver/log_saver_controller.h"
+#include "log_manager.h"
 #include "database/db_scheme.h"
 #include "base_synchronizer.h"
 
@@ -36,7 +36,7 @@ public:
     void check_statuses();
 private:
     template<typename T>
-    void check_values_or_statuses(Cmd::Command_Type cmd, void (Log_Saver::Controller::*set_cache)(QVector<T>&&, uint32_t));
+    void check_values_or_statuses(Cmd::Command_Type cmd, void (Log_Manager::*set_cache)(QVector<T>&&, uint32_t));
 
 
     Scheme_Info get_scheme_info(uint8_t struct_type) const;

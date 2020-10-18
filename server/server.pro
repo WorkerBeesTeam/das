@@ -18,6 +18,7 @@ LIBS += -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzNetwork -lHe
 
 SOURCES += main.cpp \
     database/db_scheme.cpp \
+    log_manager.cpp \
     log_saver/log_saver.cpp \
     log_saver/log_saver_controller.cpp \
     worker.cpp \
@@ -38,6 +39,7 @@ SOURCES += main.cpp \
 
 HEADERS += \
     database/db_scheme.h \
+    log_manager.h \
     log_saver/log_saver.h \
     log_saver/log_saver_base.h \
     log_saver/log_saver_cache.h \

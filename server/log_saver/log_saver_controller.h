@@ -16,10 +16,7 @@ namespace Log_Saver {
 
 class Controller
 {
-    static Controller* _instance;
 public:
-    static Controller* instance();
-
     Controller(int thread_count = 5);
     ~Controller();
 
@@ -29,6 +26,9 @@ public:
     template<typename T>
     bool add(uint32_t scheme_id, QVector<T>& data)
     {
+        if (_break_flag)
+            return false;
+
         auto it = _savers.find(typeid(T));
         if (it != _savers.cend())
         {
@@ -48,6 +48,7 @@ public:
         return false;
     }
 
+    template<typename T>
     void set_cache_data(QVector<T>&& data, uint32_t scheme_id)
     {
         auto it = _savers.find(typeid(T));
@@ -65,12 +66,6 @@ public:
     }
 
     void erase_empty_cache();
-
-    void set_devitem_values(QVector<Log_Value_Item>&& data, uint32_t scheme_id);
-    QVector<Device_Item_Value> get_devitem_values(uint32_t scheme_id);
-
-    void set_statuses(QVector<Log_Status_Item>&& data, uint32_t scheme_id);
-    set<DIG_Status> get_statuses(uint32_t scheme_id);
 
 private:
     void run();
@@ -94,11 +89,6 @@ private:
     Saver_Map _savers;
     Saver_Map::const_iterator _current_saver;
 };
-
-inline Log_Saver::Controller* instance()
-{
-    return Log_Saver::Controller::instance();
-}
 
 } // namespace Log_Saver
 } // namespace Server

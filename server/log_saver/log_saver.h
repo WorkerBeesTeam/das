@@ -14,6 +14,8 @@ namespace Log_Saver {
 
 using namespace Helpz::DB;
 
+void save_dump_to_file(size_t type_code, const QVariantList& data);
+
 template<typename T>
 class Saver : public Saver_Base
 {
@@ -217,6 +219,8 @@ private:
                 }
             }
             // TODO: Try to insert each separately. With check duplicate?
+
+            save_dump_to_file(typeid(T).hash_code(), values_pack);
         }
     }
 
