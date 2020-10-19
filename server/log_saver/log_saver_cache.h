@@ -33,31 +33,18 @@ public:
         return _data.empty();
     }
 
-    void add(const T& item, const time_point save_time_point)
+    template<template<typename...> class Container = QVector>
+    void add(const Container<T>& data, const time_point save_time_point)
     {
-        if (!Helper<T>::is_comparable())
+        if constexpr (!Helper<T>::is_comparable())
             return;
 
-        boost::upgrade_lock shared_lock(_mutex);
+        lock_guard lock(_mutex);
+        if (_data.empty())
+            _oldest_cache_time = save_time_point;
 
-        auto it = lower_bound(_data.begin(), _data.end(), item, is_item_less);
-
-        if (it != _data.end() && Helper<T>::is_item_equal(item, it->_item))
-        {
-            if (it->_item.timestamp_msecs() < item.timestamp_msecs())
-            {
-                boost::upgrade_to_unique_lock lock(shared_lock);
-                it->_item = item;
-                it->_save_time = save_time_point;
-            }
-        }
-        else
-        {
-            boost::upgrade_to_unique_lock lock(shared_lock);
-            if (_data.empty())
-                _oldest_cache_time = save_time_point;
-            _data.emplace(it, save_time_point, item);
-        }
+        for (const T& item: data)
+            add_item(item, save_time_point);
     }
 
     static bool is_item_less(const Cache_Item<T>& cache_item, const T& item)
@@ -119,6 +106,23 @@ public:
     atomic<qint64> _last_time;
 
 private:
+
+    void add_item(const T& item, const time_point save_time_point)
+    {
+        auto it = lower_bound(_data.begin(), _data.end(), item, is_item_less);
+
+        if (it != _data.end() && Helper<T>::is_item_equal(item, it->_item))
+        {
+            if (it->_item.timestamp_msecs() < item.timestamp_msecs())
+            {
+                it->_item = item;
+                it->_save_time = save_time_point;
+            }
+        }
+        else
+            _data.emplace(it, save_time_point, item);
+    }
+
     atomic<time_point> _oldest_cache_time;
 
     mutable boost::shared_mutex _mutex;

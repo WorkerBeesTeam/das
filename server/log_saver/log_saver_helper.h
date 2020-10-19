@@ -22,7 +22,7 @@ template<typename T>
 struct Helper
 {
     using Value_Type = typename Helper_Value<T>::Type;
-    static bool is_comparable() { return true; }
+    static constexpr bool is_comparable() { return true; }
 
     static bool is_item_less(const T& item1, const T& item2) { return compare(item1, item2) < 0; }
     static bool is_item_equal(const T& item1, const T& item2) { return compare(item1, item2) == 0; }
@@ -33,7 +33,7 @@ struct Helper
 };
 
 template<>
-inline bool Helper<Log_Event_Item>::is_comparable() { return false; }
+inline constexpr bool Helper<Log_Event_Item>::is_comparable() { return false; }
 
 // -----  Helper<T>::compare and Helper<T>::get_compared_fields
 #define DECL_LOG_SAVER_HELPER_COMPARE(X, Y) \

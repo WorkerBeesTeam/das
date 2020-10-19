@@ -1,6 +1,10 @@
 #ifndef DAS_SERVER_LOG_SAVER_BASE_H
 #define DAS_SERVER_LOG_SAVER_BASE_H
 
+#include <mutex>
+
+#include <QVariantList>
+
 #include "log_saver_data.h"
 
 namespace Das {
@@ -18,6 +22,12 @@ public:
     virtual shared_ptr<Data> get_data_pack() = 0;
     virtual void process_data_pack(shared_ptr<Data> data) = 0;
     virtual void erase_empty_cache() = 0;
+
+protected:
+    void save_dump_to_file(size_t type_code, const QVariantList& data);
+    QVariantList load_dump_file(size_t type_code);
+private:
+    mutex _fail_mutex;
 };
 
 } // namespace Log_Saver

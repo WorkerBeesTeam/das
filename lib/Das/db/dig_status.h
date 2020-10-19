@@ -21,6 +21,10 @@ class DAS_LIBRARY_SHARED_EXPORT DIG_Status : public Log_Base_Item
 public:
     enum Status_Direction : uint8_t { SD_ADD = 1, SD_DEL = 2 };
 
+    DIG_Status(DIG_Status&&) = default;
+    DIG_Status(const DIG_Status&) = default;
+    DIG_Status& operator=(DIG_Status&&) = default;
+    DIG_Status& operator=(const DIG_Status&) = default;
     DIG_Status(qint64 timestamp_msecs = 0, uint32_t user_id = 0, uint32_t group_id = 0,
                uint32_t status_id = 0, const QStringList& args = QStringList(), Status_Direction direction = SD_ADD);
 

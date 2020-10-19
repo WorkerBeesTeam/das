@@ -24,7 +24,7 @@ public:
     void join();
 
     template<typename T>
-    bool add(uint32_t scheme_id, QVector<T>& data)
+    bool add(uint32_t scheme_id, const QVector<T>& data)
     {
         if (_break_flag)
             return false;

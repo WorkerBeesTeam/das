@@ -19,7 +19,7 @@ LIBS += -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzNetwork -lHe
 SOURCES += main.cpp \
     database/db_scheme.cpp \
     log_manager.cpp \
-    log_saver/log_saver.cpp \
+    log_saver/log_saver_base.cpp \
     log_saver/log_saver_controller.cpp \
     worker.cpp \
     server_protocol_base.cpp \

@@ -14,8 +14,6 @@ namespace Log_Saver {
 
 using namespace Helpz::DB;
 
-void save_dump_to_file(size_t type_code, const QVariantList& data);
-
 template<typename T>
 class Saver : public Saver_Base
 {
@@ -25,34 +23,39 @@ public:
         _init_time(DB::Log_Base_Item::current_timestamp())
     {
     }
-    ~Saver()
+    virtual ~Saver()
     {
     }
 
     template<template<typename...> class Container>
-    void add(uint32_t scheme_id, Container<T>& data)
+    void add(uint32_t scheme_id, const Container<T>& data)
     {
-        for (T& item: data)
+        for (const T& item: data)
         {
-            item.set_scheme_id(scheme_id);
-
             if constexpr (is_same<T, Log_Value_Item>::value)
-            {
                 if (!item.need_to_save())
-                {
-                    check_item_time(item, get_save_time());
                     continue;
-                }
-            }
 
             _data.push(item);
+            _data.back().set_scheme_id(scheme_id);
+        }
+
+        if constexpr (Helper<T>::is_comparable())
+        {
+            boost::shared_lock lock(_cache_mutex);
+            Cache_Data<T>& cache = get_cache(scheme_id, lock);
+
+            const time_point save_time_point = get_save_time();
+            cache.add(data, save_time_point);
+            if (_oldest_cache_time.load().time_since_epoch() == clock::duration::zero())
+                _oldest_cache_time = save_time_point;
         }
     }
 
     void set_cache_data(QVector<T>&& data, uint32_t scheme_id)
     {
-        boost::upgrade_lock shared_lock(_cache_mutex);
-        Cache_Data<T>& cache = get_cache(scheme_id, shared_lock);
+        boost::shared_lock lock(_cache_mutex);
+        Cache_Data<T>& cache = get_cache(scheme_id, lock);
         cache.set_data(move(data), get_save_time());
     }
 
@@ -146,12 +149,10 @@ private:
 
     void process_data_pack(vector<T>& pack)
     {
-        const time_point save_time_point = get_save_time();
-
         QVariantList values_pack;
         for (auto it = pack.begin(); it != pack.end();)
         {
-            if (!Helper<T>::is_comparable() || check_item_time(*it, save_time_point))
+            if (!Helper<T>::is_comparable() || check_item_time(*it))
             {
                 for (size_t i = 1; i < T::COL_COUNT; ++i) // without id
                     values_pack.push_back(T::value_getter(*it, i));
@@ -166,7 +167,7 @@ private:
 
         auto table = db_table<T>();
 
-        if (!pack.empty()) // check duplicates in db
+        if (!pack.empty()) // check duplicates in db // Remove that code if table has composite primary key
         {
 //            SELECT timestamp_msecs, scheme_id, item_id FROM das_log_value WHERE
 //            (timestamp_msecs = 1599881793207 AND scheme_id = 5 AND item_id = 2) OR
@@ -224,7 +225,8 @@ private:
         }
     }
 
-    void process_cache(vector<T>& pack)
+    void process_cache(vector<T>& pack) { process_cache_impl(pack); }
+    void process_cache_impl(vector<T>& pack)
     {
         // UPDATE dig_param_value SET timestamp_msecs=? AND user_id=? AND value=?
         // WHERE scheme_id=? AND group_param_id=? AND timestamp_msecs<=?
@@ -280,14 +282,10 @@ private:
         return clock::now() + 15s;
     }
 
-    bool check_item_time(const T& item, const time_point save_time_point)
+    bool check_item_time(const T& item)
     {
-        boost::upgrade_lock shared_lock(_cache_mutex);
-        Cache_Data<T>& cache = get_cache(item.scheme_id(), shared_lock);
-
-        cache.add(item, save_time_point);
-        if (_oldest_cache_time.load().time_since_epoch() == clock::duration::zero())
-            _oldest_cache_time = save_time_point;
+        boost::shared_lock lock(_cache_mutex);
+        Cache_Data<T>& cache = get_cache(item.scheme_id(), lock);
 
         if (cache._last_time < item.timestamp_msecs())
         {
@@ -297,15 +295,20 @@ private:
         return false;
     }
 
-    Cache_Data<T>& get_cache(uint32_t scheme_id, boost::upgrade_lock<boost::shared_mutex>& shared_lock)
+    Cache_Data<T>& get_cache(uint32_t scheme_id, boost::shared_lock<boost::shared_mutex>& shared_lock)
     {
         auto it = _scheme_cache.find(scheme_id);
         if (it == _scheme_cache.end())
         {
-            boost::upgrade_to_unique_lock lock(shared_lock);
-            it = _scheme_cache.find(scheme_id);
-            if (it == _scheme_cache.end())
-                it = _scheme_cache.emplace(scheme_id, _init_time).first;
+            shared_lock.unlock();
+            {
+                lock_guard lock(*shared_lock.mutex());
+                it = _scheme_cache.find(scheme_id);
+                if (it == _scheme_cache.end())
+                    _scheme_cache.emplace(scheme_id, _init_time);
+            }
+            shared_lock.lock();
+            return get_cache(scheme_id, shared_lock);
         }
         return it->second;
     }
@@ -319,7 +322,7 @@ private:
     }
 
     QString get_compare_where(const vector<T>& pack, const Table& table,
-                              const vector<uint32_t>& compared_fields, QVariantList& values) const
+                              const vector<uint32_t>& compared_fields, QVariantList& values, bool add_where_keyword = true) const
     {
         QString item_template = get_where_item_template(table, compared_fields);
         QString where;
@@ -327,7 +330,11 @@ private:
         for (const T& item: pack)
         {
             if (where.isEmpty())
-                where = "WHERE (";
+            {
+                if (add_where_keyword)
+                    where = "WHERE ";
+                where += '(';
+            }
             else
                 where += ") OR (";
             where += item_template;
@@ -396,12 +403,8 @@ inline void Saver<Log_Status_Item>::process_cache(vector<Log_Status_Item>& pack)
         vector<uint32_t> compared_fields = Helper<T>::get_compared_fields();
         compared_fields.erase(remove(compared_fields.begin(), compared_fields.end(), T::COL_timestamp_msecs), compared_fields.end());
 
-        sql = "DELETE FROM ";
-        sql += table.name();
-        sql += ' ';
-        sql += get_compare_where(delete_pack, db_table<T>(), compared_fields, values);
-
-        if (!db.exec(sql, values).isActive())
+        sql = get_compare_where(delete_pack, db_table<T>(), compared_fields, values, false);
+        if (!db.del(table.name(), sql, values).isActive())
         {
             // TODO: Do something
         }
@@ -410,16 +413,7 @@ inline void Saver<Log_Status_Item>::process_cache(vector<Log_Status_Item>& pack)
     }
 
     if (!pack.empty())
-    {
-        for (const T& item: pack)
-            values += V::to_variantlist(item);
-
-        sql = get_custom_q_array(table, pack.size());
-        if (!db.exec(sql, values).isActive())
-        {
-            // TODO: Do something
-        }
-    }
+        process_cache_impl(pack);
 }
 
 } // namespace Log_Saver
