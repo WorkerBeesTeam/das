@@ -7,7 +7,7 @@
 namespace Das {
 namespace DB {
 
-struct DAS_LIBRARY_SHARED_EXPORT Code_Item : public Base_Type
+struct DAS_LIBRARY_SHARED_EXPORT Code_Item : public Named_Type
 {
     HELPZ_DB_META(Code_Item, "code_item", "ci", DB_A(id), DB_ANS(name), DB_AMN(global_id), DB_AM(text), DB_A(scheme_id))
 public:

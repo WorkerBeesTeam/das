@@ -11,7 +11,7 @@
 namespace Das {
 namespace DB {
 
-class DAS_LIBRARY_SHARED_EXPORT Plugin_Type : public Base_Type
+class DAS_LIBRARY_SHARED_EXPORT Plugin_Type : public Named_Type
 {
     HELPZ_DB_META(Plugin_Type, "plugin_type", "pt", DB_A(id), DB_A(name),
                   DB_AT(param_names_device), DB_AT(param_names_device_item), DB_A(scheme_id))
@@ -49,7 +49,7 @@ private:
 QDataStream& operator<<(QDataStream& ds, const Plugin_Type& item);
 QDataStream& operator>>(QDataStream& ds, Plugin_Type& item);
 
-struct DAS_LIBRARY_SHARED_EXPORT Plugin_Type_Manager : public Base_Type_Manager<Plugin_Type> {};
+struct DAS_LIBRARY_SHARED_EXPORT Plugin_Type_Manager : public Named_Type_Manager<Plugin_Type> {};
 
 } // namespace DB
 

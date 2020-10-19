@@ -7,7 +7,7 @@
 namespace Das {
 
 Device::Device(uint32_t id, const QString& name, const QVariantMap &extra, uint32_t plugin_id, uint32_t check_interval) :
-    QObject(), DB::Base_Type(id, name), DB::Device_Extra_Params(extra),
+    QObject(), DB::Named_Type(id, name), DB::Device_Extra_Params(extra),
     plugin_id_(plugin_id), check_interval_(check_interval), type_mng_(nullptr), checker_type_(nullptr)
 {
     qRegisterMetaType<std::map<Device_Item*, Device::Data_Item>>("std::map<Device_Item*, Device::Data_Item>");
@@ -15,14 +15,14 @@ Device::Device(uint32_t id, const QString& name, const QVariantMap &extra, uint3
 }
 
 Device::Device(Device &&o) :
-    QObject(), DB::Base_Type(std::move(o)), DB::Device_Extra_Params(std::move(o)),
+    QObject(), DB::Named_Type(std::move(o)), DB::Device_Extra_Params(std::move(o)),
     plugin_id_(std::move(o.plugin_id_)), check_interval_(std::move(o.check_interval_)),
     items_(std::move(o.items_)), type_mng_(std::move(o.type_mng_)), checker_type_(std::move(o.checker_type_))
 {
 }
 
 Device::Device(const Device &o) :
-    QObject(), DB::Base_Type(o), DB::Device_Extra_Params(o),
+    QObject(), DB::Named_Type(o), DB::Device_Extra_Params(o),
     plugin_id_(o.plugin_id_), check_interval_(o.check_interval_),
     items_(o.items_), type_mng_(o.type_mng_), checker_type_(o.checker_type_)
 {
@@ -30,7 +30,7 @@ Device::Device(const Device &o) :
 
 Device &Device::operator =(Device &&o)
 {
-    DB::Base_Type::operator =(std::move(o));
+    DB::Named_Type::operator =(std::move(o));
     DB::Device_Extra_Params::operator =(std::move(o));
     plugin_id_ = std::move(o.plugin_id_);
     check_interval_ = std::move(o.check_interval_);
@@ -42,7 +42,7 @@ Device &Device::operator =(Device &&o)
 
 Device &Device::operator =(const Device &o)
 {
-    DB::Base_Type::operator =(o);
+    DB::Named_Type::operator =(o);
     Device_Extra_Params::operator =(o);
     plugin_id_ = o.plugin_id_;
     check_interval_ = o.check_interval_;
@@ -173,12 +173,12 @@ void Device::set_check_interval(uint32_t check_interval)
 
 QDataStream &operator>>(QDataStream &ds, Device &dev)
 {
-    return ds >> static_cast<DB::Base_Type&>(dev) >> static_cast<DB::Device_Extra_Params&>(dev) >> dev.plugin_id_ >> dev.check_interval_;
+    return ds >> static_cast<DB::Named_Type&>(dev) >> static_cast<DB::Device_Extra_Params&>(dev) >> dev.plugin_id_ >> dev.check_interval_;
 }
 
 QDataStream &operator<<(QDataStream &ds, const Device &dev)
 {
-    return ds << static_cast<const DB::Base_Type&>(dev) << static_cast<const DB::Device_Extra_Params&>(dev) << dev.plugin_id() << dev.check_interval();
+    return ds << static_cast<const DB::Named_Type&>(dev) << static_cast<const DB::Device_Extra_Params&>(dev) << dev.plugin_id() << dev.check_interval();
 }
 
 QDataStream &operator<<(QDataStream &ds, Device *dev)

@@ -10,27 +10,27 @@ namespace Das
 {
 
 Section::Section(uint32_t id, const QString& name, uint32_t day_start_secs, uint32_t day_end_secs) :
-    QObject(), DB::Base_Type(id, name),
+    QObject(), DB::Named_Type(id, name),
     day_(day_start_secs, day_end_secs), type_mng_(nullptr)
 {
     qRegisterMetaType<Device_Item*>("Device_Item*");
 }
 
 Section::Section(Section &&o) :
-    QObject(), DB::Base_Type(std::move(o)),
+    QObject(), DB::Named_Type(std::move(o)),
     day_(std::move(o.day_)), type_mng_(std::move(o.type_mng_))
 {
 }
 
 Section::Section(const Section &o) :
-    QObject(), DB::Base_Type(o),
+    QObject(), DB::Named_Type(o),
     day_(o.day_), type_mng_(o.type_mng_)
 {
 }
 
 Section &Section::operator =(Section &&o)
 {
-    DB::Base_Type::operator =(std::move(o));
+    DB::Named_Type::operator =(std::move(o));
     day_ = std::move(o.day_);
     type_mng_ = std::move(o.type_mng_);
     return *this;
@@ -38,7 +38,7 @@ Section &Section::operator =(Section &&o)
 
 Section &Section::operator =(const Section &o)
 {
-    DB::Base_Type::operator =(o);
+    DB::Named_Type::operator =(o);
     day_ = o.day_;
     type_mng_ = o.type_mng_;
     return *this;
@@ -172,12 +172,12 @@ Device_Item *Section::item_by_type(uint device_item_type_id, uint32_t group_type
 
 QDataStream &operator>>(QDataStream &ds, Section &sct)
 {
-    return ds >> static_cast<DB::Base_Type&>(sct) >> sct.day_;
+    return ds >> static_cast<DB::Named_Type&>(sct) >> sct.day_;
 }
 
 QDataStream &operator<<(QDataStream &ds, const Section &sct)
 {
-    return ds << static_cast<const DB::Base_Type&>(sct) << *sct.day_time();
+    return ds << static_cast<const DB::Named_Type&>(sct) << *sct.day_time();
 }
 
 QDataStream &operator<<(QDataStream &ds, Section *sct)

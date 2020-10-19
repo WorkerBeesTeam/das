@@ -11,23 +11,23 @@
 namespace Das {
 namespace DB {
 
-struct DAS_LIBRARY_SHARED_EXPORT Base_Type : public Schemed_Model
+class ID_Type
 {
-    Base_Type(uint32_t id = 0, const QString& name = QString(), uint32_t scheme_id = Schemed_Model::default_scheme_id());
+public:
+    uint32_t id() const;
+    void set_id(uint32_t id);
+protected:
+    uint32_t id_;
+};
+
+class DAS_LIBRARY_SHARED_EXPORT Base_Type : public Schemed_Model, public ID_Type
+{
+public:
+    Base_Type(uint32_t id = 0, uint32_t scheme_id = Schemed_Model::default_scheme_id());
     Base_Type(Base_Type&& other) = default;
     Base_Type(const Base_Type& other) = default;
     Base_Type& operator=(Base_Type&& other) = default;
     Base_Type& operator=(const Base_Type& other) = default;
-
-    uint32_t id() const;
-    void set_id(uint32_t id);
-
-    QString name() const;
-    void set_name(const QString& name);
-
-private:
-    uint32_t id_;
-    QString name_;
 
     friend QDataStream &operator>>(QDataStream &ds, Base_Type& item);
 };
@@ -35,8 +35,29 @@ private:
 QDataStream &operator>>(QDataStream &ds, Base_Type& item);
 QDataStream &operator<<(QDataStream &ds, const Base_Type& item);
 
+class DAS_LIBRARY_SHARED_EXPORT Named_Type : public Base_Type
+{
+public:
+    Named_Type(uint32_t id = 0, const QString& name = QString(), uint32_t scheme_id = Schemed_Model::default_scheme_id());
+    Named_Type(Named_Type&& other) = default;
+    Named_Type(const Named_Type& other) = default;
+    Named_Type& operator=(Named_Type&& other) = default;
+    Named_Type& operator=(const Named_Type& other) = default;
+
+    QString name() const;
+    void set_name(const QString& name);
+
+private:
+    QString name_;
+
+    friend QDataStream &operator>>(QDataStream &ds, Named_Type& item);
+};
+
+QDataStream &operator>>(QDataStream &ds, Named_Type& item);
+QDataStream &operator<<(QDataStream &ds, const Named_Type& item);
+
 template<class T>
-class Base_Type_Manager
+class Named_Type_Manager
 {
 public:
     using Type_List = QVector<T>;
@@ -107,14 +128,14 @@ protected:
     Type_List types_;
 
 //    template <typename U> friend QDataStream &operator>> (QDataStream &ds, BaseTypeManager<U> &type);
-    friend QDataStream &operator>>(QDataStream &ds, Base_Type_Manager<T> &type) {
+    friend QDataStream &operator>>(QDataStream &ds, Named_Type_Manager<T> &type) {
         return ds >> type.types_;
     }
 private:
     T empty_;
 };
 
-struct DAS_LIBRARY_SHARED_EXPORT Titled_Type : public Base_Type {
+struct DAS_LIBRARY_SHARED_EXPORT Titled_Type : public Named_Type {
     Titled_Type(uint id = 0, const QString& name = QString(), const QString& title = QString());
     Titled_Type(Titled_Type&& o) = default;
     Titled_Type(const Titled_Type& o) = default;
@@ -133,16 +154,16 @@ QDataStream &operator>>(QDataStream &ds, Titled_Type& item);
 QDataStream &operator<<(QDataStream &ds, const Titled_Type& item);
 
 template<class T>
-struct Titled_Type_Manager : public Base_Type_Manager<T>
+struct Titled_Type_Manager : public Named_Type_Manager<T>
 {
     QString title(uint type_id) const
     {
-        return Base_Type_Manager<T>::type(type_id).title();
+        return Named_Type_Manager<T>::type(type_id).title();
     }
 
     void set_title(uint type_id, const QString& str)
     {
-        Base_Type_Manager<T>::getOrAdd(type_id)->set_title(str);
+        Named_Type_Manager<T>::getOrAdd(type_id)->set_title(str);
     }
 };
 
@@ -157,7 +178,7 @@ struct Titled_Type_Manager : public Base_Type_Manager<T>
 //}
 
 template <typename T>
-inline QDataStream &operator<<(QDataStream &ds, const Base_Type_Manager<T> &type)
+inline QDataStream &operator<<(QDataStream &ds, const Named_Type_Manager<T> &type)
 {
     return ds << type.types();
 //    return writeSequentialContainer(s, type.types());

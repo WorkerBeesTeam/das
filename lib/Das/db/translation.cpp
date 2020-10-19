@@ -4,7 +4,7 @@ namespace Das {
 namespace DB {
 
 Translation::Translation(uint32_t id, const QString &lang, const QString &data) :
-    Base_Type(id, lang), data_(data)
+    Named_Type(id, lang), data_(data)
 {
 }
 
@@ -30,12 +30,12 @@ void Translation::set_data(const QString &data)
 
 QDataStream &operator<<(QDataStream &ds, const Translation &item)
 {
-    return ds << static_cast<const Base_Type&>(item) << item.data();
+    return ds << static_cast<const Named_Type&>(item) << item.data();
 }
 
 QDataStream &operator>>(QDataStream &ds, Translation &item)
 {
-    return ds >> static_cast<Base_Type&>(item) >> item.data_;
+    return ds >> static_cast<Named_Type&>(item) >> item.data_;
 }
 
 } // namespace DB

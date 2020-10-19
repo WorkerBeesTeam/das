@@ -5,7 +5,7 @@ namespace DB {
 
 DIG_Status::DIG_Status(qint64 timestamp_msecs, uint32_t user_id, uint32_t group_id,
                        uint32_t status_id, const QStringList &args, Status_Direction direction) :
-    Log_Base_Item(0, timestamp_msecs, user_id, direction == SD_DEL),
+    Log_Base_Item(timestamp_msecs, user_id, direction == SD_DEL),
     group_id_(group_id), status_id_(status_id), args_(args)
 {
 }

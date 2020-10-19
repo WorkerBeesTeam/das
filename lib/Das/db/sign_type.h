@@ -7,13 +7,13 @@
 namespace Das {
 namespace DB {
 
-class DAS_LIBRARY_SHARED_EXPORT Sign_Type : public Base_Type
+class DAS_LIBRARY_SHARED_EXPORT Sign_Type : public Named_Type
 {
     HELPZ_DB_META(Sign_Type, "sign_type", "st", DB_A(id), DB_A(name), DB_A(scheme_id))
 public:
-    using Base_Type::Base_Type;
+    using Named_Type::Named_Type;
 };
-typedef Base_Type_Manager<Sign_Type> Sign_Manager;
+typedef Named_Type_Manager<Sign_Type> Sign_Manager;
 
 } // namespace DB
 

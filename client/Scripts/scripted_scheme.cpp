@@ -273,7 +273,7 @@ void Scripted_Scheme::register_types()
 }
 
 template<typename T>
-void init_types(QScriptValue& parent, const QString& prop_name, DB::Base_Type_Manager<T>& type_mng)
+void init_types(QScriptValue& parent, const QString& prop_name, DB::Named_Type_Manager<T>& type_mng)
 {
     QScriptValue types_obj = parent.property(prop_name);
     QString name;

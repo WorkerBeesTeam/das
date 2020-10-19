@@ -4,7 +4,7 @@ namespace Das {
 namespace DB {
 
 Node::Node(uint32_t id, const QString& name, uint32_t parent_id, uint32_t type_id) :
-    Base_Type(id, name),
+    Named_Type(id, name),
     parent_id_(parent_id), type_id_(type_id)
 {
 }
@@ -17,12 +17,12 @@ void Node::set_type_id(uint32_t type_id) { type_id_ = type_id; }
 
 QDataStream &operator<<(QDataStream &ds, const Node &item)
 {
-    return ds << static_cast<const Base_Type&>(item) << item.parent_id() << item.type_id();
+    return ds << static_cast<const Named_Type&>(item) << item.parent_id() << item.type_id();
 }
 
 QDataStream &operator>>(QDataStream &ds, Node &item)
 {
-    return ds >> static_cast<Base_Type&>(item) >> item.parent_id_ >> item.type_id_;
+    return ds >> static_cast<Named_Type&>(item) >> item.parent_id_ >> item.type_id_;
 }
 
 } // namespace DB

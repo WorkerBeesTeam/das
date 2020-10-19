@@ -11,6 +11,7 @@
 namespace Das {
 namespace DB {
 
+//DIG_STATUS_DB_META_ARGS
 #define DIG_MODE_DB_META(x, y, z) \
     HELPZ_DB_META(x, y, z, DB_A(id), DB_A(timestamp_msecs), \
         DB_AN(user_id), DB_A(group_id), DB_A(mode_id), DB_A(scheme_id))

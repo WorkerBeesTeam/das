@@ -4,7 +4,7 @@ namespace Das {
 namespace DB {
 
 Chart_Item::Chart_Item(uint32_t id, uint32_t chart_id, const QString &color, uint32_t item_id, uint32_t param_id, uint32_t scheme_id) :
-    Base_Type(id, color, scheme_id),
+    Named_Type(id, color, scheme_id),
     chart_id_(chart_id), item_id_(item_id), param_id_(param_id)
 {
 }
@@ -23,12 +23,12 @@ void Chart_Item::set_param_id(uint32_t param_id) { param_id_ = param_id; }
 
 QDataStream &operator<<(QDataStream &ds, const Chart_Item &item)
 {
-    return ds << static_cast<const Base_Type&>(item) << item.chart_id() << item.item_id() << item.param_id();
+    return ds << static_cast<const Named_Type&>(item) << item.chart_id() << item.item_id() << item.param_id();
 }
 
 QDataStream &operator>>(QDataStream &ds, Chart_Item &item)
 {
-    return ds >> static_cast<Base_Type&>(item) >> item.chart_id_ >> item.item_id_ >> item.param_id_;
+    return ds >> static_cast<Named_Type&>(item) >> item.chart_id_ >> item.item_id_ >> item.param_id_;
 }
 
 } // namespace DB

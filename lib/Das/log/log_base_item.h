@@ -15,7 +15,7 @@ namespace DB {
 class Log_Base_Item : public DB::Schemed_Model
 {
 public:
-    Log_Base_Item(uint32_t id, qint64 timestamp_msecs = 0, uint32_t user_id = 0, bool flag = false);
+    Log_Base_Item(qint64 timestamp_msecs = 0, uint32_t user_id = 0, bool flag = false);
     Log_Base_Item(Log_Base_Item&&) = default;
     Log_Base_Item(const Log_Base_Item&) = default;
     Log_Base_Item& operator =(Log_Base_Item&&) = default;
@@ -23,9 +23,6 @@ public:
 
     static qint64 current_timestamp();
     void set_current_timestamp();
-
-    uint32_t id() const;
-    void set_id(uint32_t id);
 
     qint64 timestamp_msecs() const;
     void set_timestamp_msecs(qint64 timestamp_msecs);
@@ -44,7 +41,7 @@ public:
 protected:
     bool flag_;
 private:
-    uint32_t id_, user_id_;
+    uint32_t user_id_;
     qint64 timestamp_msecs_; // Milliseconds
 
     friend QDataStream &operator>>(QDataStream& ds, Log_Base_Item& item);

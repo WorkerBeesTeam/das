@@ -8,7 +8,7 @@
 namespace Das {
 namespace DB {
 
-class DAS_LIBRARY_SHARED_EXPORT Translation : public Base_Type
+class DAS_LIBRARY_SHARED_EXPORT Translation : public Named_Type
 {
     HELPZ_DB_META(Translation, "translation", "tr", DB_A(id), DB_A(lang), DB_A(data), DB_A(scheme_id))
 public:
