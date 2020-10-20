@@ -34,9 +34,9 @@ Log_Saver::Controller &Log_Manager::ctrl()
     return _ctrl;
 }
 
-void Log_Manager::set_devitem_values(QVector<Log_Value_Item> &&data, uint32_t scheme_id)
+void Log_Manager::set_devitem_values(QVector<Device_Item_Value> &&data, uint32_t scheme_id)
 {
-    _ctrl.set_cache_data(move(data), scheme_id);
+    _ctrl.set_cache_data<Log_Value_Item>(move(data), scheme_id);
 }
 
 QVector<Device_Item_Value> Log_Manager::get_devitem_values(uint32_t scheme_id)
@@ -57,14 +57,14 @@ QVector<Device_Item_Value> Log_Manager::get_devitem_values(uint32_t scheme_id)
     return device_item_values;
 }
 
-void Log_Manager::set_statuses(QVector<Log_Status_Item> &&data, uint32_t scheme_id)
+void Log_Manager::set_statuses(QVector<DIG_Status> &&data, uint32_t scheme_id)
 {
-    // В базе скорее всего будут состояния которых уже нет
+    // В базе могут быть состояния которых уже нет
     // нужно дополнить массив новых состояний теми которые нужно удалить из базы
 
     auto find_status = [&data](const DIG_Status& status)
     {
-        for (const Log_Status_Item& item: data)
+        for (const DIG_Status& item: data)
             if (item.group_id() == status.group_id()
                 && item.status_id() == status.status_id())
                 return true;
@@ -77,16 +77,15 @@ void Log_Manager::set_statuses(QVector<Log_Status_Item> &&data, uint32_t scheme_
         if (!find_status(status))
         {
             status.set_direction(DIG_Status::SD_DEL);
-            Log_Status_Item item = reinterpret_cast<Log_Status_Item&&>(move(status));
-            data.push_back(move(item));
+            data.push_back(move(status));
         }
 
-    _ctrl.set_cache_data(move(data), scheme_id);
+    _ctrl.set_cache_data<Log_Status_Item>(move(data), scheme_id);
 }
 
 set<DIG_Status> Log_Manager::get_statuses(uint32_t scheme_id)
 {
-    set<DIG_Status> statuses = _ctrl.get_cache_data<Log_Status_Item, set, DIG_Status>(scheme_id);
+    set<DIG_Status> statuses = _ctrl.get_cache_data<Log_Status_Item, set>(scheme_id);
     if (statuses.empty())
     {
         Base& db = Base::get_thread_local_instance();

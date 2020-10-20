@@ -15,11 +15,7 @@ namespace DB {
 class Log_Base_Item : public DB::Schemed_Model
 {
 public:
-    Log_Base_Item(qint64 timestamp_msecs = 0, uint32_t user_id = 0, bool flag = false);
-    Log_Base_Item(Log_Base_Item&&) = default;
-    Log_Base_Item(const Log_Base_Item&) = default;
-    Log_Base_Item& operator =(Log_Base_Item&&) = default;
-    Log_Base_Item& operator =(const Log_Base_Item&) = default;
+    explicit Log_Base_Item(qint64 timestamp_msecs = 0, uint32_t user_id = 0, bool flag = false);
 
     static qint64 current_timestamp();
     void set_current_timestamp();

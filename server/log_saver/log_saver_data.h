@@ -10,7 +10,7 @@ namespace Log_Saver {
 class Data
 {
 public:
-    enum Type { Log, Values };
+    enum Type { Log, Cache };
     Type type() const { return _type; }
 protected:
     Data(Type type) : _type(type) {}

@@ -1,132 +1,220 @@
 #ifndef DAS_SERVER_LOG_SAVER_CACHE_H
 #define DAS_SERVER_LOG_SAVER_CACHE_H
 
-#include <atomic>
-#include <boost/thread/shared_mutex.hpp>
+#include <Helpz/db_base.h>
 
-#include <QVector>
-
-#include "log_saver_helper.h"
+#include "log_saver_base.h"
+#include "log_saver_cache_data.h"
 
 namespace Das {
 namespace Server {
 namespace Log_Saver {
 
 template<typename T>
-struct Cache_Item
-{
-    Cache_Item(time_point save_time, const T& item) : _save_time(save_time), _item(item) {}
-    time_point _save_time;
-    T _item;
-};
-
-template<typename T>
-class Cache_Data
+class Saver_Cache : public Saver_Base
 {
 public:
-    Cache_Data(qint64 timestamp_msecs) :
-        _last_time(timestamp_msecs) {}
+    virtual ~Saver_Cache() = default;
 
-    bool empty() const
+    void set_cache_data(QVector<T>&& data, uint32_t scheme_id)
     {
-        boost::shared_lock lock(_mutex);
-        return _data.empty();
+        boost::shared_lock lock(_cache_mutex);
+        Cache_Data<T>& cache = get_cache(scheme_id, lock);
+        cache.set_data(move(data), get_save_time());
     }
 
     template<template<typename...> class Container = QVector>
-    void add(const Container<T>& data, const time_point save_time_point)
+    Container<T> get_cache_data(uint32_t scheme_id)
     {
-        if constexpr (!Helper<T>::is_comparable())
-            return;
+        boost::shared_lock lock(_cache_mutex);
+        auto it = _scheme_cache.find(scheme_id);
+        if (it == _scheme_cache.cend())
+            return {};
 
-        lock_guard lock(_mutex);
-        if (_data.empty())
+        return it->second.template get_data<Container>();
+    }
+
+protected:
+
+    template<typename Log_Type, template<typename...> class Container>
+    void add_cache(uint32_t scheme_id, const Container<Log_Type>& data)
+    {
+        boost::shared_lock lock(_cache_mutex);
+        Cache_Data<T>& cache = get_cache(scheme_id, lock);
+
+        const time_point save_time_point = get_save_time();
+        cache.add(data, save_time_point);
+        if (_oldest_cache_time.load().time_since_epoch() == clock::duration::zero())
             _oldest_cache_time = save_time_point;
-
-        for (const T& item: data)
-            add_item(item, save_time_point);
     }
 
-    static bool is_item_less(const Cache_Item<T>& cache_item, const T& item)
+    bool empty_cache() const override
     {
-        return Helper<T>::is_item_less(cache_item._item, item);
+        boost::shared_lock lock(_cache_mutex);
+        for (const auto& it: _scheme_cache)
+            if (!it.second.empty())
+                return false;
+        return true;
     }
 
-    time_point get_ready_to_save_data(vector<T>& container, time_point time)
+    void erase_empty_cache() override
     {
-        time_point oldest_cache_time = _oldest_cache_time.load();
-        if (oldest_cache_time > time || oldest_cache_time.time_since_epoch() == clock::duration::zero())
-            return time_point::max();
-
-        oldest_cache_time = time_point::max();
-
-        lock_guard lock(_mutex);
-        for (auto it = _data.begin(); it != _data.end();)
+        lock_guard lock(_cache_mutex);
+        for (auto it = _scheme_cache.begin(); it != _scheme_cache.end();)
         {
-            if (it->_save_time < time)
-            {
-                container.push_back(move(it->_item));
-                it = _data.erase(it);
-            }
+            if (it->second.empty())
+                it = _scheme_cache.erase(it);
             else
-            {
-                if (oldest_cache_time > it->_save_time)
-                    oldest_cache_time = it->_save_time;
                 ++it;
+        }
+    }
+
+    bool is_cache_ready_to_save() const
+    {
+        return _oldest_cache_time.load() <= clock::now();
+    }
+
+    shared_ptr<Data> get_cache_data_pack()
+    {
+        time_point scheme_oldest_cache_time,
+                oldest_cache_time = time_point::max();
+        auto ready_to_save_time = clock::now() + 1s;
+        vector<T> pack;
+
+        boost::shared_lock lock(_cache_mutex);
+        for (auto& it: _scheme_cache)
+        {
+            scheme_oldest_cache_time = it.second.get_ready_to_save_data(pack, ready_to_save_time);
+            if (oldest_cache_time > scheme_oldest_cache_time)
+                oldest_cache_time = scheme_oldest_cache_time;
+        }
+
+        if (oldest_cache_time < time_point::max())
+            _oldest_cache_time = oldest_cache_time;
+        return make_shared<Data_Impl<T>>(Data::Cache, move(pack));
+    }
+
+    void process_cache(shared_ptr<Data> data) override
+    {
+        auto t_data = static_pointer_cast<Data_Impl<T>>(data);
+        process_cache(t_data->_data);
+    }
+
+    void process_cache(vector<T>& pack) { process_cache_impl(pack); }
+    void process_cache_impl(vector<T>& pack)
+    {
+        // UPDATE dig_param_value SET timestamp_msecs=? AND user_id=? AND value=?
+        // WHERE scheme_id=? AND group_param_id=? AND timestamp_msecs<=?
+
+        Base& db = Base::get_thread_local_instance();
+
+        Table table = db_table<T>();
+        const vector<uint32_t> updating_fields = Cache_Helper<T>::get_values_fields();
+        const vector<uint32_t> compared_fields = Cache_Helper<T>::get_compared_fields();
+        const QString where = get_update_where<T>(table, compared_fields);
+        const QString sql = db.update_query(table, updating_fields.size() + compared_fields.size(), where, updating_fields);
+
+        QVariantList values;
+
+        for (const T& item: pack)
+        {
+            values.clear();
+            for (uint32_t field: updating_fields)
+                values.push_back(T::value_getter(item, field));
+            for (uint32_t field: compared_fields)
+                values.push_back(T::value_getter(item, field));
+
+            const QSqlQuery q = db.exec(sql, values);
+            if (!q.isActive() || q.numRowsAffected() <= 0)
+            {
+                // TODO: SELECT before insert for reasons when CLIENT_FOUND_ROWS=1 opt is not set.
+                if (!db.insert(table, T::to_variantlist(item)))
+                {
+                    // TODO: do something
+                }
             }
         }
-
-        _oldest_cache_time = oldest_cache_time;
-        return oldest_cache_time;
     }
 
-    void set_data(QVector<T>&& data, const time_point save_time_point)
+    time_point get_save_time() const
     {
-        _oldest_cache_time = save_time_point;
-        lock_guard lock(_mutex);
-        _data.clear();
-        for (T& item: data)
+        return clock::now() + 15s;
+    }
+
+    Cache_Data<T>& get_cache(uint32_t scheme_id, boost::shared_lock<boost::shared_mutex>& shared_lock)
+    {
+        auto it = _scheme_cache.find(scheme_id);
+        if (it == _scheme_cache.end())
         {
-            auto it = lower_bound(_data.begin(), _data.end(), item, is_item_less);
-            _data.emplace(it, save_time_point, move(item));
+            shared_lock.unlock();
+            {
+                lock_guard lock(*shared_lock.mutex());
+                it = _scheme_cache.find(scheme_id);
+                if (it == _scheme_cache.end())
+                    _scheme_cache.emplace(scheme_id, Cache_Data<T>{});
+            }
+            shared_lock.lock();
+            return get_cache(scheme_id, shared_lock);
         }
+        return it->second;
     }
-
-    template<template<typename...> class Container = QVector, typename K = typename Helper<T>::Value_Type>
-    Container<K> get_data() const
-    {
-        Container<K> data;
-
-        boost::shared_lock lock(_mutex);
-        for (const Cache_Item<T>& item: _data)
-            data.insert( data.end(), item._item );
-        return data;
-    }
-
-    atomic<qint64> _last_time;
 
 private:
+    mutable boost::shared_mutex _cache_mutex;
+    map<uint32_t/*scheme_id*/, Cache_Data<T>> _scheme_cache;
+    atomic<time_point> _oldest_cache_time;
+};
 
-    void add_item(const T& item, const time_point save_time_point)
+template<>
+inline void Saver_Cache<DIG_Status>::process_cache(vector<DIG_Status>& pack)
+{
+    // DELETE FROM dig_status WHERE (scheme_id=? AND group_id=? AND status_id=?) OR ...
+    // INSERT INTO dig_status (id, timestamp_msecs, user_id, group_id, status_id, args, scheme_id) VALUES(?,?,?,?,?,?,?),...
+
+    vector<DIG_Status> delete_pack;
+    for (auto it = pack.begin(); it != pack.end();)
     {
-        auto it = lower_bound(_data.begin(), _data.end(), item, is_item_less);
-
-        if (it != _data.end() && Helper<T>::is_item_equal(item, it->_item))
+        if (it->is_removed())
         {
-            if (it->_item.timestamp_msecs() < item.timestamp_msecs())
-            {
-                it->_item = item;
-                it->_save_time = save_time_point;
-            }
+            delete_pack.push_back(move(*it));
+            it = pack.erase(it);
         }
         else
-            _data.emplace(it, save_time_point, item);
+            ++it;
     }
 
-    atomic<time_point> _oldest_cache_time;
+    if (!delete_pack.empty())
+    {
+        vector<uint32_t> compared_fields = Cache_Helper<DIG_Status>::get_compared_fields();
+        compared_fields.erase(remove(compared_fields.begin(), compared_fields.end(), DIG_Status::COL_timestamp_msecs),
+                              compared_fields.end());
 
-    mutable boost::shared_mutex _mutex;
-    vector<Cache_Item<T>> _data;
+        const Table table = db_table<DIG_Status>();
+        QVariantList values;
+        const QString sql = get_compare_where(delete_pack, table, compared_fields, values, false);
+
+        Base& db = Base::get_thread_local_instance();
+        if (!db.del(table.name(), sql, values).isActive())
+        {
+            // TODO: Do something
+        }
+
+        values.clear();
+    }
+
+    if (!pack.empty())
+        process_cache_impl(pack);
+}
+
+
+class No_Cache : public Saver_Base
+{
+public:
+    virtual ~No_Cache() = default;
+protected:
+    void process_cache(shared_ptr<Data> data) override { Q_UNUSED(data) }
+    void erase_empty_cache() override {}
+    bool empty_cache() const override { return true; }
 };
 
 } // namespace Log_Saver

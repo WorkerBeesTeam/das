@@ -21,11 +21,7 @@ class DAS_LIBRARY_SHARED_EXPORT DIG_Status_Base : public Log_Base_Item
 public:
     enum Status_Direction : uint8_t { SD_ADD = 1, SD_DEL = 2 };
 
-    DIG_Status_Base(DIG_Status_Base&&) = default;
-    DIG_Status_Base(const DIG_Status_Base&) = default;
-    DIG_Status_Base& operator=(DIG_Status_Base&&) = default;
-    DIG_Status_Base& operator=(const DIG_Status_Base&) = default;
-    DIG_Status_Base(qint64 timestamp_msecs = 0, uint32_t user_id = 0, uint32_t group_id = 0,
+    explicit DIG_Status_Base(qint64 timestamp_msecs = 0, uint32_t user_id = 0, uint32_t group_id = 0,
                uint32_t status_id = 0, const QStringList& args = QStringList(), Status_Direction direction = SD_ADD);
 
     uint32_t group_id() const;
@@ -43,7 +39,7 @@ public:
     uint8_t direction() const;
     void set_direction(uint8_t direction);
 
-    bool operator <(const DIG_Status& o) const;
+    bool operator <(const DIG_Status_Base& o) const;
 private:
     uint32_t group_id_, status_id_;
     QStringList args_;
@@ -59,6 +55,9 @@ class DAS_LIBRARY_SHARED_EXPORT DIG_Status : public DIG_Status_Base, public ID_T
     HELPZ_DB_META(DIG_Status, "dig_status", "gs", DB_A(id), DIG_STATUS_DB_META_ARGS, DB_A(scheme_id))
 public:
     using DIG_Status_Base::DIG_Status_Base;
+    using DIG_Status_Base::operator =;
+    explicit DIG_Status(const DIG_Status_Base& o) : DIG_Status_Base{o} {}
+    explicit DIG_Status(DIG_Status_Base&& o) : DIG_Status_Base{std::move(o)} {}
 };
 
 } // namespace DB

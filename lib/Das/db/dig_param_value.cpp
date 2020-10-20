@@ -26,18 +26,18 @@ QDataStream &operator>>(QDataStream &ds, DIG_Param_Value_Base &item)
 
 // -------------------------
 
-DIG_Param_Value::DIG_Param_Value(qint64 timestamp_msecs, uint32_t user_id, uint32_t group_param_id, const QString &value) :
-    Log_Base_Item(0, timestamp_msecs, user_id),
+DIG_Param_Value_Base2::DIG_Param_Value_Base2(qint64 timestamp_msecs, uint32_t user_id, uint32_t group_param_id, const QString &value) :
+    Log_Base_Item(timestamp_msecs, user_id),
     DIG_Param_Value_Base(group_param_id, value)
 {
 }
 
-QDataStream &operator<<(QDataStream &ds, const DIG_Param_Value &item)
+QDataStream &operator<<(QDataStream &ds, const DIG_Param_Value_Base2 &item)
 {
     return ds << static_cast<const Log_Base_Item&>(item) << static_cast<const DIG_Param_Value_Base&>(item);
 }
 
-QDataStream &operator>>(QDataStream &ds, DIG_Param_Value &item)
+QDataStream &operator>>(QDataStream &ds, DIG_Param_Value_Base2 &item)
 {
     return ds >> static_cast<Log_Base_Item&>(item) >> static_cast<DIG_Param_Value_Base&>(item);
 }

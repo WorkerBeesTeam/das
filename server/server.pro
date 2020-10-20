@@ -43,6 +43,7 @@ HEADERS += \
     log_saver/log_saver.h \
     log_saver/log_saver_base.h \
     log_saver/log_saver_cache.h \
+    log_saver/log_saver_cache_data.h \
     log_saver/log_saver_controller.h \
     log_saver/log_saver_data.h \
     log_saver/log_saver_def.h \

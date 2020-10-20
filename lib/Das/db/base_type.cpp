@@ -3,16 +3,18 @@
 namespace Das {
 namespace DB {
 
+ID_Type::ID_Type(uint32_t id) : _id(id) {}
+
+uint32_t ID_Type::id() const { return _id; }
+void ID_Type::set_id(uint32_t id) { _id = id; }
+
 Base_Type::Base_Type(uint32_t id, uint32_t scheme_id) :
     Schemed_Model(scheme_id),
     ID_Type(id) {}
 
-uint32_t ID_Type::id() const { return id_; }
-void ID_Type::set_id(uint32_t id) { id_ = id; }
-
 QDataStream &operator>>(QDataStream &ds, Base_Type &item)
 {
-    return ds >> item.id_;
+    return ds >> item._id;
 }
 
 QDataStream &operator<<(QDataStream &ds, const Base_Type &item)

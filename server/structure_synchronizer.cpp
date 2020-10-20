@@ -115,15 +115,11 @@ bool Structure_Synchronizer::need_to_use_parent_table(uint8_t struct_type) const
 
 void Structure_Synchronizer::check_values()
 {
-    // User send Device_Item_Value, but we need Device_Item_Value for Log_Saver
-    static_assert(std::is_convertible<Log_Value_Item*, Device_Item_Value*>::value, "Log_Value_Item must inherit Device_Item_Value as public");
     check_values_or_statuses(Cmd::DEVICE_ITEM_VALUES, &Log_Manager::set_devitem_values);
 }
 
 void Structure_Synchronizer::check_statuses()
 {
-    // User send DIG_Status, but we need Log_Status_Item for Log_Saver
-    static_assert(std::is_convertible<Log_Status_Item*, DIG_Status*>::value, "Log_Status_Item must inherit DIG_Status as public");
     check_values_or_statuses(Cmd::GROUP_STATUSES, &Log_Manager::set_statuses);
 }
 

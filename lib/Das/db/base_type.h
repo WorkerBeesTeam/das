@@ -14,10 +14,12 @@ namespace DB {
 class ID_Type
 {
 public:
+    ID_Type(uint32_t id = 0);
+
     uint32_t id() const;
     void set_id(uint32_t id);
 protected:
-    uint32_t id_;
+    uint32_t _id;
 };
 
 class DAS_LIBRARY_SHARED_EXPORT Base_Type : public Schemed_Model, public ID_Type

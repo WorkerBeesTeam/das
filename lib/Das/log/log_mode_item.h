@@ -6,11 +6,11 @@
 namespace Das {
 namespace DB {
 
-class Log_Mode_Item : public DIG_Mode
+class Log_Mode_Item : public DIG_Mode_Base
 {
-    DIG_MODE_DB_META(Log_Mode_Item, "log_mode", "lm")
+    HELPZ_DB_META(Log_Mode_Item, "log_mode", "lm", DIG_MODE_DB_META_ARGS)
 public:
-    using DIG_Mode::DIG_Mode;
+    using DIG_Mode_Base::DIG_Mode_Base;
 };
 
 } // namespace DB

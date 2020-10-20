@@ -31,6 +31,7 @@ void SeveralTimesHelper::activate()
     {
         const QDateTime now = QDateTime::currentDateTime();
 
+//        QDateTime date = QDate::currentDate().startOfDay(Qt::LocalTime, start());
         QDateTime date(QDate::currentDate());
         date = date.addSecs(start());
 

@@ -88,11 +88,12 @@ void Log_Value_Save_Timer::add_log_value_item(Log_Value_Item item)
 {
     if (!item.is_big_value())
     {
+        const DB::Device_Item_Value_Base& dev_item_value = static_cast<DB::Device_Item_Value_Base&>(item);
         auto waited_it = waited_item_values_.find(item.item_id());
         if (waited_it == waited_item_values_.end())
-            waited_item_values_.emplace(item.item_id(), Device_Item_Value{item});
+            waited_item_values_.emplace(item.item_id(), dev_item_value);
         else
-            waited_it->second = item;
+            waited_it->second = dev_item_value;
     }
 
     if (!item_values_timer_.isActive() || (item.need_to_save() && item_values_timer_.remainingTime() > 500))

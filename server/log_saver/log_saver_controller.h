@@ -49,19 +49,19 @@ public:
     }
 
     template<typename T>
-    void set_cache_data(QVector<T>&& data, uint32_t scheme_id)
+    void set_cache_data(QVector<typename Cache_Type<T>::Type>&& data, uint32_t scheme_id)
     {
         auto it = _savers.find(typeid(T));
         if (it != _savers.cend())
             return static_pointer_cast<Saver<T>>(it->second)->set_cache_data(move(data), scheme_id);
     }
 
-    template<typename T, template<typename...> class Container = QVector, typename K = typename Helper<T>::Value_Type>
-    Container<K> get_cache_data(uint32_t scheme_id)
+    template<typename T, template<typename...> class Container = QVector>
+    Container<typename Cache_Type<T>::Type> get_cache_data(uint32_t scheme_id)
     {
         auto it = _savers.find(typeid(T));
         if (it != _savers.cend())
-            return static_pointer_cast<Saver<T>>(it->second)->template get_cache_data<Container, K>(scheme_id);
+            return static_pointer_cast<Saver<T>>(it->second)->template get_cache_data<Container>(scheme_id);
         return {};
     }
 

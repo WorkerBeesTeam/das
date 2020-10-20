@@ -9,48 +9,48 @@ namespace Das {
 namespace Server {
 namespace Log_Saver {
 
-#define DECL_LOG_SAVER_HELPER_VALUE_TYPE(X, Y) \
-    template<> struct Helper_Value<X> { using Type = Y; };
-
-template<typename T> struct Helper_Value { using Type = void; };
-DECL_LOG_SAVER_HELPER_VALUE_TYPE(Log_Param_Item, DIG_Param_Value)
-DECL_LOG_SAVER_HELPER_VALUE_TYPE(Log_Mode_Item, DIG_Mode)
-DECL_LOG_SAVER_HELPER_VALUE_TYPE(Log_Status_Item, DIG_Status)
-DECL_LOG_SAVER_HELPER_VALUE_TYPE(Log_Value_Item, Device_Item_Value)
+template<typename T> struct Type_Base { using Type = void; };
+template<typename T> struct Cache_Type { using Type = void; using Is_Comparable = false_type; };
 
 template<typename T>
-struct Helper
+struct Cache_Helper
 {
-    using Value_Type = typename Helper_Value<T>::Type;
-    static constexpr bool is_comparable() { return true; }
-
-    static bool is_item_less(const T& item1, const T& item2) { return compare(item1, item2) < 0; }
-    static bool is_item_equal(const T& item1, const T& item2) { return compare(item1, item2) == 0; }
-    static int compare(const T&, const T&) { return 1; }
+    using B = typename Type_Base<T>::Type;
+    static bool is_item_less(const B& item1, const B& item2) { return compare(item1, item2) < 0; }
+    static bool is_item_equal(const B& item1, const B& item2) { return compare(item1, item2) == 0; }
+    static int compare(const B&, const B&) { return 1; }
 
     static vector<uint32_t> get_compared_fields() { return {}; }
     static vector<uint32_t> get_values_fields() { return {}; }
 };
 
-template<>
-inline constexpr bool Helper<Log_Event_Item>::is_comparable() { return false; }
+#define DECL_LOG_SAVER_HELPER_VALUE_TYPE(X, Y, Z) \
+    template<> struct Type_Base<Y> { using Type = DB::Z; }; \
+    template<> struct Cache_Type<X> { using Type = Y; using Is_Comparable = true_type; };
 
-// -----  Helper<T>::compare and Helper<T>::get_compared_fields
+// -----  Cache_Helper<T>::compare and Helper<T>::get_compared_fields
 #define DECL_LOG_SAVER_HELPER_COMPARE(X, Y) \
-    template<> inline int Helper<X>::compare(const X& item1, const X& item2) { \
+    template<> inline int Cache_Helper<X>::compare(const typename Type_Base<X>::Type& item1,   \
+                                                   const typename Type_Base<X>::Type& item2) { \
         return item1.Y() < item2.Y() ? -1 : \
                item1.Y() > item2.Y() ?  1 : 0; \
     } \
-    template<> inline vector<uint32_t> Helper<X>::get_compared_fields() { \
-        return { X::COL_timestamp_msecs, X::COL_##Y, X::COL_scheme_id }; \
+    template<> inline vector<uint32_t> Cache_Helper<X>::get_compared_fields() { \
+        return { X::COL_timestamp_msecs, X::COL_##Y, X::COL_scheme_id };  \
     }
 
-DECL_LOG_SAVER_HELPER_COMPARE(Log_Value_Item, item_id)
-DECL_LOG_SAVER_HELPER_COMPARE(Log_Param_Item, group_param_id)
-DECL_LOG_SAVER_HELPER_COMPARE(Log_Mode_Item, group_id)
+#define DECL_LOG_SAVER_HELPER(X, Y, Z, K) \
+    DECL_LOG_SAVER_HELPER_VALUE_TYPE(X, Y, Z) \
+    DECL_LOG_SAVER_HELPER_COMPARE(Y, K)
+
+DECL_LOG_SAVER_HELPER(Log_Param_Item,  DIG_Param_Value,   DIG_Param_Value_Base2,  group_param_id)
+DECL_LOG_SAVER_HELPER(Log_Mode_Item,   DIG_Mode,          DIG_Mode_Base,          group_id)
+DECL_LOG_SAVER_HELPER(Log_Value_Item,  Device_Item_Value, Device_Item_Value_Base, item_id)
+
+DECL_LOG_SAVER_HELPER_VALUE_TYPE(Log_Status_Item, DIG_Status,        DIG_Status_Base)
 
 template<>
-inline int Helper<Log_Status_Item>::compare(const Log_Status_Item& item1, const Log_Status_Item& item2)
+inline int Cache_Helper<DIG_Status>::compare(const DB::DIG_Status_Base& item1, const DB::DIG_Status_Base& item2)
 {
     return item1.group_id() < item2.group_id() ? -1 :
            item1.group_id() > item2.group_id() ?  1 :
@@ -59,28 +59,29 @@ inline int Helper<Log_Status_Item>::compare(const Log_Status_Item& item1, const 
 }
 
 template<>
-inline vector<uint32_t> Helper<Log_Status_Item>::get_compared_fields()
+inline vector<uint32_t> Cache_Helper<DIG_Status>::get_compared_fields()
 {
-    using T = Log_Status_Item;
+    using T = DIG_Status;
     return { T::COL_timestamp_msecs, T::COL_group_id, T::COL_status_id, T::COL_scheme_id };
 }
 
-// -----  Helper<T>::get_values_fields
+// -----  Cache_Helper<T>::get_values_fields
 #define DECL_LOG_SAVER_HELPER_VALUES_FIELDS(X, Y) \
-    template<> inline vector<uint32_t> Helper<X>::get_values_fields() { \
-        return { X::COL_timestamp_msecs, X::COL_user_id, X::COL_##Y }; \
+    template<> inline vector<uint32_t> Cache_Helper<X>::get_values_fields() { \
+        return { X::COL_timestamp_msecs, X::COL_user_id, X::COL_##Y };  \
     }
 
-DECL_LOG_SAVER_HELPER_VALUES_FIELDS(Log_Param_Item, value)
-DECL_LOG_SAVER_HELPER_VALUES_FIELDS(Log_Mode_Item, mode_id)
-DECL_LOG_SAVER_HELPER_VALUES_FIELDS(Log_Status_Item, args)
+DECL_LOG_SAVER_HELPER_VALUES_FIELDS(DIG_Param_Value, value)
+DECL_LOG_SAVER_HELPER_VALUES_FIELDS(DIG_Mode,        mode_id)
+DECL_LOG_SAVER_HELPER_VALUES_FIELDS(DIG_Status,      args)
 
 template<>
-inline vector<uint32_t> Helper<Log_Value_Item>::get_values_fields()
+inline vector<uint32_t> Cache_Helper<Device_Item_Value>::get_values_fields()
 {
-    using T = Log_Value_Item;
+    using T = Device_Item_Value;
     return { T::COL_timestamp_msecs, T::COL_user_id, T::COL_value, T::COL_raw_value };
 }
+
 
 } // namespace Log_Saver
 } // namespace Server
