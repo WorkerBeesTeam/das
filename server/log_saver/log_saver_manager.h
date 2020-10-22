@@ -16,6 +16,8 @@ public:
     Manager(size_t thread_count = 5, size_t max_pack_size = 100, chrono::seconds time_in_cache = 15s);
     ~Manager();
 
+    void fill_log_value_layers();
+
     void set_devitem_values(QVector<Device_Item_Value> &&data, uint32_t scheme_id);
     QVector<Device_Item_Value> get_devitem_values(uint32_t scheme_id);
 

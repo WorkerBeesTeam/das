@@ -28,6 +28,25 @@ Manager::~Manager()
     _instance = nullptr;
 }
 
+void Manager::fill_log_value_layers()
+{
+    /* Предлагается выбирать из главной таблицы 4 значения за промежуток (например за минуту),
+     * минимальное, максимальное, первое и последнее.
+SELECT t1.*, t2.value, t2.timestamp_msecs, t2.max_v, t2.min_v, t2.min_t, t2.max_t FROM `das_log_value` t1
+JOIN (
+  SELECT *, MAX(value) AS max_v, MIN(value) AS min_v, MIN(timestamp_msecs) AS min_t, MAX(timestamp_msecs) AS max_t FROM das_log_value
+    WHERE timestamp_msecs >= 1603360800000 GROUP BY item_id, scheme_id
+) as t2 ON t1.scheme_id = t2.scheme_id AND t1.item_id = t2.item_id AND t1.timestamp_msecs IN (t2.min_t, t2.max_t)
+WHERE t1.timestamp_msecs >= 1603360800000
+ORDER BY t1.item_id desc
+
+SELECT t1.*, MAX(t1.value), MIN(t1.value), t2.value, t2.timestamp_msecs FROM das_log_value t1
+WHERE t1.timestamp_msecs >= 1603360800000
+GROUP BY t1.item_id, t1.scheme_id
+ORDER BY t1.item_id desc
+*/
+}
+
 void Manager::set_devitem_values(QVector<Device_Item_Value> &&data, uint32_t scheme_id)
 {
     set_cache_data<Log_Value_Item>(move(data), scheme_id);
