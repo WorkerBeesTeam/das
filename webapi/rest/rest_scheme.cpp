@@ -7,6 +7,7 @@
 #include <fmt/ranges.h>
 
 #include <Helpz/db_base.h>
+#include <Helpz/db_builder.h>
 
 //#include <Das/section.h>
 #include <Das/db/scheme.h>
@@ -128,78 +129,45 @@ void Scheme::get_dig_status(served::response &res, const served::request &req)
     const Scheme_Info scheme = get_info(req);
 
     Scheme_Status scheme_status;
+    QMetaObject::invokeMethod(dbus_iface_, "get_scheme_status", Qt::BlockingQueuedConnection,
+        Q_RETURN_ARG(Scheme_Status, scheme_status),
+        Q_ARG(uint32_t, scheme.id()));
 
-    std::future<void> scheme_status_task = std::async(std::launch::async, [this, &scheme, &scheme_status]() -> void
-    {
-        QMetaObject::invokeMethod(dbus_iface_, "get_scheme_status", Qt::BlockingQueuedConnection,
-            Q_RETURN_ARG(Scheme_Status, scheme_status),
-            Q_ARG(uint32_t, scheme.id()));
-    });
-
-    Base& db = Base::get_thread_local_instance();
-    QString group_title, sql;
-    QStringList status_column_names = DIG_Status::table_column_names();
     QJsonArray j_array;
 
-    scheme_status_task.get();
-
-    if ((scheme_status.connection_state_ & ~CS_FLAGS) >= CS_CONNECTED_JUST_NOW)
+    if (!scheme_status.status_set_.empty())
     {
-        if (!scheme_status.status_set_.empty())
-        {
-            sql = "SELECT g.id, s.name, g.title, gt.title "
-                  "FROM das_device_item_group g "
-                  "LEFT JOIN das_section s ON s.id = g.section_id "
-                  "LEFT JOIN das_dig_type gt ON gt.id = g.type_id "
-                  "WHERE g." + scheme.ids_to_sql() + " AND g.id IN (";
-
-            for (const DIG_Status& status: scheme_status.status_set_)
-                sql += QString::number(status.group_id()) + ',';
-            sql.replace(sql.size() - 1, 1, QChar(')'));
-
-            std::map<uint32_t, QString> group_title_map;
-            QSqlQuery q = db.exec(sql);
-            while(q.next())
-            {
-                group_title = q.value(2).toString();
-                if (group_title.isEmpty())
-                {
-                    group_title = q.value(3).toString();
-                }
-                group_title.insert(0, q.value(1).toString() + ' ');
-                group_title_map.emplace(q.value(0).toUInt(), group_title);
-            }
-
-            QJsonObject j_obj;
-            for (const DIG_Status& status: scheme_status.status_set_)
-            {
-                fill_json_object(j_obj, status, status_column_names);
-                j_obj["args"] = QJsonArray::fromStringList(status.args());
-                j_obj.insert("title", group_title_map[status.group_id()]);
-                j_array.push_back(j_obj);
-            }
-        }
-    }
-    else
-    {
-        sql = "SELECT gs.id, gs.timestamp_msecs, gs.user_id, gs.group_id, gs.status_id, gs.args, "
-              "s.name, g.title, gt.title "
-              "FROM das_dig_status gs "
-              "LEFT JOIN das_device_item_group g ON g.id = gs.group_id "
+        QStringList status_column_names = DIG_Status::table_column_names();
+        QString group_title;
+        QString sql = "SELECT g.id, s.name, g.title, gt.title "
+              "FROM das_device_item_group g "
               "LEFT JOIN das_section s ON s.id = g.section_id "
               "LEFT JOIN das_dig_type gt ON gt.id = g.type_id "
-              "WHERE gs.scheme_id = " + QString::number(scheme.id());
+              "WHERE g." + scheme.ids_to_sql() + " AND g.id IN (";
 
+        for (const DIG_Status& status: scheme_status.status_set_)
+            sql += QString::number(status.group_id()) + ',';
+        sql.replace(sql.size() - 1, 1, QChar(')'));
+
+        std::map<uint32_t, QString> group_title_map;
+
+        Base& db = Base::get_thread_local_instance();
         QSqlQuery q = db.exec(sql);
         while(q.next())
         {
-            group_title = q.value(5).toString();
+            group_title = q.value(2).toString();
             if (group_title.isEmpty())
-                group_title = q.value(6).toString();
-            group_title.insert(0, q.value(4).toString() + ' ');
+                group_title = q.value(3).toString();
+            group_title.insert(0, q.value(1).toString() + ' ');
+            group_title_map.emplace(q.value(0).toUInt(), group_title);
+        }
 
-            QJsonObject j_obj = get_json_object<DIG_Status>(q, status_column_names);
-            j_obj.insert("title", group_title);
+        QJsonObject j_obj;
+        for (const DIG_Status& status: scheme_status.status_set_)
+        {
+            fill_json_object(j_obj, status, status_column_names);
+            j_obj["args"] = QJsonArray::fromStringList(status.args());
+            j_obj.insert("title", group_title_map[status.group_id()]);
             j_array.push_back(j_obj);
         }
     }
@@ -224,21 +192,18 @@ void Scheme::get_device_item_value(served::response &res, const served::request 
 {
     const Scheme_Info scheme = get_info(req);
 
-    QVector<Device_Item_Value> unsaved_values;
+    QVector<Device_Item_Value> values;
 
-    std::future<void> unsaved_values_task = std::async(std::launch::async, [this, &scheme, &unsaved_values]() -> void
+    QMetaObject::invokeMethod(dbus_iface_, "get_device_item_values", Qt::BlockingQueuedConnection,
+        Q_RETURN_ARG(QVector<Device_Item_Value>, values),
+        Q_ARG(uint32_t, scheme.id()));
+
+    QJsonArray j_array;
+
+    for (const Device_Item_Value& value: values)
     {
-        QMetaObject::invokeMethod(dbus_iface_, "get_device_item_values", Qt::BlockingQueuedConnection,
-            Q_RETURN_ARG(QVector<Device_Item_Value>, unsaved_values),
-            Q_ARG(uint32_t, scheme.id()));
-    });
-
-    Base& db = Base::get_thread_local_instance();
-    QVector<Device_Item_Value> values = db_build_list<Device_Item_Value>(
-                db, "WHERE scheme_id=" + QString::number(scheme.id()));
-
-    auto fill_obj = [](QJsonObject& obj, const Device_Item_Value& value)
-    {
+        QJsonObject obj;
+        obj.insert("id", static_cast<int>(value.item_id()));
         obj.insert("ts", value.timestamp_msecs());
         obj.insert("user_id", static_cast<int>(value.user_id()));
         obj.insert("raw", QJsonValue::fromVariant(value.raw_value()));
@@ -253,38 +218,8 @@ void Scheme::get_device_item_value(served::response &res, const served::request 
             obj.insert("raw_value", QJsonValue::fromVariant(value.raw_value()));
         }
         obj.insert("value", QJsonValue::fromVariant(value.value()));
-    };
 
-    QJsonArray j_array;
-    unsaved_values_task.get();
-    QVector<Device_Item_Value>::iterator unsaved_it;
-
-    for (const Device_Item_Value& value: values)
-    {
-        QJsonObject j_obj;
-        j_obj.insert("id", static_cast<int>(value.item_id()));
-
-        unsaved_it = unsaved_values.begin();
-        while (true)
-        {
-            if (unsaved_it == unsaved_values.end())
-            {
-                fill_obj(j_obj, value);
-                break;
-            }
-            else if (unsaved_it->item_id() == value.item_id())
-            {
-                fill_obj(j_obj, *unsaved_it);
-                unsaved_values.erase(unsaved_it);
-                break;
-            }
-            else
-            {
-                ++unsaved_it;
-            }
-        }
-
-        j_array.push_back(j_obj);
+        j_array.push_back(obj);
     }
 
     res.set_header("Content-Type", "application/json");

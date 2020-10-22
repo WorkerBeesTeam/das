@@ -99,12 +99,6 @@ void Elements::fill_groups(uint32_t sct_id)
         Q_RETURN_ARG(Scheme_Status, scheme_status),
         Q_ARG(uint32_t, scheme_.id()));
 
-    Base& db = Base::get_thread_local_instance();
-
-    if ((scheme_status.connection_state_ & ~CS_FLAGS) < CS_CONNECTED_JUST_NOW)
-        scheme_status.status_set_ =
-                db_build_list<DIG_Status, std::set>(db, "WHERE scheme_id = " + QString::number(scheme_.id()));
-
     QString status_id_sql;
     std::map<uint32_t, QString> status_id_map;
     for (const DIG_Status& status: scheme_status.status_set_)
@@ -140,6 +134,7 @@ void Elements::fill_groups(uint32_t sct_id)
             ") WHERE dig." + scheme_.ids_to_sql()
             + " AND dig.section_id = " + QString::number(sct_id);
 
+    Base& db = Base::get_thread_local_instance();
     QSqlQuery q = db.exec(sql);
 
     std::string btn_text;
@@ -178,7 +173,6 @@ void Elements::fill_group_info(uint32_t dig_id)
             Q_RETURN_ARG(Scheme_Status, scheme_status),
             Q_ARG(uint32_t, scheme_.id()));
     });
-
 
     QString sql =
             "SELECT IF(dig.title IS NULL OR dig.title = '', dt.title, dig.title) as title FROM das_device_item_group dig "
@@ -243,10 +237,6 @@ void Elements::fill_group_info(uint32_t dig_id)
     }
 
     scheme_status_task.get();
-
-    if ((scheme_status.connection_state_ & ~CS_FLAGS) < CS_CONNECTED_JUST_NOW)
-        scheme_status.status_set_ =
-                db_build_list<DIG_Status, std::set>(db, "WHERE scheme_id = " + QString::number(scheme_.id()));
 
     if (!scheme_status.status_set_.empty())
     {

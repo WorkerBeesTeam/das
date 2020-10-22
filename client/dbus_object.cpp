@@ -46,9 +46,7 @@ Scheme_Status Dbus_Object::get_scheme_status(uint32_t /*scheme_id*/) const
 
     Scheme_Status scheme_status{CS_CONNECTED, {}};
     for (const DIG_Status& status: status_vect)
-    {
         scheme_status.status_set_.insert(status);
-    }
     return scheme_status;
 }
 
@@ -64,6 +62,11 @@ QVector<Device_Item_Value> Dbus_Object::get_device_item_values(uint32_t /*scheme
     QMetaObject::invokeMethod(worker_->prj(), "get_device_item_values", Qt::BlockingQueuedConnection,
                               Q_RETURN_ARG(QVector<Device_Item_Value>, values));
     return values;
+}
+
+QVector<Device_Item_Value> Dbus_Object::get_device_item_cached_values(uint32_t scheme_id) const
+{
+    return get_device_item_values(scheme_id);
 }
 
 void Dbus_Object::send_message_to_scheme(uint32_t /*scheme_id*/, uint8_t ws_cmd, uint32_t user_id, const QByteArray& raw_data)

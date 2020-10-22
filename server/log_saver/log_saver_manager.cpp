@@ -1,3 +1,5 @@
+#include <future>
+
 #include <Helpz/db_builder.h>
 
 #include "log_saver_manager.h"
@@ -34,9 +36,14 @@ void Manager::set_devitem_values(QVector<Device_Item_Value> &&data, uint32_t sch
 QVector<Device_Item_Value> Manager::get_devitem_values(uint32_t scheme_id)
 {
     // Достать из базы текущие значения и Составить актуальный массив с данными
+    future<QVector<Device_Item_Value>> get_devitem_task = async([this, scheme_id]()
+    {
+        return get_cache_data<Log_Value_Item>(scheme_id);
+    });
+
     Base& db = Base::get_thread_local_instance();
     QVector<Device_Item_Value> device_item_values = db_build_list<Device_Item_Value>(db, "scheme_id=?", {scheme_id});
-    QVector<Device_Item_Value> cached_values = get_cache_data<Log_Value_Item>(scheme_id);
+    QVector<Device_Item_Value> cached_values = get_devitem_task.get();
     for (const Device_Item_Value& value: cached_values)
     {
         for (Device_Item_Value& orig: cached_values)
@@ -77,22 +84,30 @@ void Manager::set_statuses(QVector<DIG_Status> &&data, uint32_t scheme_id)
 
 set<DIG_Status> Manager::get_statuses(uint32_t scheme_id)
 {
-    set<DIG_Status> statuses = get_cache_data<Log_Status_Item, set>(scheme_id);
-    if (statuses.empty())
+    future<set<DIG_Status>> get_cache_data_task = async([this, scheme_id]()
     {
-        Base& db = Base::get_thread_local_instance();
-        statuses = db_build_list<DIG_Status, set>(db, "scheme_id=?", {scheme_id});
-    }
-    else
+        return get_cache_data<Log_Status_Item, set>(scheme_id);
+    });
+
+    Base& db = Base::get_thread_local_instance();
+    vector<DIG_Status> db_statuses = db_build_list<DIG_Status, vector>(db, "scheme_id=?", {scheme_id});
+    vector<DIG_Status>::iterator db_it;
+    set<DIG_Status> statuses = get_cache_data_task.get();
+    for (auto it = statuses.begin(); it != statuses.end();)
     {
-        for (auto it = statuses.begin(); it != statuses.end();)
-        {
-            if (it->direction() == DIG_Status::SD_DEL)
-                it = statuses.erase(it);
-            else
-                ++it;
-        }
+        db_it = find_if(db_statuses.begin(), db_statuses.end(), [&it](const DIG_Status& t1) -> bool{
+            return Cache_Helper<DIG_Status>::is_item_equal(t1, *it);
+        });
+        if (db_it != db_statuses.end())
+            db_statuses.erase(db_it);
+
+        if (it->direction() == DIG_Status::SD_DEL)
+            it = statuses.erase(it);
+        else
+            ++it;
     }
+    for (DIG_Status& item: db_statuses)
+        statuses.insert(move(item));
     return statuses;
 }
 

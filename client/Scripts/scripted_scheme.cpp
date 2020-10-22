@@ -703,12 +703,8 @@ QVector<Device_Item_Value> Scripted_Scheme::get_device_item_values() const
 {
     QVector<Device_Item_Value> values;
     for (const Device* dev: devices())
-    {
         for (const Device_Item* item: dev->items())
-        {
             values.push_back(item->data());
-        }
-    }
     return values;
 }
 
