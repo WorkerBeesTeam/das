@@ -11,15 +11,18 @@ namespace Server {
 namespace Log_Saver {
 
 template<typename T>
-class Saver :
-        public conditional<Cache_Type<T>::Is_Comparable::value,
-                 Saver_Cache<typename Cache_Type<T>::Type>, No_Cache>::type
+class Saver : public Saver_Base
 {
 public:
+    using Cache_Value_Type = typename Cache_Type<T>::Type;
+    using Saver_Cache_Type = typename conditional<Cache_Type<T>::Is_Comparable::value,
+                                         Saver_Cache<Cache_Value_Type>, No_Cache>::type;
+    Saver_Cache_Type& cache() { return _cache; }
+
     virtual ~Saver() = default;
 
     template<template<typename...> class Container>
-    void add(uint32_t scheme_id, const Container<T>& data)
+    void add(uint32_t scheme_id, const Container<T>& data, chrono::seconds time_in_cache)
     {
         for (const T& item: data)
         {
@@ -32,22 +35,37 @@ public:
         }
 
         if constexpr (Cache_Type<T>::Is_Comparable::value)
-            Saver_Cache<typename Cache_Type<T>::Type>::add_cache(scheme_id, data);
+            _cache.add_data(scheme_id, data, time_in_cache);
     }
 
-    bool empty_data() const override
+    bool empty() const override
     {
+        if constexpr (Cache_Type<T>::Is_Comparable::value)
+            if (!_cache.empty())
+                return false;
         return _data.empty();
     }
 
-    shared_ptr<Data> get_data_pack(int max_pack_size = 100) override
+    time_point get_save_time() const override
     {
         if constexpr (Cache_Type<T>::Is_Comparable::value)
-            if (Saver_Cache<typename Cache_Type<T>::Type>::is_cache_ready_to_save())
-                return Saver_Cache<typename Cache_Type<T>::Type>::get_cache_data_pack();
+            if (_data.empty())
+                return _cache.get_oldest_time();
+        return _data.empty() ? time_point::max() : clock::now();
+    }
+
+    shared_ptr<Data> get_data_pack(size_t max_pack_size = 100, bool force = false) override
+    {
+        if constexpr (Cache_Type<T>::Is_Comparable::value)
+        {
+            if (_cache.is_ready_to_save(force))
+                return _cache.get_data_pack(max_pack_size);
+        }
+        else
+            Q_UNUSED(force)
 
         vector<T> pack;
-        for (int i = 0; i < max_pack_size && !_data.empty(); ++i)
+        while(max_pack_size-- && !_data.empty())
         {
             pack.push_back(move(_data.front()));
             _data.pop();
@@ -57,7 +75,21 @@ public:
 
 private:
 
-    void process_log(shared_ptr<Data> data) override
+    void process_data_pack(shared_ptr<Data> data) override
+    {
+        if (!data)
+            return;
+
+        if (data->type() == Data::Log)
+            process(data);
+        else
+        {
+            if constexpr (Cache_Type<T>::Is_Comparable::value)
+                _cache.process(data);
+        }
+    }
+
+    void process(shared_ptr<Data> data)
     {
         auto t_data = static_pointer_cast<Data_Impl<T>>(data);
         vector<T>& pack = t_data->_data;
@@ -96,6 +128,7 @@ private:
     }
 
     queue<T> _data;
+    Saver_Cache_Type _cache;
 };
 
 } // namespace Log_Saver

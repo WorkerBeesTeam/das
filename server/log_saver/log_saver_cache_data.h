@@ -51,10 +51,13 @@ public:
         return Cache_Helper<T>::is_item_less(cache_item._item, item);
     }
 
-    time_point get_ready_to_save_data(vector<T>& container, time_point time)
+    time_point get_ready_to_save_data(vector<T>& container, time_point time, size_t max_pack_size,
+                                      bool& is_cache_empty)
     {
         time_point oldest_cache_time = _oldest_cache_time.load();
-        if (oldest_cache_time > time || oldest_cache_time.time_since_epoch() == clock::duration::zero())
+        if (container.size() >= max_pack_size)
+            return oldest_cache_time;
+        if (oldest_cache_time > time)
             return time_point::max();
 
         oldest_cache_time = time_point::max();
@@ -62,7 +65,7 @@ public:
         lock_guard lock(_mutex);
         for (auto it = _data.begin(); it != _data.end();)
         {
-            if (it->_save_time < time)
+            if (container.size() < max_pack_size && it->_save_time < time)
             {
                 container.push_back(move(it->_item));
                 it = _data.erase(it);
@@ -75,6 +78,9 @@ public:
             }
         }
 
+        if (!is_cache_empty && _data.empty())
+            is_cache_empty = true;
+
         _oldest_cache_time = oldest_cache_time;
         return oldest_cache_time;
     }
@@ -85,10 +91,7 @@ public:
         _oldest_cache_time = save_time_point;
         _data.clear();
         for (T& item: data)
-        {
-            auto it = lower_bound(_data.begin(), _data.end(), item, is_item_less);
-            _data.emplace(it, save_time_point, move(item));
-        }
+            add_item(item, save_time_point);
     }
 
     template<template<typename...> class Container = QVector>
@@ -113,7 +116,6 @@ private:
         {
             if (it->_item.timestamp_msecs() < item.timestamp_msecs())
             {
-//                it->_item = static_cast<const typename Helper_Value<Log_Type>::Base_Type&>(item);
                 it->_item = item;
                 it->_save_time = save_time_point;
             }

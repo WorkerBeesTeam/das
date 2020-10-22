@@ -152,7 +152,7 @@ void Log_Sync_Values::process_pack(QVector<Log_Value_Item> &&pack, uint8_t msg_i
     if (pack.empty())
         return;
 
-    if (Log_Manager::instance()->ctrl().add(protocol()->id(), pack))
+    if (Log_Saver::instance()->add(protocol()->id(), pack))
         protocol()->send_answer(Cmd::LOG_PACK, msg_id);
 
     QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "device_item_values_available", Qt::QueuedConnection,
@@ -181,7 +181,7 @@ void Log_Sync_Events::process_pack(QVector<Log_Event_Item>&& pack, uint8_t msg_i
     if (pack.empty())
         return;
 
-    if (Log_Manager::instance()->ctrl().add(protocol()->id(), pack))
+    if (Log_Saver::instance()->add(protocol()->id(), pack))
         protocol()->send_answer(Cmd::LOG_PACK, msg_id);
 
     QMetaObject::invokeMethod(protocol()->work_object()->dbus_, "event_message_available", Qt::QueuedConnection,
@@ -210,7 +210,7 @@ void Log_Sync_Params::process_pack(QVector<Log_Param_Item> &&pack, uint8_t msg_i
     if (pack.empty())
         return;
 
-    if (Log_Manager::instance()->ctrl().add(protocol()->id(), pack))
+    if (Log_Saver::instance()->add(protocol()->id(), pack))
         protocol()->send_answer(Cmd::LOG_PACK, msg_id);
 
     QVector<DIG_Param_Value>&& param_pack = reinterpret_cast<QVector<DIG_Param_Value>&&>(pack);
@@ -235,7 +235,7 @@ void Log_Sync_Statuses::process_pack(QVector<Log_Status_Item> &&pack, uint8_t ms
     if (pack.empty())
         return;
 
-    if (Log_Manager::instance()->ctrl().add(protocol()->id(), pack))
+    if (Log_Saver::instance()->add(protocol()->id(), pack))
         protocol()->send_answer(Cmd::LOG_PACK, msg_id);
 
     QVector<DIG_Status>&& status_pack = reinterpret_cast<QVector<DIG_Status>&&>(pack);
@@ -260,7 +260,7 @@ void Log_Sync_Modes::process_pack(QVector<Log_Mode_Item> &&pack, uint8_t msg_id)
     if (pack.empty())
         return;
 
-    if (Log_Manager::instance()->ctrl().add(protocol()->id(), pack))
+    if (Log_Saver::instance()->add(protocol()->id(), pack))
         protocol()->send_answer(Cmd::LOG_PACK, msg_id);
 
     QVector<DIG_Mode>&& mode_pack = reinterpret_cast<QVector<DIG_Mode>&&>(pack);

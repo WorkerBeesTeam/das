@@ -7,8 +7,10 @@ namespace Log_Saver {
 using namespace std;
 using namespace Helpz::DB;
 
-Controller::Controller(int thread_count) :
-    _break_flag(false)
+Controller::Controller(size_t thread_count, size_t max_pack_size, chrono::seconds time_in_cache) :
+    _break_flag(false),
+    _max_pack_size(max_pack_size),
+    _time_in_cache(time_in_cache)
 {
     add_saver<Log_Value_Item>();
     add_saver<Log_Event_Item>();
@@ -18,7 +20,7 @@ Controller::Controller(int thread_count) :
 
     _current_saver = _savers.cbegin();
 
-    for (int i = 0; i < thread_count; ++i)
+    while (thread_count--)
         _threads.emplace_back(&Controller::run, this);
 }
 
@@ -45,14 +47,9 @@ void Controller::join()
     typeid(thread).hash_code();
 }
 
-void Controller::erase_empty_cache()
-{
-    for (const auto& saver: _savers)
-        saver.second->erase_empty_cache();
-}
-
 void Controller::run()
 {
+    time_point timeout_time;
     unique_lock lock(_mutex, defer_lock);
 
     while (true)
@@ -60,10 +57,11 @@ void Controller::run()
         lock.lock();
         if (!_break_flag)
         {
-            if (empty_data() && !empty_cache())
-                _cond.wait_until(lock, get_oldest_cache_time());
-            else
+            timeout_time = get_oldest_save_time();
+            if (timeout_time == time_point::max())
                 _cond.wait(lock, [this]() { return _break_flag || !empty(); });
+            else if (timeout_time > clock::now())
+                _cond.wait_until(lock, timeout_time);
         }
 
         if (!empty())
@@ -71,7 +69,7 @@ void Controller::run()
             shared_ptr<Data> data;
             shared_ptr<Saver_Base> saver = get_saver();
             if (saver)
-                data = saver->get_data_pack();
+                data = saver->get_data_pack(_max_pack_size, _break_flag);
 
             lock.unlock();
             _cond.notify_one();
@@ -82,36 +80,32 @@ void Controller::run()
         else if (_break_flag)
             break;
         else
+        {
             lock.unlock();
+        }
     }
 }
 
 bool Controller::empty() const
 {
-    return empty_impl(&Saver_Base::empty);
-}
-
-bool Controller::empty_data() const
-{
-    return empty_impl(&Saver_Base::empty_data);
-}
-
-bool Controller::empty_cache() const
-{
-    return empty_impl(&Saver_Base::empty_cache);
-}
-
-bool Controller::empty_impl(bool (Saver_Base::*empty_func)() const) const
-{
     for (const auto& saver: _savers)
-        if (!((*saver.second).*empty_func)())
+        if (!saver.second->empty())
             return false;
     return true;
 }
 
-time_point Controller::get_oldest_cache_time() const
+time_point Controller::get_oldest_save_time() const
 {
-    return {};
+    time_point oldest_time = time_point::max(), saver_time, now = clock::now();
+    for (const auto& saver: _savers)
+    {
+        saver_time = saver.second->get_save_time();
+        if (oldest_time > saver_time)
+            oldest_time = saver_time;
+        if (saver_time <= now)
+            break;
+    }
+    return oldest_time;
 }
 
 shared_ptr<Saver_Base> Controller::get_saver()

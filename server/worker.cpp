@@ -23,7 +23,7 @@
 //#include "server_protocol.h"
 //#include "dbus_object.h"
 
-#include "log_manager.h"
+#include "log_saver/log_saver_manager.h"
 
 #include "database/db_thread_manager.h"
 #include "dbus_object.h"
@@ -182,7 +182,12 @@ void Worker::init_database(QSettings* s)
 void Worker::init_log_saver(QSettings *s)
 {
     Q_UNUSED(s)
-    _log_mng = new Log_Manager;
+    auto [th_count, max_pack_size, time_in_cache] = Helpz::SettingsHelper{s, "Log_Saver",
+        Helpz::Param<uint32_t>{"ThreadCount", 5},
+        Helpz::Param<uint32_t>{"MaxPackSize", 100},
+        Helpz::Param<uint32_t>{"TimeInCacheSec", 15}
+    }();
+    _log_mng = new Log_Saver::Manager{th_count, max_pack_size, std::chrono::seconds{time_in_cache}};
 }
 
 void Worker::init_server(QSettings* s)

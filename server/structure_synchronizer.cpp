@@ -115,22 +115,22 @@ bool Structure_Synchronizer::need_to_use_parent_table(uint8_t struct_type) const
 
 void Structure_Synchronizer::check_values()
 {
-    check_values_or_statuses(Cmd::DEVICE_ITEM_VALUES, &Log_Manager::set_devitem_values);
+    check_values_or_statuses(Cmd::DEVICE_ITEM_VALUES, &Log_Saver::Manager::set_devitem_values);
 }
 
 void Structure_Synchronizer::check_statuses()
 {
-    check_values_or_statuses(Cmd::GROUP_STATUSES, &Log_Manager::set_statuses);
+    check_values_or_statuses(Cmd::GROUP_STATUSES, &Log_Saver::Manager::set_statuses);
 }
 
 template<typename T>
-void Structure_Synchronizer::check_values_or_statuses(Cmd::Command_Type cmd, void (Log_Manager::*set_cache)(QVector<T>&&, uint32_t))
+void Structure_Synchronizer::check_values_or_statuses(Cmd::Command_Type cmd, void(Log_Saver::Manager::*set_cache)(QVector<T> &&, uint32_t))
 {
     uint32_t scheme_id = protocol_->id();
     protocol_->send(cmd)
             .answer([set_cache, scheme_id](QIODevice& data_dev)
     {
-        Helpz::apply_parse(data_dev, QDataStream::Qt_DefaultCompiledVersion, set_cache, Log_Manager::instance(), scheme_id);
+        Helpz::apply_parse(data_dev, QDataStream::Qt_DefaultCompiledVersion, set_cache, Log_Saver::instance(), scheme_id);
     })
             .timeout([this, cmd, set_cache]()
     {

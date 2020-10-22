@@ -1,50 +1,42 @@
 #include <Helpz/db_builder.h>
 
-#include "log_manager.h"
+#include "log_saver_manager.h"
 
 namespace Das {
 namespace Server {
+namespace Log_Saver {
 
 using namespace std;
 using namespace Helpz::DB;
 
-/*static*/ Log_Manager* Log_Manager::_instance = nullptr;
-/*static*/ Log_Manager *Log_Manager::instance()
+/*static*/ Manager* Manager::_instance = nullptr;
+/*static*/ Manager *Manager::instance()
 {
     return _instance;
 }
 
-Log_Manager::Log_Manager()
+Manager::Manager(size_t thread_count, size_t max_pack_size, chrono::seconds time_in_cache) :
+    Controller{thread_count, max_pack_size, time_in_cache}
 {
     _instance = this;
 }
 
-Log_Manager::~Log_Manager()
+Manager::~Manager()
 {
     _instance = nullptr;
 }
 
-void Log_Manager::stop()
+void Manager::set_devitem_values(QVector<Device_Item_Value> &&data, uint32_t scheme_id)
 {
-
+    set_cache_data<Log_Value_Item>(move(data), scheme_id);
 }
 
-Log_Saver::Controller &Log_Manager::ctrl()
-{
-    return _ctrl;
-}
-
-void Log_Manager::set_devitem_values(QVector<Device_Item_Value> &&data, uint32_t scheme_id)
-{
-    _ctrl.set_cache_data<Log_Value_Item>(move(data), scheme_id);
-}
-
-QVector<Device_Item_Value> Log_Manager::get_devitem_values(uint32_t scheme_id)
+QVector<Device_Item_Value> Manager::get_devitem_values(uint32_t scheme_id)
 {
     // Достать из базы текущие значения и Составить актуальный массив с данными
     Base& db = Base::get_thread_local_instance();
     QVector<Device_Item_Value> device_item_values = db_build_list<Device_Item_Value>(db, "scheme_id=?", {scheme_id});
-    QVector<Device_Item_Value> cached_values = _ctrl.get_cache_data<Log_Value_Item>(scheme_id);
+    QVector<Device_Item_Value> cached_values = get_cache_data<Log_Value_Item>(scheme_id);
     for (const Device_Item_Value& value: cached_values)
     {
         for (Device_Item_Value& orig: cached_values)
@@ -57,7 +49,7 @@ QVector<Device_Item_Value> Log_Manager::get_devitem_values(uint32_t scheme_id)
     return device_item_values;
 }
 
-void Log_Manager::set_statuses(QVector<DIG_Status> &&data, uint32_t scheme_id)
+void Manager::set_statuses(QVector<DIG_Status> &&data, uint32_t scheme_id)
 {
     // В базе могут быть состояния которых уже нет
     // нужно дополнить массив новых состояний теми которые нужно удалить из базы
@@ -80,12 +72,12 @@ void Log_Manager::set_statuses(QVector<DIG_Status> &&data, uint32_t scheme_id)
             data.push_back(move(status));
         }
 
-    _ctrl.set_cache_data<Log_Status_Item>(move(data), scheme_id);
+    set_cache_data<Log_Status_Item>(move(data), scheme_id);
 }
 
-set<DIG_Status> Log_Manager::get_statuses(uint32_t scheme_id)
+set<DIG_Status> Manager::get_statuses(uint32_t scheme_id)
 {
-    set<DIG_Status> statuses = _ctrl.get_cache_data<Log_Status_Item, set>(scheme_id);
+    set<DIG_Status> statuses = get_cache_data<Log_Status_Item, set>(scheme_id);
     if (statuses.empty())
     {
         Base& db = Base::get_thread_local_instance();
@@ -104,5 +96,11 @@ set<DIG_Status> Log_Manager::get_statuses(uint32_t scheme_id)
     return statuses;
 }
 
+Manager *instance()
+{
+    return Manager::instance();
+}
+
+} // namespace Log_Saver
 } // namespace Server
 } // namespace Das

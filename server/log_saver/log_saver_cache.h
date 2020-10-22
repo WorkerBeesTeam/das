@@ -11,97 +11,98 @@ namespace Server {
 namespace Log_Saver {
 
 template<typename T>
-class Saver_Cache : public Saver_Base
+class Saver_Cache
 {
 public:
-    virtual ~Saver_Cache() = default;
-
-    void set_cache_data(QVector<T>&& data, uint32_t scheme_id)
+    void set_data(QVector<T>&& data, uint32_t scheme_id, chrono::seconds time_in_cache)
     {
-        boost::shared_lock lock(_cache_mutex);
+        boost::shared_lock lock(_mutex);
         Cache_Data<T>& cache = get_cache(scheme_id, lock);
-        cache.set_data(move(data), get_save_time());
+        cache.set_data(move(data), clock::now() + time_in_cache);
     }
 
     template<template<typename...> class Container = QVector>
-    Container<T> get_cache_data(uint32_t scheme_id)
+    Container<T> get_data(uint32_t scheme_id)
     {
-        boost::shared_lock lock(_cache_mutex);
-        auto it = _scheme_cache.find(scheme_id);
-        if (it == _scheme_cache.cend())
+        boost::shared_lock lock(_mutex);
+        auto it = _scheme_data.find(scheme_id);
+        if (it == _scheme_data.cend())
             return {};
 
         return it->second.template get_data<Container>();
     }
 
-protected:
-
     template<typename Log_Type, template<typename...> class Container>
-    void add_cache(uint32_t scheme_id, const Container<Log_Type>& data)
+    void add_data(uint32_t scheme_id, const Container<Log_Type>& data, chrono::seconds time_in_cache)
     {
-        boost::shared_lock lock(_cache_mutex);
+        boost::shared_lock lock(_mutex);
         Cache_Data<T>& cache = get_cache(scheme_id, lock);
 
-        const time_point save_time_point = get_save_time();
+        const time_point save_time_point = clock::now() + time_in_cache;
         cache.add(data, save_time_point);
-        if (_oldest_cache_time.load().time_since_epoch() == clock::duration::zero())
-            _oldest_cache_time = save_time_point;
+        if (_oldest_time.load() > save_time_point)
+            _oldest_time = save_time_point;
     }
 
-    bool empty_cache() const override
+    time_point get_oldest_time() const { return _oldest_time.load(); }
+    bool is_ready_to_save(bool force = false) const { return force || _oldest_time.load() <= clock::now(); }
+
+    shared_ptr<Data> get_data_pack(size_t max_pack_size = 100, bool force = false)
     {
-        boost::shared_lock lock(_cache_mutex);
-        for (const auto& it: _scheme_cache)
+        bool is_empty;
+        time_point scheme_oldest_time,
+                oldest_time = time_point::max();
+        auto ready_to_save_time = force ? time_point::max() : clock::now() + 1s;
+        vector<T> pack;
+
+        {
+            boost::shared_lock lock(_mutex);
+            for (auto& it: _scheme_data)
+            {
+                scheme_oldest_time = it.second.get_ready_to_save_data(pack, ready_to_save_time,
+                                                                            max_pack_size, is_empty);
+                if (oldest_time > scheme_oldest_time)
+                    oldest_time = scheme_oldest_time;
+            }
+
+            _oldest_time = oldest_time;
+        }
+        if (is_empty)
+            erase_empty();
+        return make_shared<Data_Impl<T>>(Data::Cache, move(pack));
+    }
+
+    void process(shared_ptr<Data> data)
+    {
+        auto t_data = static_pointer_cast<Data_Impl<T>>(data);
+        process(t_data->_data);
+    }
+
+    bool empty() const
+    {
+        boost::shared_lock lock(_mutex);
+        for (const auto& it: _scheme_data)
             if (!it.second.empty())
                 return false;
         return true;
     }
 
-    void erase_empty_cache() override
+private:
+
+    void erase_empty()
     {
-        lock_guard lock(_cache_mutex);
-        for (auto it = _scheme_cache.begin(); it != _scheme_cache.end();)
+        lock_guard lock(_mutex);
+        for (auto it = _scheme_data.begin(); it != _scheme_data.end();)
         {
             if (it->second.empty())
-                it = _scheme_cache.erase(it);
+                it = _scheme_data.erase(it);
             else
                 ++it;
         }
     }
 
-    bool is_cache_ready_to_save() const
-    {
-        return _oldest_cache_time.load() <= clock::now();
-    }
-
-    shared_ptr<Data> get_cache_data_pack()
-    {
-        time_point scheme_oldest_cache_time,
-                oldest_cache_time = time_point::max();
-        auto ready_to_save_time = clock::now() + 1s;
-        vector<T> pack;
-
-        boost::shared_lock lock(_cache_mutex);
-        for (auto& it: _scheme_cache)
-        {
-            scheme_oldest_cache_time = it.second.get_ready_to_save_data(pack, ready_to_save_time);
-            if (oldest_cache_time > scheme_oldest_cache_time)
-                oldest_cache_time = scheme_oldest_cache_time;
-        }
-
-        if (oldest_cache_time < time_point::max())
-            _oldest_cache_time = oldest_cache_time;
-        return make_shared<Data_Impl<T>>(Data::Cache, move(pack));
-    }
-
-    void process_cache(shared_ptr<Data> data) override
-    {
-        auto t_data = static_pointer_cast<Data_Impl<T>>(data);
-        process_cache(t_data->_data);
-    }
-
-    void process_cache(vector<T>& pack) { process_cache_impl(pack); }
-    void process_cache_impl(vector<T>& pack)
+    void process(vector<T>& pack) { process_impl(pack); }
+    void process_impl(vector<T>& pack)
     {
         // UPDATE dig_param_value SET timestamp_msecs=? AND user_id=? AND value=?
         // WHERE scheme_id=? AND group_param_id=? AND timestamp_msecs<=?
@@ -111,7 +112,7 @@ protected:
         Table table = db_table<T>();
         const vector<uint32_t> updating_fields = Cache_Helper<T>::get_values_fields();
         const vector<uint32_t> compared_fields = Cache_Helper<T>::get_compared_fields();
-        const QString where = get_update_where<T>(table, compared_fields);
+        const QString where = get_update_where(table, compared_fields);
         const QString sql = db.update_query(table, updating_fields.size() + compared_fields.size(), where, updating_fields);
 
         QVariantList values;
@@ -136,22 +137,17 @@ protected:
         }
     }
 
-    time_point get_save_time() const
-    {
-        return clock::now() + 15s;
-    }
-
     Cache_Data<T>& get_cache(uint32_t scheme_id, boost::shared_lock<boost::shared_mutex>& shared_lock)
     {
-        auto it = _scheme_cache.find(scheme_id);
-        if (it == _scheme_cache.end())
+        auto it = _scheme_data.find(scheme_id);
+        if (it == _scheme_data.end())
         {
             shared_lock.unlock();
             {
                 lock_guard lock(*shared_lock.mutex());
-                it = _scheme_cache.find(scheme_id);
-                if (it == _scheme_cache.end())
-                    _scheme_cache.emplace(scheme_id, Cache_Data<T>{});
+                it = _scheme_data.find(scheme_id);
+                if (it == _scheme_data.end())
+                    _scheme_data.emplace(scheme_id, Cache_Data<T>{});
             }
             shared_lock.lock();
             return get_cache(scheme_id, shared_lock);
@@ -159,14 +155,66 @@ protected:
         return it->second;
     }
 
-private:
-    mutable boost::shared_mutex _cache_mutex;
-    map<uint32_t/*scheme_id*/, Cache_Data<T>> _scheme_cache;
-    atomic<time_point> _oldest_cache_time;
+    QString get_update_where(const Table& table, const vector<uint32_t>& compared_fields) const
+    {
+        QString where;
+        for (uint32_t field: compared_fields)
+        {
+            if (!where.isEmpty())
+                where += " AND ";
+            where += table.field_names().at(field);
+            if (field == T::COL_timestamp_msecs)
+                where += '<'; // = for timestamp_msecs = 0, < for others
+            where += "=?";
+        }
+        return where;
+    }
+
+    QString get_compare_where(const vector<T>& pack, const Table& table,
+                              const vector<uint32_t>& compared_fields, QVariantList& values, bool add_where_keyword = true) const
+    {
+        QString item_template = get_where_item_template(table, compared_fields);
+        QString where;
+
+        for (const T& item: pack)
+        {
+            if (where.isEmpty())
+            {
+                if (add_where_keyword)
+                    where = "WHERE ";
+                where += '(';
+            }
+            else
+                where += ") OR (";
+            where += item_template;
+
+            for (uint32_t field_index: compared_fields)
+                values.push_back(T::value_getter(item, field_index));
+        }
+        where += ')';
+        return where;
+    }
+
+    QString get_where_item_template(const Table& table, const vector<uint32_t>& compared_fields) const
+    {
+        QString item_template;
+        for (uint32_t field_index: compared_fields)
+        {
+            if (!item_template.isEmpty())
+                item_template += " AND ";
+            item_template += table.field_names().at(field_index);
+            item_template += "=?";
+        }
+        return item_template;
+    }
+
+    mutable boost::shared_mutex _mutex;
+    map<uint32_t/*scheme_id*/, Cache_Data<T>> _scheme_data;
+    atomic<time_point> _oldest_time = time_point::max();
 };
 
 template<>
-inline void Saver_Cache<DIG_Status>::process_cache(vector<DIG_Status>& pack)
+inline void Saver_Cache<DIG_Status>::process(vector<DIG_Status>& pack)
 {
     // DELETE FROM dig_status WHERE (scheme_id=? AND group_id=? AND status_id=?) OR ...
     // INSERT INTO dig_status (id, timestamp_msecs, user_id, group_id, status_id, args, scheme_id) VALUES(?,?,?,?,?,?,?),...
@@ -203,18 +251,15 @@ inline void Saver_Cache<DIG_Status>::process_cache(vector<DIG_Status>& pack)
     }
 
     if (!pack.empty())
-        process_cache_impl(pack);
+        process_impl(pack);
 }
 
 
-class No_Cache : public Saver_Base
+class No_Cache
 {
 public:
-    virtual ~No_Cache() = default;
-protected:
-    void process_cache(shared_ptr<Data> data) override { Q_UNUSED(data) }
-    void erase_empty_cache() override {}
-    bool empty_cache() const override { return true; }
+    void process(shared_ptr<Data> data) { Q_UNUSED(data) }
+    bool empty() const { return true; }
 };
 
 } // namespace Log_Saver

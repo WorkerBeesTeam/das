@@ -5,29 +5,27 @@
 
 namespace Das {
 namespace Server {
+namespace Log_Saver {
 
-class Log_Manager
+class Manager : public Controller
 {
-    static Log_Manager* _instance;
+    static Manager* _instance;
 public:
-    static Log_Manager* instance();
+    static Manager* instance();
 
-    Log_Manager();
-    ~Log_Manager();
-
-    void stop();
-
-    Log_Saver::Controller& ctrl();
+    Manager(size_t thread_count = 5, size_t max_pack_size = 100, chrono::seconds time_in_cache = 15s);
+    ~Manager();
 
     void set_devitem_values(QVector<Device_Item_Value> &&data, uint32_t scheme_id);
     QVector<Device_Item_Value> get_devitem_values(uint32_t scheme_id);
 
     void set_statuses(QVector<DIG_Status>&& data, uint32_t scheme_id);
     std::set<DIG_Status> get_statuses(uint32_t scheme_id);
-private:
-    Log_Saver::Controller _ctrl;
 };
 
+Manager* instance();
+
+} // namespace Log_Saver
 } // namespace Server
 } // namespace Das
 

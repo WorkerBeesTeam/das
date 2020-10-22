@@ -17,7 +17,7 @@ namespace Log_Saver {
 class Controller
 {
 public:
-    Controller(int thread_count = 5);
+    Controller(size_t thread_count = 5, size_t max_pack_size = 100, chrono::seconds time_in_cache = 15s);
     ~Controller();
 
     void stop();
@@ -36,7 +36,7 @@ public:
             {
                 {
                     lock_guard lock(_mutex);
-                    static_pointer_cast<Saver<T>>(it->second)->add(scheme_id, data);
+                    static_pointer_cast<Saver<T>>(it->second)->add(scheme_id, data, _time_in_cache);
                 }
 
                 _cond.notify_one();
@@ -53,7 +53,7 @@ public:
     {
         auto it = _savers.find(typeid(T));
         if (it != _savers.cend())
-            return static_pointer_cast<Saver<T>>(it->second)->set_cache_data(move(data), scheme_id);
+            return static_pointer_cast<Saver<T>>(it->second)->cache().set_data(move(data), scheme_id, _time_in_cache);
     }
 
     template<typename T, template<typename...> class Container = QVector>
@@ -61,19 +61,14 @@ public:
     {
         auto it = _savers.find(typeid(T));
         if (it != _savers.cend())
-            return static_pointer_cast<Saver<T>>(it->second)->template get_cache_data<Container>(scheme_id);
+            return static_pointer_cast<Saver<T>>(it->second)->cache().template get_data<Container>(scheme_id);
         return {};
     }
-
-    void erase_empty_cache();
 
 private:
     void run();
     bool empty() const;
-    bool empty_data() const;
-    bool empty_cache() const;
-    bool empty_impl(bool(Saver_Base::*empty_func)() const) const;
-    time_point get_oldest_cache_time() const;
+    time_point get_oldest_save_time() const;
     shared_ptr<Saver_Base> get_saver();
 
     template<typename T>
@@ -84,6 +79,9 @@ private:
     condition_variable _cond;
 
     vector<thread> _threads;
+
+    size_t _max_pack_size;
+    chrono::seconds _time_in_cache;
 
     using Saver_Map = map<type_index, shared_ptr<Saver_Base>>;
     Saver_Map _savers;
