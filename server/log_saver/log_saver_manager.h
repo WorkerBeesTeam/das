@@ -23,6 +23,12 @@ public:
 
     void set_statuses(QVector<DIG_Status>&& data, uint32_t scheme_id);
     std::set<DIG_Status> get_statuses(uint32_t scheme_id);
+
+private:
+    void fill_log_value_layers_impl();
+    void fill_log_value_layer(const QString& name, int time_count);
+
+    thread _fill_log_value_layers_thread;
 };
 
 Manager* instance();

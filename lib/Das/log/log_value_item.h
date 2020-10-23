@@ -16,6 +16,13 @@ public:
     void set_need_to_save(bool state);
 };
 
+class Log_Value_Minute : public Log_Value_Item
+{
+    HELPZ_DB_META(Log_Value_Minute, "log_value_minute", "lvm", DEV_ITEM_DB_META_ARGS)
+public:
+    using Log_Value_Item::Log_Value_Item;
+};
+
 } // namespace DB
 } // namespace Das
 

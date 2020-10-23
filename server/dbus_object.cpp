@@ -120,6 +120,11 @@ QVector<Device_Item_Value> Dbus_Object::get_device_item_cached_values(uint32_t s
     return Log_Saver::instance()->get_cache_data<Log_Value_Item>(scheme_id);
 }
 
+void Dbus_Object::fill_log_value_layers()
+{
+    Log_Saver::instance()->fill_log_value_layers();
+}
+
 void Dbus_Object::send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& data)
 {
     auto node = find_client(scheme_id);
