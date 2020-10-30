@@ -1,5 +1,7 @@
 #include <future>
 
+#include <fmt/chrono.h>
+
 #include <Helpz/db_builder.h>
 
 #include "log_saver_layers_filler.h"
@@ -44,12 +46,12 @@ Manager::~Manager()
 
 void Manager::fill_log_value_layers()
 {
-    start_log_term_operation("fill_log_value_layers", &Manager::fill_log_value_layers_impl);
+    start_long_term_operation("fill_log_value_layers", &Manager::fill_log_value_layers_impl);
 }
 
 void Manager::organize_log_partition()
 {
-    start_log_term_operation("organize_log_partition", &Manager::organize_log_partition_impl);
+    start_long_term_operation("organize_log_partition", &Manager::organize_log_partition_impl);
 }
 
 void Manager::set_devitem_values(QVector<Device_Item_Value> &&data, uint32_t scheme_id)
@@ -135,7 +137,7 @@ set<DIG_Status> Manager::get_statuses(uint32_t scheme_id)
     return statuses;
 }
 
-void Manager::start_log_term_operation(const QString &name, void (Manager::*func)())
+void Manager::start_long_term_operation(const QString &name, void (Manager::*func)())
 {
     if (_long_term_operation_thread.joinable())
         qWarning() << name << "can't be started because" << _long_term_operation_name
@@ -143,7 +145,14 @@ void Manager::start_log_term_operation(const QString &name, void (Manager::*func
     else
     {
         _long_term_operation_name = name;
-        _long_term_operation_thread = thread(func, this);
+        _long_term_operation_thread = thread([this, name, func]()
+        {
+            qInfo() << "Begin" << name << "operation";
+            auto now = clock::now();
+            (this->*func)();
+            qInfo() << "Operation" << name << "finished. It's take"
+                    << fmt::format("{:%H:%M:%S}.", clock::now() - now).c_str();
+        });
     }
 }
 

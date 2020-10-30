@@ -26,7 +26,7 @@ public:
     std::set<DIG_Status> get_statuses(uint32_t scheme_id);
 
 private:
-    void start_log_term_operation(const QString& name, void(Manager::*func)());
+    void start_long_term_operation(const QString& name, void(Manager::*func)());
     void fill_log_value_layers_impl();
     void organize_log_partition_impl();
 
