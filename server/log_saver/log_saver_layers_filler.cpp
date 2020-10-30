@@ -218,30 +218,34 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name)
         db.del(_layer_table.name(), "timestamp_msecs >= ?", {start_ts});
     }
 
-    qint64 end_ts = 0, final_ts = get_final_timestamp(time_count);
+    qint64 end_ts = start_ts + time_count,
+           final_ts = get_final_timestamp(time_count);
     Data_Type data;
 
-    QSqlQuery log_query = db.select(_log_value_table, "WHERE timestamp_msecs >= ? AND timestamp_msecs < ?",
-                                    {start_ts, final_ts});
-    if (!log_query.exec())
-    {
-        qCritical() << "Layer filler: Can't select data from das_log_value:" << log_query.lastError().text();
-        return start_ts;
-    }
+    QSqlQuery log_query{db.database()};
+    log_query.prepare(db.select_query(_log_value_table, "WHERE timestamp_msecs >= ? AND timestamp_msecs < ?"));
 
-    while (log_query.next())
+    while (end_ts <= final_ts)
     {
-        DB::Log_Value_Item item = db_build<DB::Log_Value_Item>(log_query);
-
-        if (end_ts < item.timestamp_msecs())
+        log_query.addBindValue(start_ts);
+        log_query.addBindValue(end_ts);
+        if (!log_query.exec())
         {
-            end_ts = get_next_time(item.timestamp_msecs(), time_count);
-            process_data(data, name);
+            qCritical() << "Layer filler: Can't select data from das_log_value:" << log_query.lastError().text();
+            return start_ts;
         }
 
-        data[item.scheme_id()][item.item_id()].push_back(move(item));
+        while (log_query.next())
+        {
+            DB::Log_Value_Item item = db_build<DB::Log_Value_Item>(log_query);
+            data[item.scheme_id()][item.item_id()].push_back(move(item));
+        }
+
+        process_data(data, name);
+
+        start_ts = end_ts;
+        end_ts += time_count;
     }
-    process_data(data, name);
 
     return final_ts;
 
