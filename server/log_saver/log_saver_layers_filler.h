@@ -31,6 +31,7 @@ private:
     qint64 get_start_timestamp(qint64 time_count) const;
     qint64 get_final_timestamp(qint64 time_count) const;
     vector<DB::Log_Value_Item> get_average_data(const Data_Type &data);
+    void process_data(Data_Type &data, const QString& name);
 
     qint64 _last_end_time;
     Helpz::DB::Table _log_value_table, _layer_table;

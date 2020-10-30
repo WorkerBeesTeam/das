@@ -219,33 +219,7 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name)
     }
 
     qint64 end_ts = 0, final_ts = get_final_timestamp(time_count);
-
-    QSqlQuery insert_query{db.database()}; // DB open in get_start_timestamp in Base::select
-    insert_query.prepare(db.insert_query(_layer_table, _layer_table.field_names().size()));
     Data_Type data;
-
-    auto process_data = [this, &insert_query, &data](const QString &name)
-    {
-        if (data.empty())
-            return;
-
-        QVariantList values;
-        vector<DB::Log_Value_Item> average_data = get_average_data(data);
-        for (const DB::Log_Value_Item& item: average_data)
-        {
-            values = DB::Log_Value_Item::to_variantlist(item);
-            for (const QVariant& value: values)
-                insert_query.addBindValue(value);
-            if (!insert_query.exec())
-            {
-                qWarning() << "Can't insert average log value for layer:" << name
-                           << "error:" << insert_query.lastError().text()
-                           << "data:" << values;
-            }
-        }
-
-        data.clear();
-    };
 
     QSqlQuery log_query = db.select(_log_value_table, "WHERE timestamp_msecs >= ? AND timestamp_msecs < ?",
                                     {start_ts, final_ts});
@@ -262,12 +236,12 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name)
         if (end_ts < item.timestamp_msecs())
         {
             end_ts = get_next_time(item.timestamp_msecs(), time_count);
-            process_data(name);
+            process_data(data, name);
         }
 
         data[item.scheme_id()][item.item_id()].push_back(move(item));
     }
-    process_data(name);
+    process_data(data, name);
 
     return final_ts;
 
@@ -338,6 +312,27 @@ vector<DB::Log_Value_Item> Layers_Filler::get_average_data(const Layers_Filler::
     });
 
     return average;
+}
+
+void Layers_Filler::process_data(Layers_Filler::Data_Type &data, const QString &name)
+{
+    if (data.empty())
+        return;
+
+    QVariantList values;
+    {
+        vector<DB::Log_Value_Item> average_data = get_average_data(data);
+        for (const DB::Log_Value_Item& item: average_data)
+            values += DB::Log_Value_Item::to_variantlist(item);
+        data.clear();
+    }
+
+    const QString sql = "INSERT INTO " + _layer_table.name() + '(' + _layer_table.field_names().join(',') + ") VALUES" +
+            Base::get_q_array(_layer_table.field_names().size(), values.size() / _layer_table.field_names().size());
+    Base& db = Base::get_thread_local_instance();
+    if (!db.exec(sql, values).isActive())
+        qWarning() << "Can't insert average log value for layer:" << name
+                   << "data:" << values;
 }
 
 } // namespace Log_Saver
