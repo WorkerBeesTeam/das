@@ -15,12 +15,14 @@ Chart_Data_Controller::Chart_Data_Controller(served::multiplexer &mux, const std
 void Chart_Data_Controller::get_chart_value(served::response &res, const served::request &req)
 {
     Chart_Value chart_value;
+    res.set_header("Content-Type", "application/json");
     res << chart_value(req);
 }
 
 void Chart_Data_Controller::get_chart_param(served::response &res, const served::request &req)
 {
     Chart_Param chart_param;
+    res.set_header("Content-Type", "application/json");
     res << chart_param(req);
 }
 
