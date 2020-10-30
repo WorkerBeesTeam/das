@@ -489,24 +489,16 @@ bool Log_Value_Save_Timer::save_to_db(const QVector<T> &pack)
     if (pack.empty())
         return true;
 
-    QVariantList values, tmp_values;
+    QVariantList values;
     for (const T& item: pack)
-    {
         if (can_log_item_save<T>(item))
-        {
-            tmp_values = T::to_variantlist(item);
-            tmp_values.removeFirst();
-            values += tmp_values;
-        }
-    }
+            values += T::to_variantlist(item);
 
     if (values.empty())
         return true;
 
-    Table table = db_table<T>();
-    table.field_names().removeFirst();
-
-    QString sql = "INSERT INTO " + table.name() + '(' + table.field_names().join(',') + ") VALUES" +
+    const Table table = db_table<T>();
+    const QString sql = "INSERT INTO " + table.name() + '(' + table.field_names().join(',') + ") VALUES" +
             Base::get_q_array(table.field_names().size(), values.size() / table.field_names().size());
 
     Base& db = Base::get_thread_local_instance();

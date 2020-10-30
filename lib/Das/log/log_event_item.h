@@ -14,7 +14,8 @@ class Log_Event_Item : public Log_Base_Item
                   DB_A(type_id), DB_A(category), DB_A(text), DB_A(scheme_id))
 public:
     explicit Log_Event_Item(qint64 timestamp_msecs = 0, uint32_t user_id = 0, bool need_to_inform = false,
-                            uint8_t type_id = 0, const QString& category = {}, const QString& text = {});
+                            uint8_t type_id = 0, const QString& category = {}, const QString& text = {},
+                            uint32_t scheme_id = default_scheme_id());
 
     enum Event_Types {
         ET_DEBUG = 0,

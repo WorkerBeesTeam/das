@@ -51,6 +51,8 @@ public:
 
     std::shared_ptr<Ver::Client::Protocol> net_protocol();
 
+    void close_net_client();
+
     static void store_connection_id(const QUuid& connection_id);
     Client::Dbus_Object *dbus() const;
 

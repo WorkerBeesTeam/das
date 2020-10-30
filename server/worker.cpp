@@ -145,19 +145,13 @@ std::future<std::shared_ptr<Helpz::DTLS::Server_Node>> Worker::find_client_futur
 
 void Worker::save_connection_state_to_log(uint32_t scheme_id, const std::chrono::system_clock::time_point &time_point, bool state)
 {
-    auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(time_point.time_since_epoch());
+    qint64 ts_msec = std::chrono::duration_cast<std::chrono::milliseconds>(time_point.time_since_epoch()).count();
 
-    Log_Event_Item item{msec.count(), 0, false,
+    Log_Event_Item item{ts_msec, /*user_id*/0, /*inform*/false,
                 state ? Log_Event_Item::ET_INFO : Log_Event_Item::ET_WARNING, "server",
-                (state ? QString() : "DIS") + "CONNECTED"};
-    item.set_scheme_id(scheme_id);
+                (state ? QString() : "DIS") + "CONNECTED", scheme_id};
 
-    auto values = Log_Event_Item::to_variantlist(item);
-
-    db_thread_mng_->log_thread()->add([values](Helpz::DB::Base* db)
-    {
-        db->insert(Helpz::DB::db_table<Log_Event_Item>(), values);
-    });
+    Log_Saver::instance()->add(scheme_id, QVector<Log_Event_Item>{std::move(item)});
 }
 
 void Worker::init_database(QSettings* s)
@@ -182,12 +176,16 @@ void Worker::init_database(QSettings* s)
 void Worker::init_log_saver(QSettings *s)
 {
     Q_UNUSED(s)
-    auto [th_count, max_pack_size, time_in_cache] = Helpz::SettingsHelper{s, "Log_Saver",
-        Helpz::Param<uint32_t>{"ThreadCount", 5},
-        Helpz::Param<uint32_t>{"MaxPackSize", 100},
-        Helpz::Param<uint32_t>{"TimeInCacheSec", 15}
-    }();
-    _log_mng = new Log_Saver::Manager{th_count, max_pack_size, std::chrono::seconds{time_in_cache}};
+    auto conf = Helpz::SettingsHelper{s, "Log_Saver",
+        Helpz::Param<uint32_t>{"ThreadCount", Log_Saver::Config::get()._thread_count},
+        Helpz::Param<uint32_t>{"MaxPackSize", Log_Saver::Config::get()._max_pack_size},
+        Helpz::Param<uint32_t>{"TimeInCacheSec", Log_Saver::Config::get()._time_in_cache_sec},
+        Helpz::Param<uint32_t>{"LayerMinForNowMinute", Log_Saver::Config::get()._layer_min_for_now_minute},
+        Helpz::Param<uint32_t>{"LayerTextMaxCount", Log_Saver::Config::get()._layer_text_max_count},
+    }.obj<Log_Saver::Config>();
+    Log_Saver::Config::get() = std::move(conf);
+
+    _log_mng = new Log_Saver::Manager{};
 }
 
 void Worker::init_server(QSettings* s)

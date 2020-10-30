@@ -195,7 +195,7 @@ void Device_item_Group::clear_status(uint32_t user_id)
 {
     while (statuses_.size())
     {
-        DIG_Status status = *statuses_.begin();
+        DIG_Status status{std::move(*statuses_.begin())};
         status.set_direction(DIG_Status::SD_DEL);
         status.set_user_id(user_id);
 

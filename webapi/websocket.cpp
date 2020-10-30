@@ -370,6 +370,38 @@ void WebSocket::socketDisconnected()
     }
 }
 
+template<typename T>
+void WebSocket::send_log_data(const Scheme_Info &scheme, uint8_t cmd, const QVector<T> &data,
+                              std::function<bool(QDataStream&, const T&)> func)
+{
+    QByteArray message;
+    QDataStream ds(&message, QIODevice::WriteOnly);
+    ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
+
+    ds << cmd << scheme.id() << (uint32_t)data.size();
+
+    const qint64 old_time = QDateTime::currentDateTimeUtc().addSecs(10 * 60 * -1).toMSecsSinceEpoch();
+
+    int size = 0;
+    for (const T& item: data)
+        if (item.timestamp_msecs() < old_time && (!func || func(ds, item)))
+        {
+            if (!func)
+                ds << item;
+            ++size;
+        }
+
+    if (size != data.size())
+    {
+        if (!size)
+            return;
+
+        ds.device()->seek(1 + 4); // uint8_t + uint32_t
+        ds << size;
+    }
+    send(scheme, message);
+}
+
 bool WebSocket::auth(const QByteArray& token, Websocket_Client& client)
 {
     try
@@ -454,37 +486,25 @@ void WebSocket::stream_stop(uint32_t scheme_id, uint32_t dev_item_id, uint32_t u
 
 void WebSocket::sendDevice_ItemValues(const Scheme_Info &scheme, const QVector<Log_Value_Item> &pack)
 {
-    QByteArray message;
-    QDataStream ds(&message, QIODevice::WriteOnly);
-    ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
-
-    ds << (uint8_t)WS_DEV_ITEM_VALUES << scheme.id() << (uint32_t)pack.size();
-
-    int size = 0;
-    for (const Log_Value_Item& item: pack)
+    std::function<bool(QDataStream&, const Log_Value_Item&)> func = [](QDataStream& ds, const Log_Value_Item& item)
     {
-        if (!item.is_big_value())
-        {
-            ds << item.item_id() << item.raw_value() << item.value();
-            ++size;
-        }
-    }
-
-    if (size != pack.size())
-    {
-        if (!size)
-            return;
-
-        ds.device()->seek(1 + 4); // uint8_t + uint32_t
-        ds << size;
-    }
-    send(scheme, message);
+        if (item.is_big_value())
+            return false;
+        ds << item.item_id() << item.raw_value() << item.value();
+        return true;
+    };
+    send_log_data(scheme, WS_DEV_ITEM_VALUES, pack, func);
 }
 
 void WebSocket::send_dig_mode_pack(const Scheme_Info &scheme, const QVector<DIG_Mode> &pack)
 {
-    for (const DIG_Mode& mode: pack)
-        sendModeChanged(scheme, mode);
+    std::function<bool(QDataStream&, const DIG_Mode&)> func = [this, &scheme](QDataStream& ds, const DIG_Mode& item)
+    {
+        Q_UNUSED(ds);
+        sendModeChanged(scheme, item);
+        return false; // TODO: Фронт должен принимать массив
+    };
+    send_log_data(scheme, WS_DIG_MODE, pack, func);
 }
 
 void WebSocket::sendModeChanged(const Scheme_Info &scheme, const DIG_Mode &mode)
@@ -498,11 +518,7 @@ void WebSocket::sendModeChanged(const Scheme_Info &scheme, const DIG_Mode &mode)
 
 void WebSocket::send_dig_param_values_changed(const Scheme_Info &scheme, const QVector<DIG_Param_Value> &pack)
 {
-    QByteArray message;
-    QDataStream ds(&message, QIODevice::WriteOnly);
-    ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
-    ds << (quint8)WS_CHANGE_DIG_PARAM_VALUES << scheme.id() << pack;
-    send(scheme, message);
+    send_log_data(scheme, WS_CHANGE_DIG_PARAM_VALUES, pack);
 }
 
 void WebSocket::send_connection_state(const Scheme_Info &scheme, uint8_t connection_state)
@@ -513,17 +529,18 @@ void WebSocket::send_connection_state(const Scheme_Info &scheme, uint8_t connect
 
 void WebSocket::sendEventMessage(const Scheme_Info& scheme, const QVector<Log_Event_Item>& event_pack)
 {
-    QByteArray message;
-    QDataStream ds(&message, QIODevice::WriteOnly);
-    ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
-    ds << uint8_t(WS_EVENT_LOG) << scheme.id() << event_pack;
-    send(scheme, message);
+    send_log_data(scheme, WS_EVENT_LOG, event_pack);
 }
 
 void WebSocket::send_dig_status_changed(const Scheme_Info &scheme, const QVector<DIG_Status> &pack)
 {
-    for (const DIG_Status& status: pack)
-        send_dig_status(scheme, status);
+    std::function<bool(QDataStream&, const DIG_Status&)> func = [this, &scheme](QDataStream& ds, const DIG_Status& item)
+    {
+        Q_UNUSED(ds);
+        send_dig_status(scheme, item);
+        return false; // TODO: Фронт должен принимать массив
+    };
+    send_log_data(scheme, WS_GROUP_STATUS_ADDED, pack, func);
 }
 
 void WebSocket::send_dig_status(const Scheme_Info &scheme, const DIG_Status &status)

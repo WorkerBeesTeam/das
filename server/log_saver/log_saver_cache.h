@@ -128,10 +128,21 @@ private:
             const QSqlQuery q = db.exec(sql, values);
             if (!q.isActive() || q.numRowsAffected() <= 0)
             {
-                // TODO: SELECT before insert for reasons when CLIENT_FOUND_ROWS=1 opt is not set.
-                if (!db.insert(table, T::to_variantlist(item)))
+                vector<uint32_t> sel_cmp_fields = compared_fields;
+                sel_cmp_fields.erase(remove(sel_cmp_fields.begin(), sel_cmp_fields.end(), T::COL_timestamp_msecs), sel_cmp_fields.end());
+                QString select_sql = "SELECT COUNT(*) FROM " + table.name() + " WHERE " + get_update_where(table, sel_cmp_fields);
+
+                values.clear();
+                for (uint32_t field: sel_cmp_fields)
+                    values.push_back(T::value_getter(item, field));
+
+                auto q = db.exec(select_sql, values);
+                if (q.isActive() && q.next() && q.value(0).toInt() == 0)
                 {
-                    // TODO: do something
+                    if (!db.insert(table, T::to_variantlist(item)))
+                    {
+                        // TODO: do something
+                    }
                 }
             }
         }

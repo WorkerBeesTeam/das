@@ -20,9 +20,9 @@ class Saver_Base
 public:
     virtual ~Saver_Base() = default;
 
-    virtual bool empty() const = 0;
+    virtual bool empty(bool cache_force = false) const = 0;
     virtual time_point get_save_time() const = 0;
-    virtual shared_ptr<Data> get_data_pack(size_t max_pack_size = 100, bool force = false) = 0;
+    virtual shared_ptr<Data> get_data_pack(size_t max_pack_size = 100, bool cache_force = false) = 0;
     virtual void process_data_pack(shared_ptr<Data> data) = 0;
 
 protected:

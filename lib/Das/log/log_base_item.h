@@ -12,10 +12,11 @@ Q_DECLARE_LOGGING_CATEGORY(Sync_Log)
 
 namespace DB {
 
-class Log_Base_Item : public DB::Schemed_Model
+class Log_Base_Item : public Schemed_Model
 {
 public:
-    explicit Log_Base_Item(qint64 timestamp_msecs = 0, uint32_t user_id = 0, bool flag = false);
+    explicit Log_Base_Item(qint64 timestamp_msecs = 0, uint32_t user_id = 0, bool flag = false,
+                           uint32_t scheme_id = default_scheme_id());
 
     static qint64 current_timestamp();
     void set_current_timestamp();

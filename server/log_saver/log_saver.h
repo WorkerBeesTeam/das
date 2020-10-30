@@ -1,6 +1,7 @@
 #ifndef DAS_SERVER_LOG_SAVER_SAVER_H
 #define DAS_SERVER_LOG_SAVER_SAVER_H
 
+#include <iostream>
 #include <type_traits>
 #include <queue>
 
@@ -21,28 +22,39 @@ public:
 
     virtual ~Saver() = default;
 
+    void set_after_insert_log_callback(function<void(const vector<T>&)> cb)
+    {
+        _after_insert_log_cb = move(cb);
+    }
+
     template<template<typename...> class Container>
     void add(uint32_t scheme_id, const Container<T>& data, chrono::seconds time_in_cache)
     {
         for (const T& item: data)
         {
+            if (item.scheme_id() == 0 || item.scheme_id() != scheme_id)
+                cout << "Attempt to add non scheme item " << item.scheme_id() << " s " << scheme_id << endl;
             if constexpr (is_same<T, Log_Value_Item>::value)
                 if (!item.need_to_save())
                     continue;
 
             _data.push(item);
-            _data.back().set_scheme_id(scheme_id);
+//            _data.back().set_scheme_id(scheme_id);
         }
 
         if constexpr (Cache_Type<T>::Is_Comparable::value)
             _cache.add_data(scheme_id, data, time_in_cache);
     }
 
-    bool empty() const override
+    bool empty(bool cache_force = false) const override
     {
         if constexpr (Cache_Type<T>::Is_Comparable::value)
-            if (!_cache.empty())
+        {
+            if (!_cache.empty() && _cache.is_ready_to_save(cache_force))
                 return false;
+        }
+        else
+            Q_UNUSED(cache_force);
         return _data.empty();
     }
 
@@ -54,15 +66,15 @@ public:
         return _data.empty() ? time_point::max() : clock::now();
     }
 
-    shared_ptr<Data> get_data_pack(size_t max_pack_size = 100, bool force = false) override
+    shared_ptr<Data> get_data_pack(size_t max_pack_size = 100, bool cache_force = false) override
     {
         if constexpr (Cache_Type<T>::Is_Comparable::value)
         {
-            if (_cache.is_ready_to_save(force))
+            if (_cache.is_ready_to_save(cache_force))
                 return _cache.get_data_pack(max_pack_size);
         }
         else
-            Q_UNUSED(force)
+            Q_UNUSED(cache_force)
 
         vector<T> pack;
         while(max_pack_size-- && !_data.empty())
@@ -116,7 +128,10 @@ private:
             // TODO: Try to insert each separately. With check duplicate?
 
             Saver_Base::save_dump_to_file(typeid(T).hash_code(), values_pack);
+            // TODO: Use load_dump_file in constructor?
         }
+        else if (_after_insert_log_cb)
+            _after_insert_log_cb(pack);
     }
 
     QString get_custom_q_array(const Table& table, int row_count) const
@@ -129,6 +144,7 @@ private:
 
     queue<T> _data;
     Saver_Cache_Type _cache;
+    function<void(const vector<T>&)> _after_insert_log_cb;
 };
 
 } // namespace Log_Saver

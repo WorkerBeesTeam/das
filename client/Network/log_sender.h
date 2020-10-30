@@ -20,7 +20,7 @@ using namespace Das::Client;
 class Log_Sender
 {
 public:
-    explicit Log_Sender(Protocol_Base* protocol);
+    explicit Log_Sender(Protocol_Base* protocol, std::size_t request_max_data_size = 200);
 
     void send_data(Log_Type_Wrapper log_type, uint8_t msg_id);
 private:
@@ -31,7 +31,8 @@ private:
     template<typename T>
     void send_log_data(const Log_Type_Wrapper& log_type, std::shared_ptr<QVector<T>> log_data);
 
-    int request_data_size_;
+    std::atomic<std::size_t> request_data_size_;
+    const std::size_t request_max_data_size_;
     Protocol_Base* protocol_;
 };
 

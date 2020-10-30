@@ -19,7 +19,11 @@ class Dbus_Object final : public DBus::Object_Base
 {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", DAS_DBUS_DEFAULT_INTERFACE)
+
+    static Dbus_Object* _ptr;
 public:
+    static Dbus_Object* instance();
+
     explicit Dbus_Object(Helpz::DTLS::Server* server,
                          const QString& service_name = DAS_DBUS_DEFAULT_SERVICE_SERVER,
                          const QString& object_path = DAS_DBUS_DEFAULT_OBJECT);

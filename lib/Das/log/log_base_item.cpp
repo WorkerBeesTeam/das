@@ -8,7 +8,8 @@ Q_LOGGING_CATEGORY(Sync_Log, "sync", QtInfoMsg)
 
 namespace DB {
 
-Log_Base_Item::Log_Base_Item(qint64 timestamp_msecs, uint32_t user_id, bool flag) :
+Log_Base_Item::Log_Base_Item(qint64 timestamp_msecs, uint32_t user_id, bool flag, uint32_t scheme_id) :
+    Schemed_Model{scheme_id},
     flag_(flag), user_id_(user_id), timestamp_msecs_(timestamp_msecs) {}
 
 /*static*/ qint64 Log_Base_Item::current_timestamp()

@@ -11,15 +11,20 @@
 namespace Das {
 namespace Server {
 
+Dbus_Object* Dbus_Object::_ptr = nullptr;
+Dbus_Object* Dbus_Object::instance() { return _ptr; }
+
 Dbus_Object::Dbus_Object(Helpz::DTLS::Server* server, const QString& service_name, const QString& object_path) :
     DBus::Object_Base(service_name, object_path),
     server_(server),
     _is_sync_enabled(true)
 {
+    _ptr = this;
 }
 
 Dbus_Object::~Dbus_Object()
 {
+    _ptr = nullptr;
 }
 
 bool Dbus_Object::is_sync_enabled() const

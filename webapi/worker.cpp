@@ -17,6 +17,7 @@
 #include <plus/das/jwt_helper.h>
 
 #include "rest/rest.h"
+#include "rest/rest_chart_value.h"
 
 #include "dbus_handler.h"
 #include "worker.h"
@@ -158,6 +159,14 @@ void Worker::init_web_command(QSettings* /*s*/)
 
 void Worker::init_restful(QSettings* s)
 {
+    Rest::Chart_Value::config() = Helpz::SettingsHelper(
+        s, "Chart_Value_Config",
+        Helpz::Param<uint32_t>{"CloseToNowSec", Rest::Chart_Value::config()._close_to_now_sec},
+        Helpz::Param<uint32_t>{"MinuteRatioSec", Rest::Chart_Value::config()._minute_ratio_sec},
+        Helpz::Param<uint32_t>{"HourRatioSec", Rest::Chart_Value::config()._hour_ratio_sec},
+        Helpz::Param<uint32_t>{"DayRatioSec", Rest::Chart_Value::config()._day_ratio_sec}
+    ).obj<Rest::Chart_Value_Config>();
+
     Rest::Config rest_config = Helpz::SettingsHelper(
         s, "Rest",
         Helpz::Param{"Thread_Count", 3},

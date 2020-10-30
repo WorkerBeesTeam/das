@@ -13,10 +13,11 @@ class Manager : public Controller
 public:
     static Manager* instance();
 
-    Manager(size_t thread_count = 5, size_t max_pack_size = 100, chrono::seconds time_in_cache = 15s);
+    Manager();
     ~Manager();
 
     void fill_log_value_layers();
+    void organize_log_partition();
 
     void set_devitem_values(QVector<Device_Item_Value> &&data, uint32_t scheme_id);
     QVector<Device_Item_Value> get_devitem_values(uint32_t scheme_id);
@@ -25,10 +26,12 @@ public:
     std::set<DIG_Status> get_statuses(uint32_t scheme_id);
 
 private:
+    void start_log_term_operation(const QString& name, void(Manager::*func)());
     void fill_log_value_layers_impl();
-    void fill_log_value_layer(const QString& name, int time_count);
+    void organize_log_partition_impl();
 
-    thread _fill_log_value_layers_thread;
+    QString _long_term_operation_name;
+    thread _long_term_operation_thread;
 };
 
 Manager* instance();

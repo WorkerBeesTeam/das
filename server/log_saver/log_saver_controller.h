@@ -7,7 +7,7 @@
 #include <mutex>
 #include <condition_variable>
 
-#include "log_saver_def.h"
+#include "log_saver_config.h"
 #include "log_saver.h"
 
 namespace Das {
@@ -17,7 +17,7 @@ namespace Log_Saver {
 class Controller
 {
 public:
-    Controller(size_t thread_count = 5, size_t max_pack_size = 100, chrono::seconds time_in_cache = 15s);
+    Controller();
     ~Controller();
 
     void stop();
@@ -36,7 +36,8 @@ public:
             {
                 {
                     lock_guard lock(_mutex);
-                    static_pointer_cast<Saver<T>>(it->second)->add(scheme_id, data, _time_in_cache);
+                    static_pointer_cast<Saver<T>>(it->second)->add(scheme_id, data,
+                                                                   chrono::seconds{Config::get()._time_in_cache_sec});
                 }
 
                 _cond.notify_one();
@@ -53,7 +54,8 @@ public:
     {
         auto it = _savers.find(typeid(T));
         if (it != _savers.cend())
-            return static_pointer_cast<Saver<T>>(it->second)->cache().set_data(move(data), scheme_id, _time_in_cache);
+            return static_pointer_cast<Saver<T>>(it->second)->cache().set_data(move(data), scheme_id,
+                                                                chrono::seconds{Config::get()._time_in_cache_sec});
     }
 
     template<typename T, template<typename...> class Container = QVector>
@@ -63,6 +65,14 @@ public:
         if (it != _savers.cend())
             return static_pointer_cast<Saver<T>>(it->second)->cache().template get_data<Container>(scheme_id);
         return {};
+    }
+
+    template<typename T>
+    void set_after_insert_log_callback(function<void(const vector<T>&)> cb)
+    {
+        auto it = _savers.find(typeid(T));
+        if (it != _savers.cend())
+            static_pointer_cast<Saver<T>>(it->second)->set_after_insert_log_callback(move(cb));
     }
 
 private:
@@ -79,9 +89,6 @@ private:
     condition_variable _cond;
 
     vector<thread> _threads;
-
-    size_t _max_pack_size;
-    chrono::seconds _time_in_cache;
 
     using Saver_Map = map<type_index, shared_ptr<Saver_Base>>;
     Saver_Map _savers;

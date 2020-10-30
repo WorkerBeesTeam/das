@@ -7,10 +7,8 @@ namespace Log_Saver {
 using namespace std;
 using namespace Helpz::DB;
 
-Controller::Controller(size_t thread_count, size_t max_pack_size, chrono::seconds time_in_cache) :
-    _break_flag(false),
-    _max_pack_size(max_pack_size),
-    _time_in_cache(time_in_cache)
+Controller::Controller() :
+    _break_flag(false)
 {
     add_saver<Log_Value_Item>();
     add_saver<Log_Event_Item>();
@@ -20,7 +18,7 @@ Controller::Controller(size_t thread_count, size_t max_pack_size, chrono::second
 
     _current_saver = _savers.cbegin();
 
-    while (thread_count--)
+    for (size_t i = 0; i < Config::get()._thread_count; ++i)
         _threads.emplace_back(&Controller::run, this);
 }
 
@@ -69,7 +67,7 @@ void Controller::run()
             shared_ptr<Data> data;
             shared_ptr<Saver_Base> saver = get_saver();
             if (saver)
-                data = saver->get_data_pack(_max_pack_size, _break_flag);
+                data = saver->get_data_pack(Config::get()._max_pack_size, _break_flag);
 
             lock.unlock();
             _cond.notify_one();
@@ -89,7 +87,7 @@ void Controller::run()
 bool Controller::empty() const
 {
     for (const auto& saver: _savers)
-        if (!saver.second->empty())
+        if (!saver.second->empty(_break_flag))
             return false;
     return true;
 }
@@ -117,7 +115,7 @@ shared_ptr<Saver_Base> Controller::get_saver()
     {
         if (_current_saver == _savers.cend())
             _current_saver = _savers.cbegin();
-        if (!_current_saver->second->empty())
+        if (!_current_saver->second->empty(_break_flag))
             saver = _current_saver->second;
         ++_current_saver;
     }

@@ -3,8 +3,9 @@
 namespace Das {
 namespace DB {
 
-Log_Event_Item::Log_Event_Item(qint64 timestamp_msecs, uint32_t user_id, bool need_to_inform, uint8_t type_id, const QString &category, const QString &text) :
-    Log_Base_Item(timestamp_msecs, user_id, need_to_inform),
+Log_Event_Item::Log_Event_Item(qint64 timestamp_msecs, uint32_t user_id, bool need_to_inform, uint8_t type_id,
+                               const QString &category, const QString &text, uint32_t scheme_id) :
+    Log_Base_Item(timestamp_msecs, user_id, need_to_inform, scheme_id),
     type_id_(type_id), category_(category), text_(text) {}
 
 uint8_t Log_Event_Item::type_id() const { return type_id_; }
