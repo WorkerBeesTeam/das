@@ -102,10 +102,11 @@ void Manager::set_statuses(QVector<DIG_Status> &&data, uint32_t scheme_id)
         if (!find_status(status))
         {
             status.set_direction(DIG_Status::SD_DEL);
-            status.set_scheme_id(scheme_id);
             data.push_back(move(status));
         }
 
+    for (DIG_Status& item: data)
+        item.set_scheme_id(scheme_id);
     set_cache_data<Log_Status_Item>(move(data), scheme_id);
 }
 
