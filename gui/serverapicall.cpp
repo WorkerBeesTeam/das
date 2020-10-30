@@ -253,7 +253,8 @@ void ServerApiCall::set_changed_param_values(const QVariantList &params)
         param_pair = p.toList();
         qDebug() << "adding param, " << param_pair;
         if (param_pair.length() == 4)
-            pack.push_back({param_pair.at(0).toLongLong(),
+            pack.push_back(DB::DIG_Param_Value{
+                            param_pair.at(0).toLongLong(),
                             param_pair.at(1).toUInt(),
                             param_pair.at(2).toUInt(),
                             param_pair.at(3).toString()});
@@ -577,7 +578,7 @@ Log_Event_Item ServerApiCall::parseSingleJournalEvent(const QJsonValue &val)
     auto json = val.toObject();
     QDateTime date = QDateTime::fromString(json["date"].toString(), Qt::ISODateWithMs);
 
-    return {
+    return Log_Event_Item{
         date.toMSecsSinceEpoch(), static_cast<uint32_t>(json["user_id"].toInt()), false,
         static_cast<uint8_t>(json["type"].toInt()), json["who"].toString(), json["msg"].toString()
     };

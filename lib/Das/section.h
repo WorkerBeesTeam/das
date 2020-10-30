@@ -12,7 +12,7 @@
 namespace Das
 {
 
-class DAS_LIBRARY_SHARED_EXPORT Section : public QObject, public DB::Base_Type
+class DAS_LIBRARY_SHARED_EXPORT Section : public QObject, public DB::Named_Type
 {
     Q_OBJECT
     Q_PROPERTY(uint32_t id READ id WRITE set_id)

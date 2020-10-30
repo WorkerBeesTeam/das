@@ -19,7 +19,11 @@ class Dbus_Object final : public DBus::Object_Base
 {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", DAS_DBUS_DEFAULT_INTERFACE)
+
+    static Dbus_Object* _ptr;
 public:
+    static Dbus_Object* instance();
+
     explicit Dbus_Object(Helpz::DTLS::Server* server,
                          const QString& service_name = DAS_DBUS_DEFAULT_SERVICE_SERVER,
                          const QString& object_path = DAS_DBUS_DEFAULT_OBJECT);
@@ -40,6 +44,9 @@ public slots:
     Scheme_Status get_scheme_status(uint32_t scheme_id) const override;
     void set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString& name) override;
     QVector<Device_Item_Value> get_device_item_values(uint32_t scheme_id) const override;
+    QVector<Device_Item_Value> get_device_item_cached_values(uint32_t scheme_id) const override;
+
+    void fill_log_value_layers();
 
     void send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& data) override;
     QString get_ip_address(uint32_t scheme_id) const override;

@@ -13,10 +13,21 @@
 namespace Das {
 namespace Rest {
 
+struct Chart_Value_Config
+{
+    uint32_t _close_to_now_sec = 10 * 60; // 10 minute
+    uint32_t _minute_ratio_sec = 2 * 60 * 60; // 2 hour
+    uint32_t _hour_ratio_sec = 2 * 24 * 60 * 60; // 2 day
+    uint32_t _day_ratio_sec = 2 * 30.5 * 24 * 60 * 60; // 2 month
+};
+
 class Chart_Value
 {
 public:
     Chart_Value();
+    virtual ~Chart_Value() = default;
+
+    static Chart_Value_Config& config();
 
     std::string operator()(const served::request& req);
 protected:
@@ -61,6 +72,7 @@ private:
     QString get_one_point_sql(int64_t timestamp, const QString &item_id, bool is_before_range_point) const;
 
     bool _range_in_past;
+    bool _range_close_to_now;
     uint32_t _offset, _limit;
     Time_Range _time_range;
     QString _scheme_where, _where;

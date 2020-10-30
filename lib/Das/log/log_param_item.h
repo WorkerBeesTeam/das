@@ -9,11 +9,11 @@
 namespace Das {
 namespace DB {
 
-class Log_Param_Item : public DIG_Param_Value
+class Log_Param_Item : public DIG_Param_Value_Base2
 {
-    DIG_PARAM_VALUE_DB_META(Log_Param_Item, "log_param", "lp")
+    HELPZ_DB_META(Log_Param_Item, "log_param", "lp", DIG_PARAM_VALUE_DB_META_ARGS)
 public:
-    using DIG_Param_Value::DIG_Param_Value;
+    using DIG_Param_Value_Base2::DIG_Param_Value_Base2;
 };
 
 } // namespace DB

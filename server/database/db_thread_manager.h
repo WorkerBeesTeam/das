@@ -16,14 +16,12 @@ public:
     ~Thread_Manager();
 
     Helpz::DB::Thread* thread();
-    Helpz::DB::Thread* log_thread();
     std::shared_ptr<global> get_db();
 private:
     boost::shared_mutex mutex_;
     std::map<std::thread::id, std::shared_ptr<global>> db_list_;
 
     Helpz::DB::Thread db_thread_;
-    Helpz::DB::Thread db_log_thread_;
 };
 
 } // namespace DB

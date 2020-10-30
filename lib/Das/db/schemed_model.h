@@ -9,7 +9,7 @@ namespace DB {
 class Schemed_Model
 {
 public:
-    Schemed_Model(uint32_t scheme_id = default_scheme_id());
+    explicit Schemed_Model(uint32_t scheme_id = default_scheme_id());
 
     static uint32_t default_scheme_id();
     static void set_default_scheme_id(uint32_t scheme_id);

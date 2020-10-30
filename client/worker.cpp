@@ -138,6 +138,16 @@ std::shared_ptr<Ver::Client::Protocol> Worker::net_protocol()
     return {};
 }
 
+void Worker::close_net_client()
+{
+    if (net_thread_)
+    {
+        auto client = net_thread_->client();
+        if (client)
+            client->close();
+    }
+}
+
 /*static*/ void Worker::store_connection_id(const QUuid &connection_id)
 {
     std::shared_ptr<QSettings> s = settings();

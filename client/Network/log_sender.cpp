@@ -12,8 +12,9 @@ namespace Client {
 
 using namespace Helpz::DB;
 
-Log_Sender::Log_Sender(Protocol_Base *protocol) :
-    request_data_size_(200),
+Log_Sender::Log_Sender(Protocol_Base *protocol, std::size_t request_max_data_size) :
+    request_data_size_(request_max_data_size),
+    request_max_data_size_(request_max_data_size),
     protocol_(protocol)
 {
 }
@@ -42,6 +43,7 @@ void prepare_pack(QVector<T>& /*log_data*/) {}
 template<>
 void prepare_pack<Log_Value_Item>(QVector<Log_Value_Item>& log_data)
 {
+    // Отправлять только одно большое значение в пачке данных.
     for (auto it = log_data.begin(); it != log_data.end(); ++it)
     {
         if (it->is_big_value())
@@ -67,8 +69,11 @@ void Log_Sender::send_log_data(const Log_Type_Wrapper& log_type)
 template<typename T>
 void Log_Sender::send_log_data(const Log_Type_Wrapper &log_type, std::shared_ptr<QVector<T>> log_data)
 {
-    protocol_->send(Cmd::LOG_DATA_REQUEST).answer([log_data](QIODevice& /*dev*/)
+    protocol_->send(Cmd::LOG_DATA_REQUEST).answer([this, log_data](QIODevice& /*dev*/)
     {
+        if (request_data_size_ < request_max_data_size_)
+            ++request_data_size_;
+
         QString where = DB::Helper::get_default_suffix() + " AND "
                 + T::table_column_names().at(T::COL_timestamp_msecs) + " IN (";
         for (const T& item: *log_data)
@@ -80,8 +85,9 @@ void Log_Sender::send_log_data(const Log_Type_Wrapper &log_type, std::shared_ptr
     })
     .timeout([this, log_type, log_data]()
     {
+        // TODO: timeout вызывается из другого потока. Проверить чтобы Log_Sender удалялся позже чем Client_Protocol
 //            qWarning(Sync_Log) << log_type.to_string() << "log send timeout. request_data_size_:" << request_data_size_;
-        request_data_size_ /= 2;
+        request_data_size_ = request_data_size_ / 2;
         if (request_data_size_ < 5)
             request_data_size_ = 5;
 

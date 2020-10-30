@@ -6,22 +6,22 @@
 #include <Helpz/db_meta.h>
 
 #include <Das/daslib_global.h>
+#include <Das/db/base_type.h>
 #include <Das/log/log_base_item.h>
 
 namespace Das {
 namespace DB {
 
 #define DIG_STATUS_DB_META_ARGS \
-    DB_A(id), DB_A(timestamp_msecs), DB_AN(user_id), \
+    DB_A(timestamp_msecs), DB_AN(user_id), \
     DB_A(group_id), DB_A(status_id), DB_AT(args)
 
-class DAS_LIBRARY_SHARED_EXPORT DIG_Status : public Log_Base_Item
+class DAS_LIBRARY_SHARED_EXPORT DIG_Status_Base : public Log_Base_Item
 {
-    HELPZ_DB_META(DIG_Status, "dig_status", "gs", DIG_STATUS_DB_META_ARGS, DB_A(scheme_id))
 public:
     enum Status_Direction : uint8_t { SD_ADD = 1, SD_DEL = 2 };
 
-    DIG_Status(qint64 timestamp_msecs = 0, uint32_t user_id = 0, uint32_t group_id = 0,
+    explicit DIG_Status_Base(qint64 timestamp_msecs = 0, uint32_t user_id = 0, uint32_t group_id = 0,
                uint32_t status_id = 0, const QStringList& args = QStringList(), Status_Direction direction = SD_ADD);
 
     uint32_t group_id() const;
@@ -39,16 +39,26 @@ public:
     uint8_t direction() const;
     void set_direction(uint8_t direction);
 
-    bool operator <(const DIG_Status& o) const;
+    bool operator <(const DIG_Status_Base& o) const;
 private:
     uint32_t group_id_, status_id_;
     QStringList args_;
 
-    friend QDataStream& operator>>(QDataStream& ds, DIG_Status& item);
+    friend QDataStream& operator>>(QDataStream& ds, DIG_Status_Base& item);
 };
 
-QDataStream& operator>>(QDataStream& ds, DIG_Status& item);
-QDataStream& operator<<(QDataStream& ds, const DIG_Status& item);
+QDataStream& operator>>(QDataStream& ds, DIG_Status_Base& item);
+QDataStream& operator<<(QDataStream& ds, const DIG_Status_Base& item);
+
+class DAS_LIBRARY_SHARED_EXPORT DIG_Status : public DIG_Status_Base, public ID_Type
+{
+    HELPZ_DB_META(DIG_Status, "dig_status", "gs", DB_A(id), DIG_STATUS_DB_META_ARGS, DB_A(scheme_id))
+public:
+    using DIG_Status_Base::DIG_Status_Base;
+    using DIG_Status_Base::operator =;
+    explicit DIG_Status(const DIG_Status_Base& o) : DIG_Status_Base{o} {}
+    explicit DIG_Status(DIG_Status_Base&& o) : DIG_Status_Base{std::move(o)} {}
+};
 
 } // namespace DB
 

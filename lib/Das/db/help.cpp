@@ -4,7 +4,7 @@ namespace Das {
 namespace DB {
 
 Help::Help(uint32_t id, uint32_t parent_id, const QString &name, const QString &text, uint32_t scheme_id) :
-    Base_Type(id, name, scheme_id),
+    Named_Type(id, name, scheme_id),
     _parent_id(parent_id), _text(text)
 {
 }

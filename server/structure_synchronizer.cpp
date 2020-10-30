@@ -3,7 +3,6 @@
 #include <Helpz/db_builder.h>
 #include <Helpz/dtls_server_thread.h>
 
-#include <Das/commands.h>
 #include <Das/db/translation.h>
 
 #include <plus/das/database_delete_info.h>
@@ -27,40 +26,6 @@ Structure_Synchronizer::Structure_Synchronizer(Protocol_Base *protocol) :
 
 Structure_Synchronizer::~Structure_Synchronizer()
 {
-    if (!scheme_id())
-        return;
-
-    QVector<Device_Item_Value> devitem_value_vect = get_devitem_values();
-    std::set<DIG_Status> status_set = get_statuses();
-    uint32_t s_id = scheme_id();
-
-    db_thread()->add([devitem_value_vect, status_set, s_id](Base* db)
-    {
-        auto table = db_table<DIG_Status>();
-        db->del(table.name(), "scheme_id=" + QString::number(s_id));
-        if (!status_set.empty())
-        {
-            QVariantList values;
-            table.field_names().removeFirst();
-
-            const QString sql = "INSERT INTO " + table.name() + '(' + table.field_names().join(',') + ") VALUES "
-                    + Base::get_q_array(table.field_names().size(), status_set.size());
-
-            for (const DIG_Status& status: status_set)
-            {
-                values.push_back(status.timestamp_msecs());
-                values.push_back(status.user_id());
-                values.push_back(status.group_id());
-                values.push_back(status.status_id());
-                values.push_back(status.args_to_db());
-                values.push_back(s_id);
-            }
-
-            db->exec(sql, values);
-        }
-
-        save_devitem_values(db, devitem_value_vect, s_id);
-    });
 }
 
 void Structure_Synchronizer::check(bool custom_only, bool force_clean)
@@ -150,94 +115,28 @@ bool Structure_Synchronizer::need_to_use_parent_table(uint8_t struct_type) const
 
 void Structure_Synchronizer::check_values()
 {
-    clear_devitem_values_with_save();
-
-    protocol_->send(Cmd::DEVICE_ITEM_VALUES)
-            .answer([this](QIODevice& data_dev)
-    {
-        apply_parse(data_dev, &Structure_Synchronizer::insert_devitem_values);
-    })
-            .timeout([this]()
-    {
-        qCWarning(Struct_Log).noquote() << title() << "Get devitem values timeout.";
-        check_values();
-    }, std::chrono::seconds(10), std::chrono::seconds(3));
+    check_values_or_statuses(Cmd::DEVICE_ITEM_VALUES, &Log_Saver::Manager::set_devitem_values);
 }
 
 void Structure_Synchronizer::check_statuses()
 {
-    clear_statuses();
+    check_values_or_statuses(Cmd::GROUP_STATUSES, &Log_Saver::Manager::set_statuses);
+}
 
-    protocol_->send(Cmd::GROUP_STATUSES)
-            .answer([this](QIODevice& data_dev)
+template<typename T>
+void Structure_Synchronizer::check_values_or_statuses(Cmd::Command_Type cmd, void(Log_Saver::Manager::*set_cache)(QVector<T> &&, uint32_t))
+{
+    uint32_t scheme_id = protocol_->id();
+    protocol_->send(cmd)
+            .answer([set_cache, scheme_id](QIODevice& data_dev)
     {
-        QVector<DIG_Status> new_statuses = apply_parse(data_dev, &Structure_Synchronizer::insert_statuses);
+        Helpz::apply_parse(data_dev, QDataStream::Qt_DefaultCompiledVersion, set_cache, Log_Saver::instance(), scheme_id);
     })
-            .timeout([this]()
+            .timeout([this, cmd, set_cache]()
     {
-        qCWarning(Struct_Log).noquote() << title() << "Get statuses timeout.";
-        check_values();
+        qCWarning(Struct_Log).noquote() << title() << "Timeout to reveice" << cmd;
+        check_values_or_statuses<T>(cmd, set_cache);
     }, std::chrono::seconds(10), std::chrono::seconds(3));
-}
-
-QVector<Device_Item_Value> Structure_Synchronizer::get_devitem_values() const
-{
-    std::lock_guard lock(data_mutex_);
-    return devitem_value_vect_;
-}
-
-std::set<DIG_Status> Structure_Synchronizer::get_statuses()
-{
-    std::lock_guard lock(data_mutex_);
-    return status_set_;
-}
-
-void Structure_Synchronizer::change_devitem_value(const Device_Item_Value &value)
-{
-    std::lock_guard lock(data_mutex_);
-    change_devitem_value_no_block(value);
-}
-
-void Structure_Synchronizer::change_status(const QVector<Log_Status_Item> &pack)
-{
-    std::lock_guard lock(data_mutex_);
-    for (const Log_Status_Item& status: pack)
-    {
-        for (auto it = status_set_.begin(); it != status_set_.end(); ++it)
-        {
-            if (it->group_id() == status.group_id() && it->status_id() == status.status_id())
-            {
-                status_set_.erase(it);
-                break;
-            }
-        }
-
-        if (!status.is_removed())
-            status_set_.insert(status);
-    }
-}
-
-QVector<DIG_Status> Structure_Synchronizer::insert_statuses(const QVector<DIG_Status> &statuses)
-{
-    clear_statuses();
-    if (statuses.empty())
-    {
-        return {};
-    }
-
-    QVector<DIG_Status> new_statuses;
-    std::lock_guard lock(data_mutex_);
-    std::set<DIG_Status>::const_iterator it;
-    for (const DIG_Status& new_status: statuses)
-    {
-        it = status_set_.find(new_status);
-        if (it == status_set_.cend())
-        {
-            status_set_.insert(new_status);
-            new_statuses.push_back(new_status);
-        }
-    }
-    return new_statuses;
 }
 
 Scheme_Info Structure_Synchronizer::get_scheme_info(uint8_t struct_type) const
@@ -246,132 +145,6 @@ Scheme_Info Structure_Synchronizer::get_scheme_info(uint8_t struct_type) const
     if (need_to_use_parent_table(struct_type))
         scheme_info.set_extending_scheme_ids(protocol()->extending_scheme_ids());
     return scheme_info;
-}
-
-void Structure_Synchronizer::change_devitem_value_no_block(const Device_Item_Value &value)
-{
-    if (value.is_big_value())
-        return;
-
-    auto it = std::lower_bound(devitem_value_vect_.begin(), devitem_value_vect_.end(), value, devitem_value_compare);
-    if (it != devitem_value_vect_.end() && it->item_id() == value.item_id())
-    {
-        Device_Item_Value& item = *it;
-        item.set_raw_value(value.raw_value());
-        item.set_value(value.value());
-        item.set_timestamp_msecs(value.timestamp_msecs());
-        item.set_user_id(value.user_id());
-    }
-    else
-    {
-        devitem_value_vect_.insert(it, value);
-    }
-}
-
-/*static*/bool Structure_Synchronizer::devitem_value_compare(const Device_Item_Value &value1, const Device_Item_Value &value2)
-{
-    return value1.item_id() < value2.item_id();
-}
-
-void Structure_Synchronizer::insert_devitem_values(QVector<Device_Item_Value> &&value_vect)
-{
-    if (clear_devitem_values_with_save())
-    {
-        check_values();
-        return;
-    }
-
-    if (value_vect.empty())
-        return;
-
-    std::sort(value_vect.begin(), value_vect.end(), devitem_value_compare);
-
-    std::lock_guard lock(data_mutex_);
-    devitem_value_vect_ = std::move(value_vect);
-}
-
-bool Structure_Synchronizer::clear_devitem_values_with_save()
-{
-    QVector<Device_Item_Value> old_value_vect;
-    {
-        std::lock_guard lock(data_mutex_);
-        old_value_vect = std::move(devitem_value_vect_);
-        devitem_value_vect_.clear();
-    }
-
-    if (old_value_vect.empty())
-    {
-        return false;
-    }
-
-    uint32_t s_id = scheme_id();
-    db_thread()->add([old_value_vect, s_id](Base* db)
-    {
-        save_devitem_values(db, old_value_vect, s_id);
-    });
-
-    return true;
-}
-
-/*static*/ void Structure_Synchronizer::save_devitem_values(Base* db, const QVector<Device_Item_Value>& value_vect, uint32_t scheme_id)
-{
-    if (value_vect.empty())
-        return;
-
-    Table table = db_table<Device_Item_Value>();
-
-    using T = Device_Item_Value;
-    QStringList field_names{
-        table.field_names().at(T::COL_timestamp_msecs),
-        table.field_names().at(T::COL_user_id),
-        table.field_names().at(T::COL_raw_value),
-        table.field_names().at(T::COL_value)
-    };
-
-    table.field_names() = std::move(field_names);
-
-    const QString where = "scheme_id = " + QString::number(scheme_id) + " AND item_id = ";
-
-    QVariantList values{QVariant(), QVariant(), QVariant(), QVariant()};
-
-    for (const Device_Item_Value& value: value_vect)
-    {
-        if (value.is_big_value())
-            continue;
-
-        values.front() = value.timestamp_msecs();
-        values[1] = value.user_id();
-        values[2] = value.raw_value_to_db();
-        values.back() = value.value_to_db();
-
-        const QSqlQuery q = db->update(table, values, where + QString::number(value.item_id()));
-        if (!q.isActive() || q.numRowsAffected() <= 0)
-        {
-            Table ins_table = db_table<Device_Item_Value>();
-            ins_table.field_names().removeFirst(); // remove id
-
-            QVariantList ins_values = values;
-            ins_values.insert(2, value.item_id()); // after user_id
-            ins_values.push_back(scheme_id);
-
-            if (!db->insert(ins_table, ins_values))
-            {
-                // TODO: do something
-            }
-        }
-    }
-}
-
-void Structure_Synchronizer::clear_devitem_values()
-{
-    std::lock_guard lock(data_mutex_);
-    devitem_value_vect_.clear();
-}
-
-void Structure_Synchronizer::clear_statuses()
-{
-    std::lock_guard lock(data_mutex_);
-    status_set_.clear();
 }
 
 void Structure_Synchronizer::set_synchronized(uint8_t struct_type)

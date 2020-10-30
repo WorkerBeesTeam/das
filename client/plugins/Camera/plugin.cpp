@@ -25,6 +25,11 @@ void Camera_Plugin::configure(QSettings *settings)
 {
     using Helpz::Param;
 
+    // device_item::index plugin param need to be set to one of these:
+    // /dev/video0 - if it's USB camera
+    // rtsp://10.10.2.141:554/user=admin_password=_channel=1_stream=0.sdp - if it's IP camera
+    // For IP camera you can find correct URL on https://www.ispyconnect.com/man.aspx?n=china#
+
     Camera::Config config = Helpz::SettingsHelper
         #if (__cplusplus < 201402L) || (defined(__GNUC__) && (__GNUC__ < 7))
             <Param<QString>

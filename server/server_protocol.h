@@ -24,7 +24,6 @@ public:
     void disable_sync();
 
     Structure_Synchronizer* structure_sync();
-    Log_Synchronizer* log_sync();
 
     int protocol_version() const override;
     void send_file(uint32_t user_id, uint32_t dev_item_id, const QString& file_name, const QString& file_path) override;
@@ -50,8 +49,10 @@ private:
     void stream_param(uint32_t dev_item_id, const QByteArray& data);
     void stream_data(uint32_t dev_item_id, const QByteArray& data);
 
+    void log_sync_check();
+
     bool is_copy_, disable_sync_;
-    Log_Synchronizer log_sync_;
+    Log_Synchronizer _log_sync;
     Structure_Synchronizer structure_sync_;
 
     std::chrono::system_clock::time_point last_sync_time_;

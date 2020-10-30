@@ -655,10 +655,6 @@ void Controller::status(const Scheme_Item& scheme, TgBot::Message::Ptr message)
 
     text += User_Menu::Connection_State::to_string(scheme_status.connection_state_) + '\n';
 
-    if ((scheme_status.connection_state_ & ~CS_FLAGS) < CS_CONNECTED_JUST_NOW)
-        scheme_status.status_set_ =
-                db_build_list<DIG_Status, std::set>(db, "WHERE scheme_id = " + QString::number(scheme.id()));
-
     if (!scheme_status.status_set_.empty())
     {
         sql = "SELECT dig.id, s.name, dig.title, gt.title "
@@ -867,7 +863,8 @@ map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t 
 
     map<uint32_t, string> res;
 
-    const QString status_sql = "SELECT category_id FROM das_dig_status_type WHERE %1 AND id IN (%2) ORDER BY category_id DESC LIMIT 1";
+    const QString status_sql = "SELECT category_id FROM das_dig_status_type WHERE %1 AND id IN (%2) "
+                               "ORDER BY category_id DESC LIMIT 1";
 
     QString status_id_sep;
     Scheme_Status scheme_status;
@@ -879,10 +876,6 @@ map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t 
             Q_ARG(uint32_t, scheme.id()));
 
         name = User_Menu::Connection_State::get_emoji(scheme_status.connection_state_);
-
-        if ((scheme_status.connection_state_ & ~CS_FLAGS) < CS_CONNECTED_JUST_NOW)
-            scheme_status.status_set_ =
-                    db_build_list<DIG_Status, std::set>(db, "WHERE scheme_id = " + QString::number(scheme.id()));
 
         status_id_sep.clear();
         for (const DIG_Status& status: scheme_status.status_set_)

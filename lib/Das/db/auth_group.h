@@ -21,11 +21,11 @@ template<> inline bool is_table_use_common_prefix<Das::DB::Auth_Group_Permission
 namespace Das {
 namespace DB {
 
-class DAS_LIBRARY_SHARED_EXPORT Auth_Group : public Base_Type
+class DAS_LIBRARY_SHARED_EXPORT Auth_Group : public Named_Type
 {
     HELPZ_DB_META(Auth_Group, "auth_group", "ag", DB_A(id), DB_A(name))
 public:
-    using Base_Type::Base_Type;
+    using Named_Type::Named_Type;
 };
 
 // ----------------------------------------------------------------------------------------------------

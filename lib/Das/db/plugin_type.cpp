@@ -4,7 +4,7 @@ namespace Das {
 namespace DB {
 
 Plugin_Type::Plugin_Type(uint32_t id, const QString& name, const QStringList& param_names_device, const QStringList& param_names_device_item) :
-    Base_Type(id, name),
+    Named_Type(id, name),
     param_names_device_(param_names_device),
     param_names_device_item_(param_names_device_item)
 {
@@ -56,12 +56,12 @@ void Plugin_Type::set_param_names_device_item_from_db(const QVariant& data)
 
 QDataStream &operator<<(QDataStream &ds, const Plugin_Type &item)
 {
-    return ds << static_cast<const Base_Type&>(item) << item.param_names_device() << item.param_names_device_item();
+    return ds << static_cast<const Named_Type&>(item) << item.param_names_device() << item.param_names_device_item();
 }
 
 QDataStream &operator>>(QDataStream &ds, Plugin_Type &item)
 {
-    return ds >> static_cast<Base_Type&>(item) >> item.param_names_device_ >> item.param_names_device_item_;
+    return ds >> static_cast<Named_Type&>(item) >> item.param_names_device_ >> item.param_names_device_item_;
 }
 
 } // namespace DB

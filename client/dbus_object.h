@@ -36,6 +36,7 @@ public slots:
     Scheme_Status get_scheme_status(uint32_t scheme_id) const override;
     void set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString& name) override;
     QVector<Device_Item_Value> get_device_item_values(uint32_t scheme_id) const override;
+    QVector<Device_Item_Value> get_device_item_cached_values(uint32_t scheme_id) const override;
 
     void send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& raw_data) override;
     QString get_ip_address(uint32_t scheme_id) const override;

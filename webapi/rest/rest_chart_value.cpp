@@ -17,11 +17,19 @@
 namespace Das {
 namespace Rest {
 
+using namespace std;
+using namespace chrono_literals;
 using namespace Helpz::DB;
 
 Chart_Value::Chart_Value() :
     _db(Base::get_thread_local_instance())
 {
+}
+
+/*static*/ Chart_Value_Config &Chart_Value::config()
+{
+    static Chart_Value_Config conf;
+    return conf;
 }
 
 std::string Chart_Value::operator()(const served::request &req)
@@ -31,6 +39,12 @@ std::string Chart_Value::operator()(const served::request &req)
     Auth_Middleware::check_permission(permission_name());
 
     int64_t count = fill_datamap();
+    if (_range_close_to_now)
+    {
+        _time_range._from = _time_range._to;
+        _time_range._to = DB::Log_Base_Item::current_timestamp();
+        count += fill_datamap();
+    }
 
     picojson::array results;
     fill_results(results);
@@ -48,6 +62,13 @@ std::string Chart_Value::permission_name() const
 
 QString Chart_Value::get_table_name() const
 {
+    const uint32_t period_sec = ceil((_time_range._to - _time_range._from) / 1000.);
+    if (period_sec > config()._day_ratio_sec)
+        return Log_Value_Item::table_name() + "_day";
+    else if (period_sec > config()._hour_ratio_sec)
+        return Log_Value_Item::table_name() + "_hour";
+    else if (period_sec > config()._minute_ratio_sec)
+        return Log_Value_Item::table_name() + "_minute";
     return Log_Value_Item::table_name();
 }
 
@@ -76,7 +97,6 @@ QString Chart_Value::get_additional_field_names() const
 void Chart_Value::fill_additional_fields(picojson::object &obj, const QSqlQuery &q, const QVariant &value) const
 {
     const QVariant raw_value = Device_Item_Value::variant_from_string(q.value(FT_VALUE + 1));
-
     if (value != raw_value)
         obj.emplace("raw_value", variant_to_json(raw_value));
 }
@@ -91,7 +111,14 @@ void Chart_Value::parse_params(const served::request &req)
 
     parse_limits(req.query["offset"], req.query["limit"]);
 
-    _range_in_past = _time_range._to < DB::Log_Base_Item::current_timestamp();
+    qint64 now = DB::Log_Base_Item::current_timestamp();
+    _range_in_past = _time_range._to < now;
+
+    now -= config()._close_to_now_sec * 1000;
+    _range_close_to_now = _time_range._to >= now
+                          && (_time_range._to - _time_range._from) < config()._hour_ratio_sec;
+    if (_range_close_to_now)
+        _time_range._to = now;
 }
 
 QString Chart_Value::get_where() const
@@ -200,17 +227,17 @@ int64_t Chart_Value::fill_datamap()
 
 QString Chart_Value::get_full_sql() const
 {
-    QStringList one_point_sql_list;
-    for (const QString& item_id: _data_in_list)
-    {
-        one_point_sql_list.push_back(get_one_point_sql(_time_range._from, item_id, true));
-        if (_range_in_past)
-            one_point_sql_list.push_back(get_one_point_sql(_time_range._to, item_id, false));
-    }
+//    QStringList one_point_sql_list;
+//    for (const QString& item_id: _data_in_list)
+//    {
+//        one_point_sql_list.push_back(get_one_point_sql(_time_range._from, item_id, true));
+//        if (_range_in_past)
+//            one_point_sql_list.push_back(get_one_point_sql(_time_range._to, item_id, false));
+//    }
 
-    return get_base_sql() + ' ' + _where + ' ' + get_limit_suffix(_offset, _limit)
+    return get_base_sql() + ' ' + _where + ' ' + get_limit_suffix(_offset, _limit);
 //            + ';' + get_base_sql("COUNT(*)") + ' ' + _where
-            + ";(" + one_point_sql_list.join(") UNION (") + ')';
+//            + ";(" + one_point_sql_list.join(") UNION (") + ')';
 }
 
 QString Chart_Value::get_base_sql(const QString& what) const

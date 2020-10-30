@@ -88,11 +88,12 @@ void Log_Value_Save_Timer::add_log_value_item(Log_Value_Item item)
 {
     if (!item.is_big_value())
     {
+        const DB::Device_Item_Value_Base& dev_item_value = static_cast<DB::Device_Item_Value_Base&>(item);
         auto waited_it = waited_item_values_.find(item.item_id());
         if (waited_it == waited_item_values_.end())
-            waited_item_values_.emplace(item.item_id(), Device_Item_Value{item});
+            waited_item_values_.emplace(item.item_id(), dev_item_value);
         else
-            waited_it->second = item;
+            waited_it->second = dev_item_value;
     }
 
     if (!item_values_timer_.isActive() || (item.need_to_save() && item_values_timer_.remainingTime() > 500))
@@ -432,9 +433,6 @@ void Log_Value_Save_Timer::save_dig_param_values(std::shared_ptr<QVector<Log_Par
 //    return log_increaser;
 //}
 
-template<typename T> void send_pack_timeout(Ver::Client::Protocol& /*proto*/) {}
-template<> void send_pack_timeout<Log_Status_Item>(Ver::Client::Protocol& proto) { proto.send_statuses(); }
-
 template<typename T>
 void Log_Value_Save_Timer::send(Log_Type_Wrapper log_type, std::shared_ptr<QVector<T> > pack)
 {
@@ -491,24 +489,16 @@ bool Log_Value_Save_Timer::save_to_db(const QVector<T> &pack)
     if (pack.empty())
         return true;
 
-    QVariantList values, tmp_values;
+    QVariantList values;
     for (const T& item: pack)
-    {
         if (can_log_item_save<T>(item))
-        {
-            tmp_values = T::to_variantlist(item);
-            tmp_values.removeFirst();
-            values += tmp_values;
-        }
-    }
+            values += T::to_variantlist(item);
 
     if (values.empty())
         return true;
 
-    Table table = db_table<T>();
-    table.field_names().removeFirst();
-
-    QString sql = "INSERT INTO " + table.name() + '(' + table.field_names().join(',') + ") VALUES" +
+    const Table table = db_table<T>();
+    const QString sql = "INSERT INTO " + table.name() + '(' + table.field_names().join(',') + ") VALUES" +
             Base::get_q_array(table.field_names().size(), values.size() / table.field_names().size());
 
     Base& db = Base::get_thread_local_instance();

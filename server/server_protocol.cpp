@@ -20,7 +20,6 @@ Protocol::Protocol(Worker *work_object) :
     Protocol_Base{ work_object },
     is_copy_(false),
     disable_sync_(false),
-    log_sync_(this),
     structure_sync_(this)
 {
 }
@@ -44,11 +43,6 @@ void Protocol::disable_sync()
 Structure_Synchronizer* Protocol::structure_sync()
 {
     return &structure_sync_;
-}
-
-Log_Synchronizer *Protocol::log_sync()
-{
-    return &log_sync_;
 }
 
 int Protocol::protocol_version() const
@@ -115,7 +109,7 @@ void Protocol::lost_msg_detected(uint8_t /*msg_id*/, uint8_t /*expected*/)
     if (!disable_sync_ && now - last_sync_time_ > std::chrono::seconds(7))
     {
         last_sync_time_ = now;
-        log_sync_.check();
+        log_sync_check();
     }
 }
 
@@ -136,14 +130,13 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
     {
 
     case Cmd::LOG_DATA_REQUEST:
-        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Synchronizer::process_data, &log_sync_, &data_dev, msg_id);
-        break;
     case Cmd::LOG_PACK:
-        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Synchronizer::process_pack, &log_sync_, &data_dev, msg_id);
-        break;
-
-    case Cmd::GROUP_STATUSES:
-        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Structure_Synchronizer::insert_statuses, &structure_sync_);
+        if (Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Synchronizer::process, &_log_sync, &data_dev, *this))
+        {
+            send_answer(cmd, msg_id);
+            if (cmd == Cmd::LOG_DATA_REQUEST)
+                log_sync_check();
+        }
         break;
 
     case Cmd::MODIFY_SCHEME:
@@ -228,7 +221,7 @@ void Protocol::auth(const Authentication_Info &info, bool modified, uint8_t msg_
         if (!disable_sync_)
         {
             structure_sync_.check(modified);
-            log_sync_.check();
+            log_sync_check();
         }
 
         if (!work_object()->recently_connected_.remove(id()))
@@ -293,6 +286,20 @@ void Protocol::stream_data(uint32_t dev_item_id, const QByteArray &data)
 {
     QMetaObject::invokeMethod(work_object()->dbus_, "stream_data", Qt::QueuedConnection,
                               Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, dev_item_id), Q_ARG(QByteArray, data));
+}
+
+void Protocol::log_sync_check()
+{
+    std::set<uint8_t> log_types = _log_sync.get_type_set();
+
+    qCDebug(Sync_Log).noquote() << title() << "request_log_data";
+    for (uint8_t log_type: log_types)
+    {
+        send(Cmd::LOG_DATA_REQUEST).timeout([this, log_type]()
+        {
+            qCWarning(Sync_Log).noquote() << title() << int(log_type) << "request_log_range timeout";
+        }, std::chrono::seconds(15)) << log_type;
+    }
 }
 
 #if 0

@@ -273,7 +273,7 @@ void Scripted_Scheme::register_types()
 }
 
 template<typename T>
-void init_types(QScriptValue& parent, const QString& prop_name, DB::Base_Type_Manager<T>& type_mng)
+void init_types(QScriptValue& parent, const QString& prop_name, DB::Named_Type_Manager<T>& type_mng)
 {
     QScriptValue types_obj = parent.property(prop_name);
     QString name;
@@ -703,12 +703,8 @@ QVector<Device_Item_Value> Scripted_Scheme::get_device_item_values() const
 {
     QVector<Device_Item_Value> values;
     for (const Device* dev: devices())
-    {
         for (const Device_Item* item: dev->items())
-        {
             values.push_back(item->data());
-        }
-    }
     return values;
 }
 

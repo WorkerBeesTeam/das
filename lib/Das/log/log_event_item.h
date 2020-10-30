@@ -10,15 +10,12 @@ namespace DB {
 
 class Log_Event_Item : public Log_Base_Item
 {
-    HELPZ_DB_META(Log_Event_Item, "log_event", "le", DB_AN(id), DB_A(timestamp_msecs), DB_AN(user_id),
+    HELPZ_DB_META(Log_Event_Item, "log_event", "le", DB_A(timestamp_msecs), DB_AN(user_id),
                   DB_A(type_id), DB_A(category), DB_A(text), DB_A(scheme_id))
 public:
-    Log_Event_Item(qint64 timestamp_msecs = 0, uint32_t user_id = 0, bool need_to_inform = false, uint8_t type_id = 0,
-                   const QString& category = {}, const QString& text = {});
-    Log_Event_Item(Log_Event_Item&&) = default;
-    Log_Event_Item(const Log_Event_Item&) = default;
-    Log_Event_Item& operator =(Log_Event_Item&&) = default;
-    Log_Event_Item& operator =(const Log_Event_Item&) = default;
+    explicit Log_Event_Item(qint64 timestamp_msecs = 0, uint32_t user_id = 0, bool need_to_inform = false,
+                            uint8_t type_id = 0, const QString& category = {}, const QString& text = {},
+                            uint32_t scheme_id = default_scheme_id());
 
     enum Event_Types {
         ET_DEBUG = 0,

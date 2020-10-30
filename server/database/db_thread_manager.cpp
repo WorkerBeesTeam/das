@@ -4,10 +4,9 @@ namespace Das {
 namespace DB {
 
 Thread_Manager::Thread_Manager(Helpz::DB::Connection_Info info) :
-    db_thread_(info, 5, 90),
-    db_log_thread_(info, 1)
+    db_thread_(info, 5, 90)
 {
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50)); // TODO: FIXIT
 }
 
 Thread_Manager::~Thread_Manager()
@@ -17,11 +16,6 @@ Thread_Manager::~Thread_Manager()
 Helpz::DB::Thread* Thread_Manager::thread()
 {
     return &db_thread_;
-}
-
-Helpz::DB::Thread *Thread_Manager::log_thread()
-{
-    return &db_log_thread_;
 }
 
 std::shared_ptr<global> Thread_Manager::get_db()

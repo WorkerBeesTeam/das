@@ -50,11 +50,6 @@ Structure_Synchronizer& Protocol::structure_sync()
     return structure_sync_;
 }
 
-void Protocol::send_statuses()
-{
-    send(Cmd::GROUP_STATUSES) << get_group_statuses();
-}
-
 void Protocol::send_stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state)
 {
     send(Cmd::STREAM_TOGGLE).timeout(nullptr, std::chrono::seconds(6)) << user_id << dev_item_id << state;
@@ -132,9 +127,7 @@ void Protocol::ready_write()
 {
     auto ctrl = std::dynamic_pointer_cast<const Helpz::DTLS::Client_Node>(writer());
     if (ctrl)
-    {
         qCDebug(NetClientLog) << "Connected. Server choose protocol:" << ctrl->application_protocol().c_str();
-    }
 
     start_authentication();
 }
@@ -301,6 +294,7 @@ void Protocol::start_authentication()
 
 void Protocol::process_authentication(bool authorized, const QUuid& connection_id)
 {
+    // TODO: В случае неудачи, нужно отключаться и переподключаться через 15 минут.
     qCDebug(NetClientLog) << "Authentication status:" << authorized;
     if (authorized)
     {
@@ -309,6 +303,8 @@ void Protocol::process_authentication(bool authorized, const QUuid& connection_i
             Worker::store_connection_id(connection_id);
         }
     }
+    else
+        worker()->close_net_client();
 }
 
 void Protocol::send_version(uint8_t msg_id)

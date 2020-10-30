@@ -2,11 +2,13 @@
 #define DAS_NETWORK_WEBSOCKET_H
 
 #include <set>
+#include <functional>
 
 #include <QtWebSockets/QWebSocketServer>
 #include <QLoggingCategory>
 #include <QSslError>
 #include <QJsonValue>
+#include <QDataStream>
 #include <QMutex>
 
 #include <Das/device_item.h>
@@ -92,6 +94,10 @@ private slots:
     void socketDisconnected();
 
 private:
+    template<typename T>
+    void send_log_data(const Scheme_Info &scheme, uint8_t cmd, const QVector<T>& data,
+                       std::function<bool(QDataStream&, const T&)> func = nullptr);
+
     bool auth(const QByteArray& token, Websocket_Client& client);
 
     bool stream_toggle(uint32_t dev_item_id, bool state, QWebSocket *socket, uint32_t scheme_id);

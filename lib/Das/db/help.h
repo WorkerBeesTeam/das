@@ -8,7 +8,7 @@
 namespace Das {
 namespace DB {
 
-class DAS_LIBRARY_SHARED_EXPORT Help : public Base_Type
+class DAS_LIBRARY_SHARED_EXPORT Help : public Named_Type
 {
     HELPZ_DB_META(Help, "help", "h", DB_A(id), DB_AN(parent_id), DB_A(name), DB_A(text), DB_AN(scheme_id))
 public:

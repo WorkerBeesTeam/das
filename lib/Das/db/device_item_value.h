@@ -6,25 +6,20 @@
 #include <Helpz/db_meta.h>
 
 #include <Das/daslib_global.h>
+#include <Das/db/base_type.h>
 #include <Das/log/log_base_item.h>
 
 namespace Das {
 namespace DB {
 
-#define DEV_ITEM_DB_META(x, y, z) \
-    HELPZ_DB_META(x, y, z, DB_A(id), \
-              DB_A(timestamp_msecs), DB_AN(user_id), DB_A(item_id), \
-              DB_AT(raw_value), DB_AT(value), DB_A(scheme_id))
+#define DEV_ITEM_DB_META_ARGS \
+      DB_A(timestamp_msecs), DB_AN(user_id), DB_A(item_id), \
+      DB_AT(raw_value), DB_AT(value), DB_A(scheme_id)
 
-class DAS_LIBRARY_SHARED_EXPORT Device_Item_Value : public Log_Base_Item
+class DAS_LIBRARY_SHARED_EXPORT Device_Item_Value_Base : public Log_Base_Item
 {
-    DEV_ITEM_DB_META(Device_Item_Value, "device_item_value", "sdiv")
 public:
-    Device_Item_Value(Device_Item_Value&& other) = default;
-    Device_Item_Value(const Device_Item_Value& other) = default;
-    Device_Item_Value& operator=(Device_Item_Value&& other) = default;
-    Device_Item_Value& operator=(const Device_Item_Value& other) = default;
-    Device_Item_Value(qint64 timestamp_msecs = 0, uint32_t user_id = 0, uint32_t device_item_id = 0,
+    explicit Device_Item_Value_Base(qint64 timestamp_msecs = 0, uint32_t user_id = 0, uint32_t device_item_id = 0,
                       const QVariant& raw = QVariant(),
                       const QVariant& display = QVariant(),
                       bool flag = false);
@@ -51,11 +46,21 @@ private:
     uint32_t item_id_;
     QVariant raw_value_, value_;
 
-    friend QDataStream &operator>>(QDataStream &ds, Device_Item_Value& item);
+    friend QDataStream &operator>>(QDataStream &ds, Device_Item_Value_Base& item);
 };
 
-QDataStream &operator>>(QDataStream &ds, Device_Item_Value& item);
-QDataStream &operator<<(QDataStream &ds, const Device_Item_Value& item);
+QDataStream &operator>>(QDataStream &ds, Device_Item_Value_Base& item);
+QDataStream &operator<<(QDataStream &ds, const Device_Item_Value_Base& item);
+
+class DAS_LIBRARY_SHARED_EXPORT Device_Item_Value : public Device_Item_Value_Base, public ID_Type
+{
+    HELPZ_DB_META(Device_Item_Value, "device_item_value", "sdiv", DB_A(id), DEV_ITEM_DB_META_ARGS)
+public:
+    using Device_Item_Value_Base::Device_Item_Value_Base;
+    using Device_Item_Value_Base::operator =;
+    explicit Device_Item_Value(const Device_Item_Value_Base& o) : Device_Item_Value_Base{o} {}
+    explicit Device_Item_Value(Device_Item_Value_Base&& o) : Device_Item_Value_Base{std::move(o)} {}
+};
 
 } // namespace DB
 

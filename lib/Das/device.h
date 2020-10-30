@@ -13,7 +13,7 @@ struct Device_Item_Type_Manager;
 }
 class Scheme;
 
-class DAS_LIBRARY_SHARED_EXPORT Device : public QObject, public DB::Base_Type, public DB::Device_Extra_Params
+class DAS_LIBRARY_SHARED_EXPORT Device : public QObject, public DB::Named_Type, public DB::Device_Extra_Params
 {
     Q_OBJECT
     Q_PROPERTY(uint32_t id READ id WRITE set_id)
