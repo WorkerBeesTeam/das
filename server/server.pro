@@ -15,7 +15,6 @@ VER_MIN = 5
 include(../common.pri)
 
 LIBS += -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzNetwork -lHelpzDBMeta -lHelpzDB -lHelpzDTLS -lbotan-2 -lboost_system -lboost_thread
-LIBS += -lfmt
 
 SOURCES += main.cpp \
     database/db_scheme.cpp \

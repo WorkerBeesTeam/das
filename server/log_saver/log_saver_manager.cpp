@@ -1,7 +1,5 @@
 #include <future>
 
-#include <fmt/chrono.h>
-
 #include <Helpz/db_builder.h>
 
 #include "log_saver_layers_filler.h"
@@ -150,8 +148,11 @@ void Manager::start_long_term_operation(const QString &name, void (Manager::*fun
             qInfo() << "Begin" << name << "operation";
             auto now = clock::now();
             (this->*func)();
-            qInfo() << "Operation" << name << "finished. It's take"
-                    << fmt::format("{:%H:%M:%S}.", clock::now() - now).c_str();
+
+            time_t t = chrono::duration_cast<chrono::seconds>(clock::now() - now).count();
+            char data[256];
+            strftime(data, 256, "%H:%M:%S", localtime(&t));
+            qInfo() << "Operation" << name << "finished. It's take" << data;
         });
     }
 }
