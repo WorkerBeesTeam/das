@@ -44,6 +44,8 @@ public:
 
         if constexpr (Cache_Type<T>::Is_Comparable::value)
             _cache.add_data(scheme_id, data, time_in_cache);
+        else
+            Q_UNUSED(time_in_cache);
     }
 
     bool empty(bool cache_force = false) const override
