@@ -201,7 +201,7 @@ void Layers_Filler::operator ()()
 
 qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name)
 {
-    _layer_table.set_name(_log_value_table.name() + '_' + name);
+    _layer_table.set_name(DB::Log_Value_Item::table_name() + '_' + name);
 
     qint64 start_ts = get_start_timestamp(time_count);
     if (start_ts == 0)
