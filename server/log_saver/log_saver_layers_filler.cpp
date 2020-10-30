@@ -218,56 +218,56 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name)
         db.del(_layer_table.name(), "timestamp_msecs >= ?", {start_ts});
     }
 
-    qint64 end_ts = start_ts + time_count,
-           final_ts = get_final_timestamp(time_count);
+    qint64 end_ts = 0, final_ts = get_final_timestamp(time_count);
 
     QSqlQuery insert_query{db.database()}; // DB open in get_start_timestamp in Base::select
     insert_query.prepare(db.insert_query(_layer_table, _layer_table.field_names().size()));
-    QVariantList values;
-
-    QSqlQuery log_query{db.database()};
-    log_query.prepare(db.select_query(_log_value_table, "WHERE timestamp_msecs >= ? AND timestamp_msecs < ?"));
-
     Data_Type data;
 
-    while (end_ts <= final_ts)
+    auto process_data = [this, &insert_query, &data](const QString &name)
     {
-        log_query.addBindValue(start_ts);
-        log_query.addBindValue(end_ts);
-        if (!log_query.exec())
-        {
-            qCritical() << "Layer filler: Can't select data from das_log_value:" << log_query.lastError().text();
-            return start_ts;
-        }
+        if (data.empty())
+            return;
 
-        while (log_query.next())
+        QVariantList values;
+        vector<DB::Log_Value_Item> average_data = get_average_data(data);
+        for (const DB::Log_Value_Item& item: average_data)
         {
-            DB::Log_Value_Item item = db_build<DB::Log_Value_Item>(log_query);
-            data[item.scheme_id()][item.item_id()].push_back(move(item));
-        }
-
-        if (!data.empty())
-        {
-            vector<DB::Log_Value_Item> average_data = get_average_data(data);
-            for (const DB::Log_Value_Item& item: average_data)
+            values = DB::Log_Value_Item::to_variantlist(item);
+            for (const QVariant& value: values)
+                insert_query.addBindValue(value);
+            if (!insert_query.exec())
             {
-                values = DB::Log_Value_Item::to_variantlist(item);
-                for (const QVariant& value: values)
-                    insert_query.addBindValue(value);
-                if (!insert_query.exec())
-                {
-                    qWarning() << "Can't insert average log value for layer:" << name
-                               << "error:" << insert_query.lastError().text()
-                               << "data:" << values;
-                }
+                qWarning() << "Can't insert average log value for layer:" << name
+                           << "error:" << insert_query.lastError().text()
+                           << "data:" << values;
             }
-
-            data.clear();
         }
 
-        start_ts = end_ts;
-        end_ts += time_count;
+        data.clear();
+    };
+
+    QSqlQuery log_query = db.select(_log_value_table, "WHERE timestamp_msecs >= ? AND timestamp_msecs < ?",
+                                    {start_ts, final_ts});
+    if (!log_query.exec())
+    {
+        qCritical() << "Layer filler: Can't select data from das_log_value:" << log_query.lastError().text();
+        return start_ts;
     }
+
+    while (log_query.next())
+    {
+        DB::Log_Value_Item item = db_build<DB::Log_Value_Item>(log_query);
+
+        if (end_ts < item.timestamp_msecs())
+        {
+            end_ts = get_next_time(item.timestamp_msecs(), time_count);
+            process_data(name);
+        }
+
+        data[item.scheme_id()][item.item_id()].push_back(move(item));
+    }
+    process_data(name);
 
     return final_ts;
 
