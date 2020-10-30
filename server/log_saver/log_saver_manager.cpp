@@ -35,8 +35,8 @@ Manager::Manager() :
 
 Manager::~Manager()
 {
-    if (_long_term_operation_thread.joinable())
-        _long_term_operation_thread.join();
+    if (_long_term_operation.valid())
+        _long_term_operation.get();
     Layers_Filler::save_start_filling_time();
 
     _instance = nullptr;
@@ -137,13 +137,12 @@ set<DIG_Status> Manager::get_statuses(uint32_t scheme_id)
 
 void Manager::start_long_term_operation(const QString &name, void (Manager::*func)())
 {
-    if (_long_term_operation_thread.joinable())
-        qWarning() << name << "can't be started because" << _long_term_operation_name
-                   << "long-term operation is already running.";
-    else
+    auto status = _long_term_operation.valid() ?
+                future_status::ready : _long_term_operation.wait_for(0s);
+    if (status == future_status::ready)
     {
         _long_term_operation_name = name;
-        _long_term_operation_thread = thread([this, name, func]()
+        _long_term_operation = async(launch::async, [this, name, func]()
         {
             qInfo() << "Begin" << name << "operation";
             auto now = clock::now();
@@ -155,12 +154,14 @@ void Manager::start_long_term_operation(const QString &name, void (Manager::*fun
             qInfo() << "Operation" << name << "finished. It's take" << data;
         });
     }
+    else
+        qWarning() << name << "can't be started because" << _long_term_operation_name
+                   << "long-term operation is already running.";
 }
 
 void Manager::fill_log_value_layers_impl()
 {
     Layers_Filler{}();
-    qInfo() << "Fill log_value layers finished";
 }
 
 void Manager::organize_log_partition_impl()
@@ -191,7 +192,6 @@ PARTITION `p_last` VALUES LESS THAN MAXVALUE);
             .arg(ts(1 * 365.25))
             .arg(ts(0.5 * 365.25))
             .arg(ts(1 * 30.4167)));
-    qInfo() << "Organize log_value partitions finished";
 }
 
 Manager *instance()

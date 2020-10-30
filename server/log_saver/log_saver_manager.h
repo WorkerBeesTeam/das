@@ -1,6 +1,8 @@
 #ifndef DAS_SERVER_LOG_MANAGER_H
 #define DAS_SERVER_LOG_MANAGER_H
 
+#include <future>
+
 #include "log_saver/log_saver_controller.h"
 
 namespace Das {
@@ -31,7 +33,7 @@ private:
     void organize_log_partition_impl();
 
     QString _long_term_operation_name;
-    thread _long_term_operation_thread;
+    future<void> _long_term_operation;
 };
 
 Manager* instance();
