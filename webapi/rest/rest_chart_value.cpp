@@ -218,7 +218,7 @@ int64_t Chart_Value::fill_datamap()
             }
         }
 
-        ++step;
+//        ++step;
     }
     while (q.nextResult());
 

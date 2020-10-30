@@ -159,7 +159,7 @@ void Manager::organize_log_partition_impl()
     auto ts = [now_ts](qint64 time_count_day)
     {
         time_count_day *= 1 * 24 * 60 * 60 * 1000;
-        return get_prev_time(now_ts - time_count_day / 2, time_count_day);
+        return Layers_Filler::get_prev_time(now_ts - time_count_day / 2, time_count_day);
     };
 
     const QString sql = QString(R"sql(

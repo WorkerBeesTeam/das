@@ -24,7 +24,9 @@ template<typename T>
 class Cache_Data
 {
 public:
-    Cache_Data() = default;
+    Cache_Data() :
+        _oldest_cache_time{time_point::max()}
+    {}
     Cache_Data(Cache_Data<T>&& o) :
         _oldest_cache_time{o._oldest_cache_time.load()},
         _data{move(o._data)} {}

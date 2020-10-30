@@ -160,12 +160,12 @@ struct Item_Status
     db.exec(sql, {"log_value_layer_time", _start_filling_time.load()});
 }
 
-/*static*/ qint64 Layers_Filler::get_prev_time(qint64 ts, qint64 time_count) const
+/*static*/ qint64 Layers_Filler::get_prev_time(qint64 ts, qint64 time_count)
 {
     return ts - (ts % time_count);
 }
 
-/*static*/ qint64 Layers_Filler::get_next_time(qint64 ts, qint64 time_count) const
+/*static*/ qint64 Layers_Filler::get_next_time(qint64 ts, qint64 time_count)
 {
     return ts + (time_count - (ts % time_count));
 }

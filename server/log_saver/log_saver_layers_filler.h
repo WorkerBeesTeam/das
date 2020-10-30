@@ -17,8 +17,8 @@ public:
     static void load_start_filling_time();
     static void save_start_filling_time();
 
-    static qint64 get_prev_time(qint64 ts, qint64 time_count) const;
-    static qint64 get_next_time(qint64 ts, qint64 time_count) const;
+    static qint64 get_prev_time(qint64 ts, qint64 time_count);
+    static qint64 get_next_time(qint64 ts, qint64 time_count);
 
     Layers_Filler();
 
@@ -28,9 +28,7 @@ private:
     using Data_Type = map<uint32_t/*scheme_id*/, map<uint32_t/*item_id*/, vector<DB::Log_Value_Item>>>;
 
     qint64 fill_layer(qint64 time_count, const QString& name);
-
     qint64 get_start_timestamp(qint64 time_count) const;
-
     qint64 get_final_timestamp(qint64 time_count) const;
     vector<DB::Log_Value_Item> get_average_data(const Data_Type &data);
 
