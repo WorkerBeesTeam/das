@@ -163,20 +163,24 @@ void Manager::organize_log_partition_impl()
     };
 
     const QString sql = QString(R"sql(
-ALTER TABLE das_log_value%%1
+ALTER TABLE das_log_value%1
 PARTITION BY RANGE (timestamp_msecs) (
-PARTITION `p_year` VALUES LESS THAN (%1),
-PARTITION `p_half_year` VALUES LESS THAN (%2),
-PARTITION `p_1_month` VALUES LESS THAN (%3),
+PARTITION `p_year` VALUES LESS THAN (%2),
+PARTITION `p_half_year` VALUES LESS THAN (%3),
+PARTITION `p_1_month` VALUES LESS THAN (%4),
 PARTITION `p_last` VALUES LESS THAN MAXVALUE);
 )sql")
-            .arg(ts(1 * 365.25))
-            .arg(ts(0.5 * 365.25))
-            .arg(ts(1 * 30.4167));
+            ;
 
     Base& db = Base::get_thread_local_instance();
-    db.exec(sql.arg(QString()));
-    db.exec(sql.arg("_minute"));
+    db.exec(sql.arg(QString())
+            .arg(ts(1 * 365.25))
+            .arg(ts(0.5 * 365.25))
+            .arg(ts(1 * 30.4167)));
+    db.exec(sql.arg("_minute")
+            .arg(ts(1 * 365.25))
+            .arg(ts(0.5 * 365.25))
+            .arg(ts(1 * 30.4167)));
     qInfo() << "Organize log_value partitions finished";
 }
 
