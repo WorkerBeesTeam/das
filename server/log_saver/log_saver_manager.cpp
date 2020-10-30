@@ -54,6 +54,8 @@ void Manager::organize_log_partition()
 
 void Manager::set_devitem_values(QVector<Device_Item_Value> &&data, uint32_t scheme_id)
 {
+    for (Device_Item_Value& item: data)
+        item.set_scheme_id(scheme_id);
     set_cache_data<Log_Value_Item>(move(data), scheme_id);
 }
 
@@ -100,6 +102,7 @@ void Manager::set_statuses(QVector<DIG_Status> &&data, uint32_t scheme_id)
         if (!find_status(status))
         {
             status.set_direction(DIG_Status::SD_DEL);
+            status.set_scheme_id(scheme_id);
             data.push_back(move(status));
         }
 
