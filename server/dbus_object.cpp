@@ -130,6 +130,11 @@ void Dbus_Object::fill_log_value_layers()
     Log_Saver::instance()->fill_log_value_layers();
 }
 
+void Dbus_Object::organize_log_partition()
+{
+    Log_Saver::instance()->organize_log_partition();
+}
+
 void Dbus_Object::send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& data)
 {
     auto node = find_client(scheme_id);
