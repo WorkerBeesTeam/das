@@ -138,7 +138,7 @@ set<DIG_Status> Manager::get_statuses(uint32_t scheme_id)
 void Manager::start_long_term_operation(const QString &name, void (Manager::*func)())
 {
     auto status = _long_term_operation.valid() ?
-                future_status::ready : _long_term_operation.wait_for(0s);
+                _long_term_operation.wait_for(0s) : future_status::ready;
     if (status == future_status::ready)
     {
         _long_term_operation_name = name;
