@@ -162,13 +162,13 @@ void Log_Value_Save_Timer::add_log_event_item(const Log_Event_Item &item)
 
 void Log_Value_Save_Timer::add_param_value(const DIG_Param_Value &param_value)
 {
-    param_pack_.push_back(reinterpret_cast<const Log_Param_Item&>(param_value));
+    param_pack_.push_back(Log_Param_Item{param_value});
     param_values_timer_.start(5);
 }
 
 void Log_Value_Save_Timer::status_changed(const DIG_Status &status)
 {
-    status_pack_.push_back(reinterpret_cast<const Log_Status_Item&>(status));
+    status_pack_.push_back(Log_Status_Item{status});
 
     if (!status_pack_timer_.isActive())
         status_pack_timer_.start(250);
@@ -178,14 +178,13 @@ void Log_Value_Save_Timer::dig_mode_changed(const DIG_Mode &mode)
 {
     DB::Helper::set_mode(mode);
 
-    const Log_Mode_Item& log_mode = reinterpret_cast<const Log_Mode_Item&>(mode);
+    Log_Mode_Item log_mode{mode};
 
     std::shared_ptr<QVector<Log_Mode_Item>> pack = std::make_shared<QVector<Log_Mode_Item>>(QVector<Log_Mode_Item>{log_mode});
-//    pack->
 
-    const QVector<DIG_Mode>& mode_pack = reinterpret_cast<QVector<DIG_Mode>&>(*pack);
+    QVector<DIG_Mode> mode_pack{mode};
     QMetaObject::invokeMethod(worker_->dbus(), "dig_mode_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Mode>, mode_pack));
+                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Mode>, std::move(mode_pack)));
 
     send(Log_Type::LOG_MODE, pack);
 }
@@ -279,9 +278,11 @@ void Log_Value_Save_Timer::send_param_pack()
 
     save_dig_param_values(pack);
 
-    const QVector<DIG_Param_Value>& param_pack = reinterpret_cast<QVector<DIG_Param_Value>&>(*pack);
+    QVector<DIG_Param_Value> param_pack;
+    for (const Log_Param_Item& item: *pack)
+        param_pack.push_back(DIG_Param_Value{item});
     QMetaObject::invokeMethod(worker_->dbus(), "dig_param_values_changed", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Param_Value>, param_pack));
+                              Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Param_Value>, std::move(param_pack)));
 
     send(Log_Type::LOG_PARAM, pack);
 }
@@ -291,7 +292,9 @@ void Log_Value_Save_Timer::send_status_pack()
     std::shared_ptr<QVector<Log_Status_Item>> pack = std::make_shared<QVector<Log_Status_Item>>(std::move(status_pack_));
     status_pack_.clear();
 
-    const QVector<DIG_Status>& status_pack = reinterpret_cast<QVector<DIG_Status>&>(*pack);
+    QVector<DIG_Status> status_pack;
+    for (const Log_Status_Item& item: *pack)
+        status_pack.push_back(DIG_Status{item});
     QMetaObject::invokeMethod(worker_->dbus(), "status_changed", Qt::QueuedConnection,
                               Q_ARG(Scheme_Info, worker_->scheme_info()), Q_ARG(QVector<DIG_Status>, status_pack));
 

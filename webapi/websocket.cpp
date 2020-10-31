@@ -384,7 +384,7 @@ void WebSocket::send_log_data(const Scheme_Info &scheme, uint8_t cmd, const QVec
 
     int size = 0;
     for (const T& item: data)
-        if (item.timestamp_msecs() < old_time && (!func || func(ds, item)))
+        if (item.timestamp_msecs() > old_time && (!func || func(ds, item)))
         {
             if (!func)
                 ds << item;

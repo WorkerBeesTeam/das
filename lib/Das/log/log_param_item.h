@@ -14,6 +14,8 @@ class Log_Param_Item : public DIG_Param_Value_Base2
     HELPZ_DB_META(Log_Param_Item, "log_param", "lp", DIG_PARAM_VALUE_DB_META_ARGS)
 public:
     using DIG_Param_Value_Base2::DIG_Param_Value_Base2;
+    explicit Log_Param_Item(const DIG_Param_Value_Base2& o) : DIG_Param_Value_Base2{o} {}
+    explicit Log_Param_Item(DIG_Param_Value_Base2&& o) : DIG_Param_Value_Base2{std::move(o)} {}
 };
 
 } // namespace DB

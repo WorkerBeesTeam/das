@@ -574,7 +574,7 @@ void Scripted_Scheme::item_changed(Device_Item *item, uint32_t user_id, const QV
         qWarning(SchemeLog).nospace() << user_id << "|Неправильный параметр сохранения: " << item->toString();
     }
     bool immediately = save_algorithm == Device_Item_Type::SA_IMMEDIATELY;
-    Log_Value_Item log_value_item = reinterpret_cast<const Log_Value_Item&>(item->data());
+    Log_Value_Item log_value_item{static_cast<const DB::Device_Item_Value_Base&>(item->data())};
     log_value_item.set_need_to_save(immediately);
     emit log_item_available(log_value_item);
 

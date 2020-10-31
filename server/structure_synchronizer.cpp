@@ -134,7 +134,7 @@ void Structure_Synchronizer::check_values_or_statuses(Cmd::Command_Type cmd, voi
     })
             .timeout([this, cmd, set_cache]()
     {
-        qCWarning(Struct_Log).noquote() << title() << "Timeout to reveice" << cmd;
+        qCWarning(Struct_Log).noquote() << title() << "Timeout to receive" << cmd;
         check_values_or_statuses<T>(cmd, set_cache);
     }, std::chrono::seconds(10), std::chrono::seconds(3));
 }

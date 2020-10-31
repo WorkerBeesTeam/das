@@ -20,7 +20,7 @@ private:
     HELPZ_DB_META(DIG_Param_Type, "dig_param_type", "gpt", DB_A(id), DB_A(name), DB_A(title),
                   DB_ANS(description), DB_A(value_type), DB_AM(group_type_id), DB_AMN(parent_id), DB_A(scheme_id))
 public:
-    enum Value_Type
+    enum Value_Type : uint8_t
     {
         VT_UNKNOWN = 0,
         VT_INT,
