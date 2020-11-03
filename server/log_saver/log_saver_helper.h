@@ -79,7 +79,7 @@ template<>
 inline vector<uint32_t> Cache_Helper<Device_Item_Value>::get_values_fields()
 {
     using T = Device_Item_Value;
-    return { T::COL_timestamp_msecs, T::COL_user_id, T::COL_value, T::COL_raw_value };
+    return { T::COL_timestamp_msecs, T::COL_user_id, T::COL_raw_value, T::COL_value };
 }
 
 
