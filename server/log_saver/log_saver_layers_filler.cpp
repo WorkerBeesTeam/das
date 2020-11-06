@@ -314,8 +314,8 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name, qint64 
         end_ts += time_count;
     }
 
-    qCDebug(LogLayerFiller)
-            << "Log layer" << name << "filled. From:" << start_ts_s << "to" << final_ts
+    qCDebug(LogLayerFiller).noquote()
+            << name << "filled. " << (start_ts_s / 1000) << "->" << (final_ts / 1000)
             << "S:" << selected << (elapsed / 1000.)
             << "I:" << inserted << (insert_elapsed / 1000.)
             << "D:" << deleted << (del_elapsed / 1000.);

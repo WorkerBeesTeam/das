@@ -158,18 +158,18 @@ void Manager::start_long_term_operation(const QString &name, void (Manager::*fun
         _long_term_operation_name = name;
         _long_term_operation = async(launch::async, [this, name, func]()
         {
-            qInfo() << "Begin" << name << "operation";
+            qCInfo(Log_Saver_Log) << "Begin" << name << "operation";
             auto now = clock::now();
             (this->*func)();
 
             time_t t = chrono::duration_cast<chrono::seconds>(clock::now() - now).count();
             char data[256];
             strftime(data, 256, "%H:%M:%S", localtime(&t));
-            qInfo() << "Operation" << name << "finished. It's take" << data;
+            qCInfo(Log_Saver_Log) << "Operation" << name << "finished. It's take" << data;
         });
     }
     else
-        qWarning() << name << "can't be started because" << _long_term_operation_name
+        qCWarning(Log_Saver_Log) << name << "can't be started because" << _long_term_operation_name
                    << "long-term operation is already running.";
 }
 
