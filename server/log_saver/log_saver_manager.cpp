@@ -22,14 +22,14 @@ Manager::Manager() :
 {
     _instance = this;
 
-    Layers_Filler::load_start_filling_time();
+    Layers_Filler::start_filling_time().load();
     set_after_insert_log_callback<Log_Value_Item>([](const vector<Log_Value_Item>& data)
     {
         qint64 min_ts = numeric_limits<qint64>::max();
         for (const Log_Value_Item& item: data)
             if (min_ts > item.timestamp_msecs())
                 min_ts = item.timestamp_msecs();
-        Layers_Filler::set_start_filling_time(min_ts);
+        Layers_Filler::start_filling_time().set(min_ts);
     });
 }
 
@@ -37,7 +37,7 @@ Manager::~Manager()
 {
     if (_long_term_operation.valid())
         _long_term_operation.get();
-    Layers_Filler::save_start_filling_time();
+    Layers_Filler::start_filling_time().save();
 
     _instance = nullptr;
 }

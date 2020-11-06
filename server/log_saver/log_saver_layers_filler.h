@@ -9,13 +9,23 @@ namespace Das {
 namespace Server {
 namespace Log_Saver {
 
+class Layers_Filler_Time_Item
+{
+public:
+    Layers_Filler_Time_Item();
+    qint64 get() const;
+    void set(qint64 ts);
+    void load();
+    void save() const;
+
+private:
+    atomic<qint64> _time;
+};
+
 class Layers_Filler
 {
-    static atomic<qint64> _start_filling_time;
 public:
-    static void set_start_filling_time(qint64 ts);
-    static void load_start_filling_time();
-    static void save_start_filling_time();
+    static Layers_Filler_Time_Item& start_filling_time();
 
     static qint64 get_prev_time(qint64 ts, qint64 time_count);
     static qint64 get_next_time(qint64 ts, qint64 time_count);
@@ -31,7 +41,7 @@ private:
     qint64 get_start_timestamp(qint64 time_count) const;
     qint64 get_final_timestamp(qint64 time_count) const;
     vector<DB::Log_Value_Item> get_average_data(const Data_Type &data);
-    void process_data(Data_Type &data, const QString& name);
+    int process_data(Data_Type &data, const QString& name);
 
     qint64 _last_end_time;
     Helpz::DB::Table _log_value_table, _layer_table;
