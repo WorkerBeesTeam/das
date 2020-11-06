@@ -25,11 +25,21 @@ Manager::Manager() :
     Layers_Filler::start_filling_time().load();
     set_after_insert_log_callback<Log_Value_Item>([](const vector<Log_Value_Item>& data)
     {
-        qint64 min_ts = numeric_limits<qint64>::max();
+        map<uint32_t, qint64> scheme_time;
+        map<uint32_t, qint64>::iterator it = scheme_time.end();
         for (const Log_Value_Item& item: data)
-            if (min_ts > item.timestamp_msecs())
-                min_ts = item.timestamp_msecs();
-        Layers_Filler::start_filling_time().set(min_ts);
+        {
+            if (it == scheme_time.end() || it->first != item.scheme_id())
+            {
+                it = scheme_time.find(item.scheme_id());
+                if (it == scheme_time.end())
+                    it = scheme_time.emplace(item.scheme_id(), numeric_limits<qint64>::max()).first;
+            }
+
+            if (it->second > item.timestamp_msecs())
+                it->second = item.timestamp_msecs();
+        }
+        Layers_Filler::start_filling_time().set_scheme_time(scheme_time);
     });
 }
 

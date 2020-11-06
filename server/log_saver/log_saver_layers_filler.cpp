@@ -136,25 +136,41 @@ struct Item_Status
 // ----------------------Layers_Filler_Time_Item-----------------------
 
 Layers_Filler_Time_Item::Layers_Filler_Time_Item() :
-    _time{0}
+    _time{0}, _estimated_time{0}
 {
 }
 
-qint64 Layers_Filler_Time_Item::get() const
+pair<qint64, map<uint32_t, qint64> > Layers_Filler_Time_Item::get(qint64 estimated_time)
 {
-    return _time.load();
+    lock_guard lock(_mutex);
+    _estimated_time = estimated_time;
+    auto p = make_pair(_time, move(_scheme_time));
+    _scheme_time = map<uint32_t, qint64>{};
+    return p;
 }
 
 void Layers_Filler_Time_Item::set(qint64 ts)
 {
-    qint64 old_ts = _time.load();
-    if (old_ts == 0 || old_ts > ts)
+    lock_guard lock(_mutex);
+    _time = ts;
+    _estimated_time = ts;
+}
+
+void Layers_Filler_Time_Item::set_scheme_time(const map<uint32_t, qint64> &scheme_time)
+{
+    lock_guard lock(_mutex);
+    map<uint32_t, qint64>::iterator it;
+
+    for (const pair<uint32_t, qint64>& item: scheme_time)
     {
-        if (!_time.compare_exchange_strong(old_ts, ts))
-            set(ts);
+        if (item.second > _estimated_time)
+            continue;
+        it = _scheme_time.find(item.first);
+        if (it == _scheme_time.end())
+            it = _scheme_time.emplace(item.first, numeric_limits<qint64>::max()).first;
+        if (it->second > item.second)
+            it->second = item.second;
     }
-    else if (old_ts != _time.load())
-        set(ts);
 }
 
 void Layers_Filler_Time_Item::load()
@@ -162,14 +178,22 @@ void Layers_Filler_Time_Item::load()
     Base& db = Base::get_thread_local_instance();
     auto q = db.select({"das_settings", {}, {"value"}}, "WHERE param = 'log_value_layer_time'");
     if (q.next())
+    {
+        lock_guard lock(_mutex);
         _time = q.value(0).toLongLong();
+    }
 }
 
-void Layers_Filler_Time_Item::save() const
+void Layers_Filler_Time_Item::save()
 {
+    auto [save_time, scheme_time] = get(0);
+    for (const pair<uint32_t, qint64>& item: scheme_time)
+        if (save_time > item.second)
+            save_time = item.second;
+
     const QString sql = "INSERT INTO das_settings(param, value) VALUES(?,?) ON DUPLICATE KEY UPDATE value = VALUES(value)";
     Base& db = Base::get_thread_local_instance();
-    db.exec(sql, {"log_value_layer_time", _time.load()});
+    db.exec(sql, {"log_value_layer_time", save_time});
 }
 
 // ---------------------------------------------
@@ -203,13 +227,23 @@ Layers_Filler::Layers_Filler() :
 
 void Layers_Filler::operator ()()
 {
-    _last_end_time = start_filling_time().get();
+    // TODO: Нужно прекращать текущее заполнение слоёв без установки финишного времени
+    // если поевились данные младше чем final_ts в scheme_time,
+    // затем из слоёв удаляются данные указанных схем, от минимального времени,
+    // до финишного. После чего слои заполняются только данным этих схем до последнего
+    // финишного. А затем начинается заполнение в обычном режиме, от последнего финишного, до конца.
 
-    qint64 final_ts, max_ts = 0;
+    qint64 max_ts = 0;
+    qint64 final_ts = get_final_timestamp(_layers_info.begin()->first) + 1000;
+
+    auto [last_save_time, scheme_time] = start_filling_time().get(final_ts);
+    for (const pair<uint32_t, qint64>& item: scheme_time)
+        if (last_save_time > item.second)
+            last_save_time = item.second;
 
     for (auto&& it: _layers_info)
     {
-        final_ts = fill_layer(it.first, it.second);
+        final_ts = fill_layer(it.first, it.second, last_save_time);
         if (max_ts < final_ts)
             max_ts = final_ts;
 
@@ -219,7 +253,7 @@ void Layers_Filler::operator ()()
     start_filling_time().set(max_ts);
 }
 
-qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name)
+qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name, qint64 last_end_time)
 {
     QElapsedTimer t; t.start();
     _layer_table.set_name(DB::Log_Value_Item::table_name() + '_' + name);
@@ -231,20 +265,19 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name)
         return 0; // TODO: ?
     }
 
-    int selected = 0, inserted = 0;
-    qint64 insert_elapsed = 0, elapsed = t.restart();
+    int selected = 0, inserted = 0, deleted = 0;
+    qint64 insert_elapsed = 0, del_elapsed = 0, elapsed = t.restart();
     if (elapsed > 5)
         qCDebug(LogLayerFiller) << "get_start_timestamp elapsed" << elapsed;
     elapsed = 0;
 
     Base& db = Base::get_thread_local_instance();
 
-    if (_last_end_time != 0 && start_ts > _last_end_time)
+    if (last_end_time != 0 && start_ts > last_end_time)
     {
-        start_ts = get_prev_time(_last_end_time, time_count);
-        int rows = db.del(_layer_table.name(), "timestamp_msecs >= ?", {start_ts}).numRowsAffected();
-        if (rows)
-            qCDebug(LogLayerFiller) << "Delete" << rows << "rows from" << name << "log_value layer. Elapsed:" << t.restart();
+        start_ts = get_prev_time(last_end_time, time_count);
+        deleted = db.del(_layer_table.name(), "timestamp_msecs >= ?", {start_ts}).numRowsAffected();
+        del_elapsed = t.restart();
     }
 
     qint64 end_ts = start_ts + time_count, start_ts_s = start_ts,
@@ -283,8 +316,9 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name)
 
     qCDebug(LogLayerFiller)
             << "Log layer" << name << "filled. From:" << start_ts_s << "to" << final_ts
-            << "Selected:" << selected << (elapsed / 1000.)
-            << "Inserted:" << inserted << (insert_elapsed / 1000.);
+            << "S:" << selected << (elapsed / 1000.)
+            << "I:" << inserted << (insert_elapsed / 1000.)
+            << "D:" << deleted << (del_elapsed / 1000.);
 
     return final_ts;
 
