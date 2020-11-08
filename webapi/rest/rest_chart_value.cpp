@@ -279,24 +279,29 @@ picojson::object Chart_Value::get_data_item(const QSqlQuery& query, int64_t time
 
 picojson::value Chart_Value::variant_to_json(const QVariant& value) const
 {
-    const QJsonValue data = QJsonValue::fromVariant(value);
-    switch (data.type())
+    try
     {
-    case QJsonValue::Null:
-    case QJsonValue::Undefined:
-        return picojson::value();
+        const QJsonValue data = QJsonValue::fromVariant(value);
+        switch (data.type())
+        {
+        case QJsonValue::Null:
+        case QJsonValue::Undefined:
+            return picojson::value();
 
-    case QJsonValue::Bool:
-        return picojson::value(data.toBool());
+        case QJsonValue::Bool:
+            return picojson::value(data.toBool());
 
-    case QJsonValue::Double:
-        return picojson::value(data.toDouble());
+        case QJsonValue::Double:
+            return picojson::value(data.toDouble());
 
-    case QJsonValue::String:
-        return picojson::value(data.toString().toStdString());
-    default:
-        break;
+        case QJsonValue::String:
+            return picojson::value(data.toString().toStdString());
+        default:
+            break;
+        }
     }
+    catch (const std::exception&) {}
+    catch (...) {}
 
     return picojson::value(value.toString().toStdString());
 }
