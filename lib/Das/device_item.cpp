@@ -248,7 +248,7 @@ bool Device_Item::set_raw_value(const QVariant& raw_data, bool force, uint32_t u
     const QVariant raw_value = data_.raw_value();
 
     if (force || raw_data.isValid() != raw_value.isValid() || raw_value.type() != raw_data.type() || raw_value != raw_data
-            || data_.value().type() != display_data.type() || data_.value() != display_data)
+        || data_.value().type() != display_data.type() || data_.value() != display_data)
     {
         data_.set_timestamp_msecs(value_time);
         data_.set_user_id(user_id);
@@ -288,6 +288,10 @@ bool Device_Item::is_connected() const { return connection_state_real() && data_
 
 bool Device_Item::set_connection_state(bool value, bool silent)
 {
+    static const QMetaMethod clarify_connection_state_signal = QMetaMethod::fromSignal(&Device_Item::clarify_connection_state);
+    if (isSignalConnected(clarify_connection_state_signal))
+        value = clarify_connection_state(value);
+
     if (connection_state_real() != value)
     {
         set_connection_state_real(value);

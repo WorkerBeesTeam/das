@@ -681,6 +681,19 @@ void Scripted_Scheme::connect_item_display_to_raw(Device_Item *item, const QScri
     }
 }
 
+void Scripted_Scheme::connect_item_clarify_connection_state(Device_Item *item, const QScriptValue &obj, const QScriptValue &func)
+{
+    if (item && func.isFunction())
+    {
+        connect(item, &Device_Item::clarify_connection_state, [this, obj, func](bool state) -> bool
+        {
+            QScriptValue f = func;
+            QScriptValue res = f.call(obj, QScriptValueList{ state });
+            return res.toBool();
+        });
+    }
+}
+
 QVector<DIG_Status> Scripted_Scheme::get_group_statuses() const
 {
     QVector<DIG_Status> status_vect;

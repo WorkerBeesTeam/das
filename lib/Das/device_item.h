@@ -80,6 +80,7 @@ signals:
     void connection_state_changed(bool state);
     void value_changed(uint32_t user_id, const QVariant& old_raw_value);
     bool is_can_change(const QVariant& display_value, uint32_t user_id = 0);
+    bool clarify_connection_state(bool state);
     QVariant raw_to_display(const QVariant& val);
     QVariant display_to_raw(const QVariant& val);
 public slots:

@@ -145,6 +145,10 @@ api.init_as_group_manager = function(obj, group)
         if (typeof func === 'function')
             api.mng.connect_item_display_to_raw(item, obj, func); // args: data
 
+        func = obj['on_' + type_name + '_clarify_connection_state'];
+        if (typeof func === 'function')
+            api.mng.connect_item_clarify_connection_state(item, obj, func); // args: state
+
         func = obj['is_' + type_name + '_can_change'];
         if (typeof func === 'function')
             api.mng.connect_item_is_can_change(item, obj, func); // args: raw_data, user_id

@@ -98,6 +98,7 @@ public slots:
     void connect_item_is_can_change(Device_Item *item, const QScriptValue& obj, const QScriptValue& func);
     void connect_item_raw_to_display(Device_Item *item, const QScriptValue& obj, const QScriptValue& func);
     void connect_item_display_to_raw(Device_Item *item, const QScriptValue& obj, const QScriptValue& func);
+    void connect_item_clarify_connection_state(Device_Item *item, const QScriptValue& obj, const QScriptValue& func);
 
     QVector<DIG_Status> get_group_statuses() const;
     QVector<Device_Item_Value> get_device_item_values() const;
