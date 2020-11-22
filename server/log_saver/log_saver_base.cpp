@@ -13,6 +13,8 @@ namespace Log_Saver {
 using namespace std;
 using namespace Helpz::DB;
 
+Q_LOGGING_CATEGORY(Log_Saver_Log, "logSaver")
+
 void Saver_Base::save_dump_to_file(size_t type_code, const QVariantList &data)
 {
     QFile file(QString("fail_log_%1.dat").arg(type_code));
@@ -24,7 +26,7 @@ void Saver_Base::save_dump_to_file(size_t type_code, const QVariantList &data)
         ds << data;
     }
     else
-        qCritical() << "Log type" << type_code << "finally lost. Can't open dump file: " << file.errorString();
+        qCCritical(Log_Saver_Log) << "Log type" << type_code << "finally lost. Can't open dump file: " << file.errorString();
 }
 
 QVariantList Saver_Base::load_dump_file(size_t type_code)
@@ -41,7 +43,7 @@ QVariantList Saver_Base::load_dump_file(size_t type_code)
             QVariantList pack;
             ds >> pack;
             if (ds.status() != QDataStream::Ok)
-                qWarning() << "Log" << type_code << "dump file read fail:"
+                qCWarning(Log_Saver_Log) << "Log" << type_code << "dump file read fail:"
                            << (ds.status() == QDataStream::ReadPastEnd ?
                                    "read past end" : "read corrupt data");
             else
@@ -50,7 +52,7 @@ QVariantList Saver_Base::load_dump_file(size_t type_code)
         file.resize(0);
     }
     else
-        qCritical() << "Can't open log" << type_code << "dump file: " << file.errorString();
+        qCCritical(Log_Saver_Log) << "Can't open log" << type_code << "dump file: " << file.errorString();
     return data;
 }
 

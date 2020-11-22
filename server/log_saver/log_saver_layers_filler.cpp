@@ -1,5 +1,7 @@
 
 #include <QSqlError>
+#include <QElapsedTimer>
+#include <QLoggingCategory>
 
 #include <Helpz/db_base.h>
 #include <Helpz/db_builder.h>
@@ -10,6 +12,8 @@
 namespace Das {
 namespace Server {
 namespace Log_Saver {
+
+Q_LOGGING_CATEGORY(LogLayerFiller, "logSaver.layerFiller")
 
 using namespace Helpz::DB;
 
@@ -129,35 +133,75 @@ struct Item_Status
     } _value, _raw_value;
 };
 
-// ---------------------------------------------
+// ----------------------Layers_Filler_Time_Item-----------------------
 
-/*static*/ atomic<qint64> Layers_Filler::_start_filling_time{0};
-
-/*static*/ void Layers_Filler::set_start_filling_time(qint64 ts)
+Layers_Filler_Time_Item::Layers_Filler_Time_Item() :
+    _time{0}, _estimated_time{0}
 {
-    qint64 old_ts = _start_filling_time.load();
-    if (old_ts == 0 || old_ts > ts)
-    {
-        if (!_start_filling_time.compare_exchange_strong(old_ts, ts))
-            set_start_filling_time(ts);
-    }
-    else if (old_ts != _start_filling_time.load())
-        set_start_filling_time(ts);
 }
 
-/*static*/ void Layers_Filler::load_start_filling_time()
+pair<qint64, map<uint32_t, qint64> > Layers_Filler_Time_Item::get(qint64 estimated_time)
+{
+    lock_guard lock(_mutex);
+    _estimated_time = estimated_time;
+    auto p = make_pair(_time, move(_scheme_time));
+    _scheme_time = map<uint32_t, qint64>{};
+    return p;
+}
+
+void Layers_Filler_Time_Item::set(qint64 ts)
+{
+    lock_guard lock(_mutex);
+    _time = ts;
+    _estimated_time = ts;
+}
+
+void Layers_Filler_Time_Item::set_scheme_time(const map<uint32_t, qint64> &scheme_time)
+{
+    lock_guard lock(_mutex);
+    map<uint32_t, qint64>::iterator it;
+
+    for (const pair<uint32_t, qint64>& item: scheme_time)
+    {
+        if (item.second > _estimated_time)
+            continue;
+        it = _scheme_time.find(item.first);
+        if (it == _scheme_time.end())
+            it = _scheme_time.emplace(item.first, numeric_limits<qint64>::max()).first;
+        if (it->second > item.second)
+            it->second = item.second;
+    }
+}
+
+void Layers_Filler_Time_Item::load()
 {
     Base& db = Base::get_thread_local_instance();
     auto q = db.select({"das_settings", {}, {"value"}}, "WHERE param = 'log_value_layer_time'");
     if (q.next())
-        _start_filling_time = q.value(0).toLongLong();
+    {
+        lock_guard lock(_mutex);
+        _time = q.value(0).toLongLong();
+    }
 }
 
-/*static*/ void Layers_Filler::save_start_filling_time()
+void Layers_Filler_Time_Item::save()
 {
+    auto [save_time, scheme_time] = get(0);
+    for (const pair<uint32_t, qint64>& item: scheme_time)
+        if (save_time > item.second)
+            save_time = item.second;
+
     const QString sql = "INSERT INTO das_settings(param, value) VALUES(?,?) ON DUPLICATE KEY UPDATE value = VALUES(value)";
     Base& db = Base::get_thread_local_instance();
-    db.exec(sql, {"log_value_layer_time", _start_filling_time.load()});
+    db.exec(sql, {"log_value_layer_time", save_time});
+}
+
+// ---------------------------------------------
+
+/*static*/ Layers_Filler_Time_Item &Layers_Filler::start_filling_time()
+{
+    static Layers_Filler_Time_Item item;
+    return item;
 }
 
 /*static*/ qint64 Layers_Filler::get_prev_time(qint64 ts, qint64 time_count)
@@ -183,42 +227,60 @@ Layers_Filler::Layers_Filler() :
 
 void Layers_Filler::operator ()()
 {
-    _last_end_time = _start_filling_time.load();
+    // TODO: Нужно прекращать текущее заполнение слоёв без установки финишного времени
+    // если поевились данные младше чем final_ts в scheme_time,
+    // затем из слоёв удаляются данные указанных схем, от минимального времени,
+    // до финишного. После чего слои заполняются только данным этих схем до последнего
+    // финишного. А затем начинается заполнение в обычном режиме, от последнего финишного, до конца.
 
-    qint64 final_ts, max_ts = 0;
+    qint64 max_ts = 0;
+    qint64 final_ts = get_final_timestamp(_layers_info.begin()->first) + 1000;
+
+    auto [last_save_time, scheme_time] = start_filling_time().get(final_ts);
+    for (const pair<uint32_t, qint64>& item: scheme_time)
+        if (last_save_time > item.second)
+            last_save_time = item.second;
 
     for (auto&& it: _layers_info)
     {
-        final_ts = fill_layer(it.first, it.second);
+        final_ts = fill_layer(it.first, it.second, last_save_time);
         if (max_ts < final_ts)
             max_ts = final_ts;
 
         _log_value_table.set_name(DB::Log_Value_Item::table_name() + '_' + it.second);
     }
 
-    set_start_filling_time(max_ts);
+    start_filling_time().set(max_ts);
 }
 
-qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name)
+qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name, qint64 last_end_time)
 {
+    QElapsedTimer t; t.start();
     _layer_table.set_name(DB::Log_Value_Item::table_name() + '_' + name);
 
     qint64 start_ts = get_start_timestamp(time_count);
     if (start_ts == 0)
     {
-        qWarning() << "das_log_value is empty?";
+        qCWarning(LogLayerFiller) << "das_log_value is empty?";
         return 0; // TODO: ?
     }
 
+    int selected = 0, inserted = 0, deleted = 0;
+    qint64 insert_elapsed = 0, del_elapsed = 0, elapsed = t.restart();
+    if (elapsed > 5)
+        qCDebug(LogLayerFiller) << "get_start_timestamp elapsed" << elapsed;
+    elapsed = 0;
+
     Base& db = Base::get_thread_local_instance();
 
-    if (_last_end_time != 0 && start_ts > _last_end_time)
+    if (last_end_time != 0 && start_ts > last_end_time)
     {
-        start_ts = get_prev_time(_last_end_time, time_count);
-        db.del(_layer_table.name(), "timestamp_msecs >= ?", {start_ts});
+        start_ts = get_prev_time(last_end_time, time_count);
+        deleted = db.del(_layer_table.name(), "timestamp_msecs >= ?", {start_ts}).numRowsAffected();
+        del_elapsed = t.restart();
     }
 
-    qint64 end_ts = start_ts + time_count,
+    qint64 end_ts = start_ts + time_count, start_ts_s = start_ts,
            final_ts = get_final_timestamp(time_count);
     Data_Type data;
 
@@ -231,7 +293,7 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name)
         log_query.addBindValue(end_ts);
         if (!log_query.exec())
         {
-            qCritical() << "Layer filler: Can't select data from das_log_value:" << log_query.lastError().text();
+            qCCritical(LogLayerFiller) << "Layer filler: Can't select data from das_log_value:" << log_query.lastError().text();
             return start_ts;
         }
 
@@ -239,17 +301,27 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name)
         {
             DB::Log_Value_Item item = db_build<DB::Log_Value_Item>(log_query);
             data[item.scheme_id()][item.item_id()].push_back(move(item));
+            ++selected;
         }
 
-        process_data(data, name);
+        elapsed += t.restart();
+
+        inserted += process_data(data, name);
+
+        insert_elapsed += t.restart();
 
         start_ts = end_ts;
         end_ts += time_count;
     }
 
-    return final_ts;
+    if (inserted || deleted)
+        qCDebug(LogLayerFiller).noquote()
+            << name << ":" << (start_ts_s / 1000) << "->" << (final_ts / 1000)
+            << "S:" << selected << (elapsed / 1000.)
+            << "I:" << inserted << (insert_elapsed / 1000.)
+            << "D:" << deleted << (del_elapsed / 1000.);
 
-    // TODO: Сделать Das_Settings::scheme_id возможным NULL.
+    return final_ts;
 
     // TODO: Сделать запрос всей структуры схемы из фронта через webapi (api/v2)
     // и в webapi получать кэшированные значения у сервера перед отдачей структуры во фронт.
@@ -318,10 +390,10 @@ vector<DB::Log_Value_Item> Layers_Filler::get_average_data(const Layers_Filler::
     return average;
 }
 
-void Layers_Filler::process_data(Layers_Filler::Data_Type &data, const QString &name)
+int Layers_Filler::process_data(Layers_Filler::Data_Type &data, const QString &name)
 {
     if (data.empty())
-        return;
+        return 0;
 
     QVariantList values;
     {
@@ -331,12 +403,14 @@ void Layers_Filler::process_data(Layers_Filler::Data_Type &data, const QString &
         data.clear();
     }
 
-    const QString sql = "INSERT INTO " + _layer_table.name() + '(' + _layer_table.field_names().join(',') + ") VALUES" +
+    const QString sql = "INSERT IGNORE INTO " + _layer_table.name() + '(' + _layer_table.field_names().join(',') + ") VALUES" +
             Base::get_q_array(_layer_table.field_names().size(), values.size() / _layer_table.field_names().size());
     Base& db = Base::get_thread_local_instance();
-    if (!db.exec(sql, values).isActive())
-        qWarning() << "Can't insert average log value for layer:" << name
+    auto q = db.exec(sql, values);
+    if (!q.isActive())
+        qCWarning(LogLayerFiller) << "Can't insert average log value for layer:" << name
                    << "data:" << values;
+    return q.numRowsAffected();
 }
 
 } // namespace Log_Saver

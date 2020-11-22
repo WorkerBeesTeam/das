@@ -118,13 +118,16 @@ private:
         const QString sql = get_custom_q_array(table, values_pack.size() / table.field_names().size());
         if (!db.exec(sql, values_pack).isActive())
         {
-            for (int i = 0; i < values_pack.size(); )
+            if (Log_Saver_Log().isCriticalEnabled())
             {
-                auto dbg = qCritical().noquote() << "Lost log " << typeid(T).name();
-                for (const QString& name: table.field_names())
+                for (int i = 0; i < values_pack.size(); )
                 {
-                    dbg << name << '=' << values_pack.at(i).toString() << ' ';
-                    ++i;
+                    auto dbg = qCritical(Log_Saver_Log).noquote() << "Lost log " << typeid(T).name();
+                    for (const QString& name: table.field_names())
+                    {
+                        dbg << name << '=' << values_pack.at(i).toString() << ' ';
+                        ++i;
+                    }
                 }
             }
             // TODO: Try to insert each separately. With check duplicate?

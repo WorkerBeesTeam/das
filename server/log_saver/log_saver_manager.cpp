@@ -22,14 +22,24 @@ Manager::Manager() :
 {
     _instance = this;
 
-    Layers_Filler::load_start_filling_time();
+    Layers_Filler::start_filling_time().load();
     set_after_insert_log_callback<Log_Value_Item>([](const vector<Log_Value_Item>& data)
     {
-        qint64 min_ts = numeric_limits<qint64>::max();
+        map<uint32_t, qint64> scheme_time;
+        map<uint32_t, qint64>::iterator it = scheme_time.end();
         for (const Log_Value_Item& item: data)
-            if (min_ts > item.timestamp_msecs())
-                min_ts = item.timestamp_msecs();
-        Layers_Filler::set_start_filling_time(min_ts);
+        {
+            if (it == scheme_time.end() || it->first != item.scheme_id())
+            {
+                it = scheme_time.find(item.scheme_id());
+                if (it == scheme_time.end())
+                    it = scheme_time.emplace(item.scheme_id(), numeric_limits<qint64>::max()).first;
+            }
+
+            if (it->second > item.timestamp_msecs())
+                it->second = item.timestamp_msecs();
+        }
+        Layers_Filler::start_filling_time().set_scheme_time(scheme_time);
     });
 }
 
@@ -37,7 +47,7 @@ Manager::~Manager()
 {
     if (_long_term_operation.valid())
         _long_term_operation.get();
-    Layers_Filler::save_start_filling_time();
+    Layers_Filler::start_filling_time().save();
 
     _instance = nullptr;
 }
@@ -148,18 +158,18 @@ void Manager::start_long_term_operation(const QString &name, void (Manager::*fun
         _long_term_operation_name = name;
         _long_term_operation = async(launch::async, [this, name, func]()
         {
-            qInfo() << "Begin" << name << "operation";
+            qCInfo(Log_Saver_Log) << "Begin" << name << "operation";
             auto now = clock::now();
             (this->*func)();
 
             time_t t = chrono::duration_cast<chrono::seconds>(clock::now() - now).count();
             char data[256];
             strftime(data, 256, "%H:%M:%S", localtime(&t));
-            qInfo() << "Operation" << name << "finished. It's take" << data;
+            qCInfo(Log_Saver_Log) << "Operation" << name << "finished. It's take" << data;
         });
     }
     else
-        qWarning() << name << "can't be started because" << _long_term_operation_name
+        qCWarning(Log_Saver_Log) << name << "can't be started because" << _long_term_operation_name
                    << "long-term operation is already running.";
 }
 

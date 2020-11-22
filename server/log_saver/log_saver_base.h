@@ -4,6 +4,7 @@
 #include <mutex>
 
 #include <QVariantList>
+#include <QLoggingCategory>
 
 #include <Helpz/db_table.h>
 
@@ -12,6 +13,8 @@
 namespace Das {
 namespace Server {
 namespace Log_Saver {
+
+Q_DECLARE_LOGGING_CATEGORY(Log_Saver_Log)
 
 using namespace Helpz::DB;
 
