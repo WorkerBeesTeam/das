@@ -252,7 +252,7 @@ bool Camera_Stream::init_format(uint32_t width, uint32_t height)
 //                 << fcc2s(dest_format_.fmt.pix.pixelformat).c_str() << ' ' << dest_format_.fmt.pix.width << 'x' << dest_format_.fmt.pix.height << " size " << dest_format_.fmt.pix.sizeimage;
     }
 
-    if (!width() || !height())
+    if (!dest_format_.fmt.pix.width || !dest_format_.fmt.pix.height)
         return false;
 
     QImage::Format dst_fmt = QImage::Format_RGB888;
