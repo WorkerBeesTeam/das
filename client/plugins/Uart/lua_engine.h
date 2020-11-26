@@ -10,7 +10,6 @@ namespace Das {
 class Lua_Engine
 {
 public:
-    Lua_Engine();
     ~Lua_Engine();
 
     void init();
