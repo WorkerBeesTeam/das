@@ -72,6 +72,7 @@ HEADERS += \
     bot/controller.h \
     bot/menu_item.h \
     bot/bot_base.h \
+    bot/user_menu/exprtk.hpp \
     bot/user_menu/item.h \
     bot/user_menu/data_item.h \
     bot/user_menu/connection_state.h \

@@ -52,19 +52,19 @@ Device_Item_Value_Normalizer::Device_Item_Value_Normalizer(const std::string &ex
 
 std::string Device_Item_Value_Normalizer::normalize(Expr_T value)
 {
-    expression_result_.clear();
-    expression_var_ = value;
+    _expression_result.clear();
+    _expression_var = value;
 
-    Expr_T result = expression_.value();
+    Expr_T result = _expression.value();
 
-    if (expression_result_.empty())
+    if (_expression_result.empty())
     {
         if (!std::isnan(result))
-            expression_var_ = result;
-        expression_result_ = to_str<Expr_T>::impl(expression_var_);
+            _expression_var = result;
+        _expression_result = to_str<Expr_T>::impl(_expression_var);
     }
 
-    return expression_result_;
+    return _expression_result;
 }
 
 void Device_Item_Value_Normalizer::parse_expression(const std::string &expression_string)
@@ -73,14 +73,14 @@ void Device_Item_Value_Normalizer::parse_expression(const std::string &expressio
 
     exprtk::symbol_table<Expr_T> symbol_table;
     symbol_table.add_function("to_str", to_str_func);
-    symbol_table.add_variable("x", expression_var_);
-    symbol_table.add_stringvar("res", expression_result_);
+    symbol_table.add_variable("x", _expression_var);
+    symbol_table.add_stringvar("res", _expression_result);
     symbol_table.add_constants();
 
-    expression_.register_symbol_table(symbol_table);
+    _expression.register_symbol_table(symbol_table);
 
     exprtk::parser<Expr_T> parser;
-    if (!parser.compile(expression_string, expression_))
+    if (!parser.compile(expression_string, _expression))
         throw std::runtime_error("Compilation error! " + parser.error());
 }
 
