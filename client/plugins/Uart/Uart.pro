@@ -2,7 +2,14 @@ QT += serialport
 
 TARGET = Uart
 
-LIBS += -llua
+linux {
+    CONFIG += link_pkgconfig
+    contains(QMAKE_HOST.arch, arm.*): {
+        PKGCONFIG += lua53
+    } else {
+        PKGCONFIG += lua
+    }
+}
 
 SOURCES += \
     config.cpp \
