@@ -31,10 +31,11 @@ Codec_Item::~Codec_Item()
 
 // -----
 
-RTSP_Stream::RTSP_Stream(const std::string &url, int width, int height) :
+RTSP_Stream::RTSP_Stream(const std::string &url, int width, int height, int skip_frame_ms) :
     _format_ctx(nullptr),
     _convert_ctx(nullptr),
-    _index(0)
+    _index(0),
+    _skip_frame_ms{skip_frame_ms}
 {
     _error_text = init_input_codec(url);
     if (_error_text.empty())
@@ -264,7 +265,7 @@ void RTSP_Stream::cap_frame()
             {
                 now = std::chrono::system_clock::now();
 
-                if (now - _last_frame > std::chrono::milliseconds(10))
+                if (now - _last_frame > _skip_frame_ms)
                 {
                     if (_skip_frame_count <= 0)
                     {

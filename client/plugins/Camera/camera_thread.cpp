@@ -205,7 +205,7 @@ std::shared_ptr<Camera_Stream_Iface> Camera_Thread::open_stream(Device_Item *ite
     if (is_local_cam)
         return std::make_shared<Camera_Stream>(path, width, height, config()._quality);
     else
-        return std::make_shared<RTSP_Stream>(path, width, height);
+        return std::make_shared<RTSP_Stream>(path, width, height, config()._rtsp_skip_frame_ms);
 }
 
 Camera_Thread::Send_Status Camera_Thread::send_stream_data(Device_Item *item, Camera_Stream_Iface *stream)

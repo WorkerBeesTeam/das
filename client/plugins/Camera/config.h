@@ -21,6 +21,7 @@ struct Config {
     QString _base_param_name = "cam";
     uint32_t _frame_delay = 60;
     uint32_t _frame_send_timeout_ms = 1500;
+    uint32_t _rtsp_skip_frame_ms = 10;
     uint32_t _picture_skip = 50;
     uint32_t _stream_width = 320;
     uint32_t _stream_height = 240;

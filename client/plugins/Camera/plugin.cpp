@@ -43,6 +43,7 @@ void Camera_Plugin::configure(QSettings *settings)
                 Param<QString>{"BaseParamName", conf._base_param_name},
                 Param<uint32_t>{"FrameDelayMs", conf._frame_delay},
                 Param<uint32_t>{"FrameSendTimeoutMs", conf._frame_send_timeout_ms},
+                Param<uint32_t>{"RTSPSkipFrameMs", conf._rtsp_skip_frame_ms},
                 Param<uint32_t>{"PictureSkip", conf._picture_skip},
                 Param<uint32_t>{"StreamWidth", conf._stream_width},
                 Param<uint32_t>{"StreamHeight", conf._stream_height},

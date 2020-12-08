@@ -31,7 +31,7 @@ struct Codec_Item
 class RTSP_Stream : public Camera_Stream_Iface
 {
 public:
-    explicit RTSP_Stream(const std::string& url, int width = 0, int height = 0);
+    explicit RTSP_Stream(const std::string& url, int width = 0, int height = 0, int skip_frame_ms = 10);
 
     ~RTSP_Stream();
 
@@ -60,6 +60,7 @@ private:
 
     int _error_code, _index;
 
+    std::chrono::milliseconds _skip_frame_ms;
     std::chrono::system_clock::time_point _last_frame;
 };
 
