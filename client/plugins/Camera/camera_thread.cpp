@@ -15,11 +15,10 @@ namespace Das {
 
 Q_LOGGING_CATEGORY(CameraLog, "camera")
 
-void Camera_Thread::start(Camera::Config config, Checker::Interface *iface)
+void Camera_Thread::start(Checker::Interface *iface)
 {
     iface_ = iface;
-    _cam_param_type = iface->scheme()->param_mng_.get_type(config._base_param_name);
-    config_ = std::move(config);
+    _cam_param_type = iface->scheme()->param_mng_.get_type(config()._base_param_name);
 
     break_ = false;
 
@@ -80,7 +79,7 @@ std::string Camera_Thread::get_device_path(Device_Item *item, bool& is_local_cam
     QString path = cam_param->value().toString();
     if (path.isEmpty())
     {
-        path = config_.device_prefix_ + index_param;
+        path = config()._device_prefix + index_param;
         QMetaObject::invokeMethod(cam_param, "set_value", Qt::QueuedConnection, Q_ARG(QVariant, path));
     }
 
@@ -98,7 +97,7 @@ std::string Camera_Thread::get_device_path(Device_Item *item, bool& is_local_cam
 
 const Camera::Config &Camera_Thread::config() const
 {
-    return config_;
+    return Camera::Config::instance();
 }
 
 void Camera_Thread::run()
@@ -135,7 +134,9 @@ void Camera_Thread::run()
                     if (streams_.find(data.item_) != streams_.end())
                         throw std::runtime_error("Already started");
 
-                    std::shared_ptr<Camera_Stream_Iface> stream = open_stream(data.item_, config().stream_width_, config().stream_height_);
+                    std::shared_ptr<Camera_Stream_Iface> stream = open_stream(data.item_,
+                                                                              config()._stream_width,
+                                                                              config()._stream_height);
 
                     const QByteArray param = stream->param();
 
@@ -146,7 +147,8 @@ void Camera_Thread::run()
                         throw std::runtime_error("Emplace failed");
 
                     if (!socket_)
-                        socket_.reset(new Stream_Client_Thread(config().stream_server_.toStdString(), config().stream_server_port_.toStdString()));
+                        socket_.reset(new Stream_Client_Thread(config()._stream_server,
+                                                               config()._stream_server_port));
 
                     iface_->manager()->send_stream_param(data.item_, param);
                     iface_->manager()->send_stream_toggled(data.user_id_, data.item_, true);
@@ -173,9 +175,14 @@ void Camera_Thread::run()
         {
             lock.unlock();
 
+            uint16_t count = 0;
             for (auto it = streams_.begin(); it != streams_.end(); )
             {
-                if (!send_stream_data(it->first, it->second.get()))
+                Send_Status status = send_stream_data(it->first, it->second.get());
+                if (status == S_OK)
+                    ++count;
+
+                if (status == S_FAIL)
                 {
                     iface_->manager()->send_stream_toggled(/*user_id=*/0, it->first, /*state=*/false);
                     it = streams_.erase(it);
@@ -184,7 +191,8 @@ void Camera_Thread::run()
                     ++it;
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(config().frame_delay_));
+            if (count)
+                std::this_thread::sleep_for(std::chrono::milliseconds(config()._frame_delay));
         }
     }
 }
@@ -195,28 +203,30 @@ std::shared_ptr<Camera_Stream_Iface> Camera_Thread::open_stream(Device_Item *ite
     const std::string path = get_device_path(item, is_local_cam);
 
     if (is_local_cam)
-        return std::make_shared<Camera_Stream>(path, width, height, config().quality_);
+        return std::make_shared<Camera_Stream>(path, width, height, config()._quality);
     else
         return std::make_shared<RTSP_Stream>(path, width, height);
 }
 
-bool Camera_Thread::send_stream_data(Device_Item *item, Camera_Stream_Iface *stream)
+Camera_Thread::Send_Status Camera_Thread::send_stream_data(Device_Item *item, Camera_Stream_Iface *stream)
 {
     try
     {
         if (!socket_)
             throw std::runtime_error("No socket");
+        if (!socket_->is_frame_sended(item->id()))
+            return S_WAITING_PREV;
 
-        socket_->send(item->id(), stream->param(), stream->get_frame());
+        socket_->send(item->id(), stream->param(), stream->get_frame(), config()._frame_send_timeout_ms);
 //        iface_->manager()->send_stream_data(item, stream->get_frame());
     }
     catch (const std::exception& e)
     {
         socket_.reset();
         qCCritical(CameraLog) << "get_frame failed:" << e.what();
-        return false;
+        return S_FAIL;
     }
-    return true;
+    return S_OK;
 }
 
 void Camera_Thread::read_item(Device_Item *item)
@@ -241,14 +251,14 @@ void Camera_Thread::read_item(Device_Item *item)
             uint32_t height = stream->height();
 
             stream->reinit();
-            stream->set_skip_frame_count(config().picture_skip_);
+            stream->set_skip_frame_count(config()._picture_skip);
             data += stream->get_frame().toBase64();
             stream->reinit(width, height);
         }
         else
         {
             std::shared_ptr<Camera_Stream_Iface> stream = open_stream(item, 0, 0);
-            stream->set_skip_frame_count(config().picture_skip_);
+            stream->set_skip_frame_count(config()._picture_skip);
             data += stream->get_frame().toBase64();
         }
     }

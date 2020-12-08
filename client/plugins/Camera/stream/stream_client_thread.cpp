@@ -28,16 +28,30 @@ Stream_Client_Thread::~Stream_Client_Thread()
         thread_.join();
 }
 
-void Stream_Client_Thread::send(uint32_t dev_item_id, const QByteArray& param, const QByteArray &buffer)
+bool Stream_Client_Thread::is_frame_sended(uint32_t dev_item_id) const
 {
-    std::chrono::milliseconds timeout{1500};
+    auto it = _frame_sended.find(dev_item_id);
+    return it == _frame_sended.cend() || it->second;
+}
+
+void Stream_Client_Thread::send(uint32_t dev_item_id, const QByteArray& param, const QByteArray &buffer, uint32_t timeout_ms)
+{
+    auto it = _frame_sended.find(dev_item_id);
+    if (it == _frame_sended.end())
+        it = _frame_sended.emplace(dev_item_id, false).first;
+    else if (!it->second)
+        return;
+    else
+        it->second = false;
+
+    std::chrono::milliseconds timeout{timeout_ms};
 
     auto sender = socket_->client_->send(CMD_FRAME);
     sender.timeout(nullptr, timeout, timeout);
+    sender.finally([this, dev_item_id](bool) { _frame_sended[dev_item_id] = true; });
     sender.set_fragment_size(HELPZ_MAX_PACKET_DATA_SIZE);
     sender.writeRawData(param.constData(), param.size());
     sender << dev_item_id << buffer;
-    //    socket_.send_to(boost::asio::buffer(buffer.constData(), std::min(buffer.size(), 65507)), receiver_endpoint_);
 }
 
 void Stream_Client_Thread::send_text(uint32_t dev_item_id, const QByteArray &param, const QString &text)

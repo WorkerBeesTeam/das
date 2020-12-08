@@ -18,7 +18,9 @@ public:
     Stream_Client_Thread(const std::string &host, const std::string &port);
     ~Stream_Client_Thread();
 
-    void send(uint32_t dev_item_id, const QByteArray &param, const QByteArray& buffer);
+    bool is_frame_sended(uint32_t dev_item_id) const;
+
+    void send(uint32_t dev_item_id, const QByteArray &param, const QByteArray& buffer, uint32_t timeout_ms);
     void send_text(uint32_t dev_item_id, const QByteArray& param, const QString &text);
 private:
     void run();
@@ -27,6 +29,8 @@ private:
         CMD_FRAME = Helpz::Net::Cmd::USER_COMMAND,
         CMD_TEXT
     };
+
+    std::map<uint32_t, bool> _frame_sended;
 
     std::thread thread_;
 

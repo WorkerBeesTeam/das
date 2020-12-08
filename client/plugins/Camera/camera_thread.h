@@ -23,7 +23,7 @@ Q_DECLARE_LOGGING_CATEGORY(CameraLog)
 class Camera_Thread
 {
 public:
-    void start(Camera::Config config, Checker::Interface* iface);
+    void start(Checker::Interface* iface);
     void stop();
 
     void toggle_stream(uint32_t user_id, Device_Item *item, bool state);
@@ -31,18 +31,25 @@ public:
     void save_frame(Device_Item* item);
 
     std::string get_device_path(Device_Item* item, bool& is_local_cam, bool skip_connected = false) const;
-    const Camera::Config& config() const;
 private:
+    const Camera::Config& config() const;
+
     void run();
 
+    enum Send_Status
+    {
+        S_FAIL,
+        S_OK,
+        S_WAITING_PREV
+    };
+
     std::shared_ptr<Camera_Stream_Iface> open_stream(Device_Item* item, uint32_t width = 0, uint32_t height = 0);
-    bool send_stream_data(Device_Item *item, Camera_Stream_Iface* stream);
+    Send_Status send_stream_data(Device_Item *item, Camera_Stream_Iface* stream);
     void read_item(Device_Item *item);
 
     bool break_;
     Checker::Interface* iface_;
     DIG_Param_Type *_cam_param_type;
-    Camera::Config config_;
 
     std::thread thread_;
     std::mutex mutex_;

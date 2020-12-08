@@ -30,24 +30,26 @@ void Camera_Plugin::configure(QSettings *settings)
     // rtsp://10.10.2.141:554/user=admin_password=_channel=1_stream=0.sdp - if it's IP camera
     // For IP camera you can find correct URL on https://www.ispyconnect.com/man.aspx?n=china#
 
-    Camera::Config config = Helpz::SettingsHelper
+    Camera::Config& conf = Camera::Config::instance();
+    conf = Helpz::SettingsHelper
         #if (__cplusplus < 201402L) || (defined(__GNUC__) && (__GNUC__ < 7))
             <Param<QString>
         #endif
             (
                 settings, "Camera",
-                Param<QString>{"DevicePrefix", "/dev/video"},
-                Param<QString>{"StreamServer", "deviceaccess.ru"},
-                Param<QString>{"StreamServerPort", "6731"},
-                Param<QString>{"BaseParamName", "cam"},
-                Param<uint32_t>{"FrameDelayMs", 60},
-                Param<uint32_t>{"PictureSkip", 50},
-                Param<uint32_t>{"StreamWidth", 320},
-                Param<uint32_t>{"StreamHeight", 240},
-                Param<int32_t>{"Quality", -1}
+                Param<QString>{"DevicePrefix", conf._device_prefix},
+                Param<std::string>{"StreamServer", conf._stream_server},
+                Param<std::string>{"StreamServerPort", conf._stream_server_port},
+                Param<QString>{"BaseParamName", conf._base_param_name},
+                Param<uint32_t>{"FrameDelayMs", conf._frame_delay},
+                Param<uint32_t>{"FrameSendTimeoutMs", conf._frame_send_timeout_ms},
+                Param<uint32_t>{"PictureSkip", conf._picture_skip},
+                Param<uint32_t>{"StreamWidth", conf._stream_width},
+                Param<uint32_t>{"StreamHeight", conf._stream_height},
+                Param<int32_t>{"Quality", conf._quality}
     ).obj<Camera::Config>();
 
-    thread_.start(std::move(config), this);
+    thread_.start(this);
 }
 
 bool Camera_Plugin::check(Device* dev)
