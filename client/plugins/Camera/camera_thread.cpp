@@ -191,8 +191,8 @@ void Camera_Thread::run()
                     ++it;
             }
 
-            if (count)
-                std::this_thread::sleep_for(std::chrono::milliseconds(config()._frame_delay));
+//            if (count)
+//                std::this_thread::sleep_for(std::chrono::milliseconds(config()._frame_delay));
         }
     }
 }
@@ -214,10 +214,13 @@ Camera_Thread::Send_Status Camera_Thread::send_stream_data(Device_Item *item, Ca
     {
         if (!socket_)
             throw std::runtime_error("No socket");
+
+        const QByteArray buffer = stream->get_frame();
+
         if (!socket_->is_frame_sended(item->id()))
             return S_WAITING_PREV;
 
-        socket_->send(item->id(), stream->param(), stream->get_frame(), config()._frame_send_timeout_ms);
+        socket_->send(item->id(), stream->param(), buffer, config()._frame_send_timeout_ms);
 //        iface_->manager()->send_stream_data(item, stream->get_frame());
     }
     catch (const std::exception& e)
