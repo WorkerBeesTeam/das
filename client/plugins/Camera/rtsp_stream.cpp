@@ -24,7 +24,7 @@ Codec_Item::Codec_Item() : _codec(nullptr), _codec_ctx(nullptr), _frame(nullptr)
 Codec_Item::~Codec_Item()
 {
     av_packet_free(&_packet);
-    av_free(_frame);
+    av_frame_free(&_frame);
     av_free(_frame_buffer);
     avcodec_free_context(&_codec_ctx);
 }
@@ -97,7 +97,7 @@ const QByteArray &RTSP_Stream::get_frame()
 
 std::string RTSP_Stream::init_input_codec(const std::string &url)
 {
-    AVDictionary *opts = 0;
+    AVDictionary *opts = nullptr;
     _error_code = av_dict_set(&opts, "rtsp_transport", "tcp", 0);
     if (_error_code < 0)
         return "Unable to set rtsp_transport options.";
@@ -108,7 +108,7 @@ std::string RTSP_Stream::init_input_codec(const std::string &url)
     _format_ctx->interrupt_callback.callback = &RTSP_Stream::check_interrupt;
 
     _last_frame = std::chrono::system_clock::now();
-    _error_code = avformat_open_input(&_format_ctx, url.c_str(), NULL, &opts);
+    _error_code = avformat_open_input(&_format_ctx, url.c_str(), nullptr, &opts);
     if (_error_code != 0)
     {
         av_dict_free(&opts);
