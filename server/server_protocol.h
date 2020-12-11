@@ -27,6 +27,7 @@ public:
 
     int protocol_version() const override;
     void send_file(uint32_t user_id, uint32_t dev_item_id, const QString& file_name, const QString& file_path) override;
+    void send_start_stream(uint32_t user_id, uint32_t dev_item_id, const QString& url) override;
 
     void synchronize(bool full = false) override;
 
@@ -45,9 +46,7 @@ private:
     void print_version(QIODevice &data_dev);
     void set_time_offset(const QDateTime& scheme_time, const QTimeZone &timeZone);
 
-    void stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state);
-    void stream_param(uint32_t dev_item_id, const QByteArray& data);
-    void stream_data(uint32_t dev_item_id, const QByteArray& data);
+    void stream_started(const QByteArray &data, uint32_t user_id, uint32_t dev_item_id);
 
     void log_sync_check();
 

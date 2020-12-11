@@ -74,8 +74,6 @@ signals:
     void checker_stop();
     void checker_start();
 
-    void change_stream_state(uint32_t user_id, Device_Item* item, bool state);
-
     void add_event_message(Log_Event_Item event);
 //    QVariantList modbusRead(int serverAddress, uchar registerType = QModbusDataUnit::InputRegisters,
 //                                                 int startAddress = 0, quint16 unitCount = 1);
@@ -102,8 +100,6 @@ public slots:
 
     QVector<DIG_Status> get_group_statuses() const;
     QVector<Device_Item_Value> get_device_item_values() const;
-
-    void toggle_stream(uint32_t user_id, uint32_t dev_item_id, bool state);
 
     void write_to_item(uint32_t user_id, uint32_t item_id, const QVariant &raw_data);
     void write_to_item_file(const QString& file_name);

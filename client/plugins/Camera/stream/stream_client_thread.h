@@ -2,6 +2,7 @@
 #define DAS_STREAM_CLIENT_THREAD_H
 
 #include <thread>
+#include <functional>
 
 #include <boost/asio/io_context.hpp>
 
@@ -11,11 +12,13 @@
 
 namespace Das {
 
+using namespace std;
+
 class Stream_Controller;
 class Stream_Client_Thread
 {
 public:
-    Stream_Client_Thread(const std::string &host, const std::string &port);
+    Stream_Client_Thread(const string &host, const string &port, function<void()> finished_func);
     ~Stream_Client_Thread();
 
     bool is_frame_sended(uint32_t dev_item_id) const;
@@ -30,13 +33,14 @@ private:
         CMD_TEXT
     };
 
-    std::map<uint32_t, bool> _frame_sended;
+    map<uint32_t, bool> _frame_sended;
 
-    std::thread thread_;
+    thread _thread;
 
-    boost::asio::io_context io_context_;
+    boost::asio::io_context _io_context;
 
-    std::shared_ptr<Stream_Controller> socket_;
+    shared_ptr<Stream_Controller> _socket;
+    function<void()> _finished_func;
 };
 
 } // namespace Das

@@ -19,9 +19,11 @@ Dbus_Handler::Dbus_Handler(Worker* worker) :
     is_manual_connect_ = true;
 }
 
-void Dbus_Handler::set_stream_param(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data)
+void Dbus_Handler::init_stream(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, const QByteArray& token)
 {
-    worker_->stream_server_->set_param(scheme.id(), dev_item_id, data);
+    QMetaObject::invokeMethod(worker_->websock_th_->ptr(), "send_stream_toggled", Q_ARG(Scheme_Info, scheme),
+                              Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, dev_item_id), Q_ARG(bool, true));
+    worker_->stream_server_->set_param(scheme.id(), dev_item_id, token);
 }
 
 void Dbus_Handler::connect_to(QDBusInterface *iface)
@@ -41,9 +43,7 @@ void Dbus_Handler::connect_to(QDBusInterface *iface)
     CONNECT_TO_WEBSOCK(dig_param_values_changed, send_dig_param_values_changed, QVector<DIG_Param_Value>);
     CONNECT_TO_WEBSOCK(dig_mode_changed, send_dig_mode_pack, QVector<DIG_Mode>);
     CONNECT_TO_WEBSOCK(status_changed, send_dig_status_changed, QVector<DIG_Status>);
-    CONNECT_TO_WEBSOCK(stream_toggled, send_stream_toggled, uint32_t, uint32_t, bool);
-    CONNECT_TO_WEBSOCK(stream_data, send_stream_data, uint32_t, QByteArray);
-    CONNECT_TO_THIS(stream_param, set_stream_param, uint32_t, QByteArray);
+    CONNECT_TO_THIS(stream_started, init_stream, uint32_t, uint32_t, QByteArray);
 }
 
 void Dbus_Handler::server_down()

@@ -16,9 +16,8 @@ struct Config {
     static Config& instance();
 
     QString _device_prefix = "/dev/video";
-    std::string _stream_server = "deviceaccess.ru";
-    std::string _stream_server_port = "6731";
     QString _base_param_name = "cam";
+    uint16_t _default_stream_port = 6731;
     uint32_t _frame_delay = 60;
     uint32_t _frame_send_timeout_ms = 1500;
     uint32_t _rtsp_skip_frame_ms = 10;

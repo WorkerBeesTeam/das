@@ -41,20 +41,16 @@ public:
 public slots:
     void stop();
     void start();
+    std::future<QByteArray> start_stream(uint32_t user_id, Device_Item* item, const QString &url);
 private:
 private slots:
     void check_devices();
-    void toggle_stream(uint32_t user_id, Device_Item* item, bool state);
     void write_data(Device_Item* item, const QVariant& raw_data, uint32_t user_id = 0);
     void write_cache();
 private:
     void write_items(DB::Plugin_Type* plugin, std::vector<Write_Cache_Item>& items);
 
     bool is_server_connected() const override;
-
-    void send_stream_toggled(uint32_t user_id, Device_Item* item, bool state) override;
-    void send_stream_param(Device_Item* item, const QByteArray& data) override;
-    void send_stream_data(Device_Item* item, const QByteArray& data) override;
 
     bool b_break, first_check_;
 

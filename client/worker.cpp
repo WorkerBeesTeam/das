@@ -148,6 +148,34 @@ void Worker::close_net_client()
     }
 }
 
+QByteArray Worker::start_stream(uint32_t user_id, uint32_t dev_item_id, const QString &url)
+{
+    // ATTENTION: This function calls from diffrent threads
+
+    QByteArray token;
+    Scripted_Scheme* scheme = prj();
+    if (scheme)
+    {
+        Device_Item* item = scheme->item_by_id(dev_item_id);
+        if (item)
+        {
+            Checker::Manager* checker = checker_th_->ptr();
+            std::future<QByteArray> token_future = checker->start_stream(user_id, item, url);
+
+            try {
+                std::chrono::milliseconds timeout{Ver::Client::Config::instance()._start_stream_timeout_ms};
+                if (token_future.wait_for(timeout) != std::future_status::ready)
+                    throw std::runtime_error{"Timeout"};
+                token = token_future.get();
+            } catch(const std::exception& e) {
+                qCWarning(Service::Log).nospace() << user_id << "|Start stream " << item->display_name()
+                                                << " failed: " << e.what();
+            }
+        }
+    }
+    return token;
+}
+
 /*static*/ void Worker::store_connection_id(const QUuid &connection_id)
 {
     std::shared_ptr<QSettings> s = settings();
@@ -274,7 +302,8 @@ void Worker::init_network_client(QSettings* s)
     qRegisterMetaType<QVector<Log_Event_Item>>("QVector<Log_Event_Item>");
     qRegisterMetaType<QVector<uint32_t>>("QVector<uint32_t>");
 
-    Authentication_Info auth_info = Helpz::SettingsHelper{
+    Ver::Client::Config& config = Ver::Client::Config::instance();
+    config._auth = Helpz::SettingsHelper{
                 s, "RemoteServer",
                 Z::Param<QString>{"Login",              QString()},
                 Z::Param<QString>{"Password",           QString()},
@@ -282,7 +311,7 @@ void Worker::init_network_client(QSettings* s)
                 Z::Param<QUuid>{"Device",               QUuid()}
             }.obj<Authentication_Info>();
 
-    if (!auth_info)
+    if (!config._auth)
         return;
 
 #define DAS_PROTOCOL_LATEST "das/2.6"
@@ -299,14 +328,15 @@ void Worker::init_network_client(QSettings* s)
                 Z::Param<uint32_t>{"ReconnectSeconds",  15}
             }();
 
-    const Ver::Client::Config config = Helpz::SettingsHelper{
+    Ver::Client::Config def_config;
+    config = Helpz::SettingsHelper{
                 s, "RemoteServer",
-                Z::Param<uint32_t>{"StreamTimeoutMs", 1500},
+                Z::Param<uint32_t>{"StartStreamTimeoutMs", def_config._start_stream_timeout_ms},
             }.obj<Ver::Client::Config>();
 
-    Helpz::DTLS::Create_Client_Protocol_Func_T func = [this, auth_info, config](const std::string& app_protocol) -> std::shared_ptr<Helpz::Net::Protocol>
+    Helpz::DTLS::Create_Client_Protocol_Func_T func = [this](const std::string& app_protocol) -> std::shared_ptr<Helpz::Net::Protocol>
     {
-        std::shared_ptr<Ver::Client::Protocol> ptr = std::make_shared<Ver::Client::Protocol>(this, auth_info, config);
+        std::shared_ptr<Ver::Client::Protocol> ptr = std::make_shared<Ver::Client::Protocol>(this);
 
         if (app_protocol != DAS_PROTOCOL_LATEST)
         {
@@ -473,12 +503,8 @@ QString Worker::get_user_devices()
 QString Worker::get_user_status()
 {
     QJsonObject json;
-    auto proto = net_protocol();
-    if (proto)
-    {
-        json["user"] = proto->auth_info().login();
-        json["device"] = proto->auth_info().using_key().toString();
-    }
+    json["user"] = Ver::Client::Config::instance()._auth.login();
+    json["device"] = Ver::Client::Config::instance()._auth.using_key().toString();
     return QJsonDocument(json).toJson(QJsonDocument::Compact);
 }
 
@@ -529,11 +555,7 @@ void Worker::clear_server_config()
 
 void Worker::save_server_auth_data(const QString &login, const QString &password)
 {
-    auto proto = net_protocol();
-    if (proto)
-    {
-        save_server_data(proto->auth_info().using_key(), login, password);
-    }
+    save_server_data(Ver::Client::Config::instance()._auth.using_key(), login, password);
 }
 
 void Worker::save_server_data(const QUuid &devive_uuid, const QString &login, const QString &password)

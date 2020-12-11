@@ -16,10 +16,22 @@ namespace Das {
 namespace Ver {
 namespace Client {
 
-Protocol::Protocol(Worker *worker, const Authentication_Info &auth_info, const Config &config) :
-    Protocol_Base{worker, auth_info},
+Config::Config(uint32_t start_stream_timeout_ms) :
+    _start_stream_timeout_ms{start_stream_timeout_ms}
+{
+}
+
+/*static*/ Config &Config::instance()
+{
+    static Config conf;
+    return conf;
+}
+
+// ---------------------------------------------
+
+Protocol::Protocol(Worker *worker) :
+    Protocol_Base{worker},
     prj_(worker->prj()),
-    conf_(config),
     log_sender_(this),
     structure_sync_(worker->db_pending(), this)
 {
@@ -48,26 +60,6 @@ Log_Sender& Protocol::log_sender()
 Structure_Synchronizer& Protocol::structure_sync()
 {
     return structure_sync_;
-}
-
-void Protocol::send_stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state)
-{
-    send(Cmd::STREAM_TOGGLE).timeout(nullptr, std::chrono::seconds(6)) << user_id << dev_item_id << state;
-}
-
-void Protocol::send_stream_param(uint32_t dev_item_id, const QByteArray &data)
-{
-    send(Cmd::STREAM_PARAM).timeout(nullptr, std::chrono::seconds(6)) << dev_item_id << data;
-}
-
-void Protocol::send_stream_data(uint32_t dev_item_id, const QByteArray &data)
-{
-    std::chrono::milliseconds timeout{conf_.stream_timeout_};
-
-    Helpz::Net::Protocol_Sender sender = send(Cmd::STREAM_DATA);
-    sender.timeout(nullptr, timeout, timeout);
-    sender << dev_item_id << data;
-    sender.set_fragment_size(HELPZ_MAX_PACKET_DATA_SIZE);
 }
 
 //void Protocol::send_mode(const DIG_Mode& mode)
@@ -161,10 +153,7 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
     case Cmd::SET_MODE:                 Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Worker::set_mode, worker()); break;
     case Cmd::SET_DIG_PARAM_VALUES:     apply_parse(data_dev, &Protocol::set_dig_param_values);             break;
     case Cmd::EXEC_SCRIPT_COMMAND:      apply_parse(data_dev, &Protocol::parse_script_command, &data_dev);  break;
-    case Cmd::STREAM_TOGGLE:
-        send_answer(Cmd::STREAM_TOGGLE, msg_id);
-        apply_parse(data_dev, &Protocol::toggle_stream);
-        break;
+    case Cmd::STREAM_START:             apply_parse(data_dev, &Protocol::start_stream, msg_id);             break;
 
     case Cmd::GET_SCHEME:               Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Structure_Synchronizer::send_scheme_structure, &structure_sync_, msg_id, &data_dev); break;
     case Cmd::MODIFY_SCHEME:
@@ -202,7 +191,7 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
 
     case Cmd::SET_SCHEME_NAME:
         send_answer(Cmd::SET_SCHEME_NAME, msg_id);
-        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Worker::set_mode, worker());
+        Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Worker::set_scheme_name, worker());
         break;
 
     default:
@@ -233,10 +222,9 @@ void Protocol::parse_script_command(uint32_t user_id, const QString& script, QIO
     exec_script_command(user_id, script, is_function, arguments);
 }
 
-void Protocol::toggle_stream(uint32_t user_id, uint32_t dev_item_id, bool state)
+void Protocol::start_stream(uint32_t user_id, uint32_t dev_item_id, const QString& url, uint8_t msg_id)
 {
-    QMetaObject::invokeMethod(worker()->prj(), "toggle_stream", Qt::QueuedConnection,
-                              Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, dev_item_id), Q_ARG(bool, state));
+    send_answer(Cmd::STREAM_START, msg_id) << worker()->start_stream(user_id, dev_item_id, url);
 }
 
 void Protocol::process_item_file(QIODevice& data_dev)
@@ -289,7 +277,7 @@ void Protocol::start_authentication()
         apply_parse(data_dev, &Protocol::process_authentication);
     }).timeout([]() {
         std::cout << "Authentication timeout" << std::endl;
-    }, std::chrono::seconds(45), std::chrono::seconds(15)) << auth_info() << structure_sync_.modified();
+    }, std::chrono::seconds(45), std::chrono::seconds(15)) << Config::instance()._auth << structure_sync_.modified();
 }
 
 void Protocol::process_authentication(bool authorized, const QUuid& connection_id)
@@ -298,7 +286,7 @@ void Protocol::process_authentication(bool authorized, const QUuid& connection_i
     qCDebug(NetClientLog) << "Authentication status:" << authorized;
     if (authorized)
     {
-        if (connection_id != auth_info().using_key())
+        if (connection_id != Config::instance()._auth.using_key())
         {
             Worker::store_connection_id(connection_id);
         }

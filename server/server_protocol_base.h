@@ -29,6 +29,7 @@ public:
 
     virtual int protocol_version() const = 0;
     virtual void send_file(uint32_t user_id, uint32_t dev_item_id, const QString& file_name, const QString& file_path) = 0;
+    virtual void send_start_stream(uint32_t user_id, uint32_t dev_item_id, const QString& url) = 0;
 
     QString version() const;
 

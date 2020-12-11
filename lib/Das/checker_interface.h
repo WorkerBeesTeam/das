@@ -1,6 +1,8 @@
 #ifndef DAS_CHECKER_INTERFACE_H
 #define DAS_CHECKER_INTERFACE_H
 
+#include <future>
+
 #include <QtPlugin>
 
 QT_FORWARD_DECLARE_CLASS(QSettings)
@@ -21,10 +23,6 @@ public:
     virtual ~Manager_Interface() = default;
 
     virtual bool is_server_connected() const = 0;
-
-    virtual void send_stream_toggled(uint32_t user_id, Device_Item* item, bool state) = 0;
-    virtual void send_stream_param(Device_Item* item, const QByteArray& data) = 0;
-    virtual void send_stream_data(Device_Item* item, const QByteArray& data) = 0;
 protected:
     void init_checker(Interface* checker, Scheme* scheme);
 };
@@ -42,11 +40,13 @@ public:
 
     virtual void write(std::vector<Write_Cache_Item>& items) = 0;
 
-    virtual void toggle_stream(uint32_t user_id, Device_Item* item, bool state)
+    virtual std::future<QByteArray> start_stream(uint32_t user_id, Device_Item* item, const QString &url)
     {
+        // This funciton can call from another thread
         Q_UNUSED(user_id);
         Q_UNUSED(item);
-        Q_UNUSED(state);
+        Q_UNUSED(url);
+        return {};
     }
 
     Manager_Interface* manager();

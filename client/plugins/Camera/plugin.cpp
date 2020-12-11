@@ -38,9 +38,8 @@ void Camera_Plugin::configure(QSettings *settings)
             (
                 settings, "Camera",
                 Param<QString>{"DevicePrefix", conf._device_prefix},
-                Param<std::string>{"StreamServer", conf._stream_server},
-                Param<std::string>{"StreamServerPort", conf._stream_server_port},
                 Param<QString>{"BaseParamName", conf._base_param_name},
+                Param<uint16_t>{"DefaultStreamPort", conf._default_stream_port},
                 Param<uint32_t>{"FrameDelayMs", conf._frame_delay},
                 Param<uint32_t>{"FrameSendTimeoutMs", conf._frame_send_timeout_ms},
                 Param<uint32_t>{"RTSPSkipFrameMs", conf._rtsp_skip_frame_ms},
@@ -104,10 +103,9 @@ void Camera_Plugin::stop()
 
 void Camera_Plugin::write(std::vector<Write_Cache_Item>& /*items*/) {}
 
-void Camera_Plugin::toggle_stream(uint32_t user_id, Das::Device_Item *item, bool state)
+std::future<QByteArray> Camera_Plugin::start_stream(uint32_t user_id, Das::Device_Item *item, const QString &url)
 {
-    qCDebug(CameraLog).nospace() << user_id << "|Toggle stream " << item->display_name() << " to: " << state;
-    thread_.toggle_stream(user_id, item, state);
+    return thread_.start_stream(user_id, item, url);
 }
 
 void Camera_Plugin::save_frame(Device_Item *item)

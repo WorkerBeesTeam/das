@@ -42,9 +42,7 @@ namespace Cmd {
         DEVICE_ITEM_VALUES,
         GROUP_STATUSES,
 
-        STREAM_TOGGLE,
-        STREAM_PARAM,
-        STREAM_DATA,
+        STREAM_START,
 
         SET_SCHEME_NAME,
 

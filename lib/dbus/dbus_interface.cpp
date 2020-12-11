@@ -180,5 +180,10 @@ void Interface::send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint3
     call_iface<void>("send_message_to_scheme", nullptr, scheme_id, QVariant::fromValue(ws_cmd), user_id, data);
 }
 
+void Interface::start_stream(uint32_t scheme_id, uint32_t user_id, uint32_t dev_item_id, const QString &url)
+{
+    call_iface<void>("start_stream", nullptr, scheme_id, user_id, dev_item_id, url);
+}
+
 } // namespace DBus
 } // namespace Das
