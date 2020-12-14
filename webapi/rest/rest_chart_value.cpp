@@ -193,7 +193,7 @@ int64_t Chart_Value::fill_datamap()
     int64_t count = 0, timestamp;
     uint32_t item_id;
 
-    const QString sql = _first_last_only ? get_full_sql() : get_first_last_sql();
+    const QString sql = _first_last_only ? get_first_last_sql() : get_full_sql();
     QSqlQuery q = _db.exec(sql);
     auto it = _data_map.end();
 
