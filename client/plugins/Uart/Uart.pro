@@ -4,11 +4,7 @@ TARGET = Uart
 
 linux {
     CONFIG += link_pkgconfig
-    contains(QMAKE_HOST.arch, arm.*): {
-        PKGCONFIG += lua53
-    } else {
-        PKGCONFIG += lua
-    }
+    PKGCONFIG += lua53
 }
 
 SOURCES += \
