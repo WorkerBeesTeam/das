@@ -64,22 +64,23 @@ private:
     QString get_limit_suffix(uint32_t offset, uint32_t limit) const;
     int64_t fill_datamap();
     QString get_full_sql() const;
+    QString get_first_last_sql() const;
+    QString get_one_point_sql(int64_t timestamp, const QString &item_id, bool is_before_range_point) const;
     QString get_base_sql(const QString &what = QString()) const;
     picojson::object get_data_item(const QSqlQuery& query, int64_t timestamp) const;
     picojson::value variant_to_json(const QVariant& value) const;
     void fill_object(picojson::object& obj, const QSqlQuery& q) const;
     void fill_results(picojson::array& results) const;
-    QString get_one_point_sql(int64_t timestamp, const QString &item_id, bool is_before_range_point) const;
 
     bool _range_in_past;
     bool _range_close_to_now;
+    bool _first_last_only;
     uint32_t _offset, _limit;
     Time_Range _time_range;
     QString _scheme_where, _where;
     QStringList _data_in_list;
 
     std::map<uint32_t/*item_id*/, std::map<int64_t/*timestamp*/, picojson::object>> _data_map;
-    std::map<uint32_t/*item_id*/, picojson::object> _before_range_point_map, _after_range_point_map;
 
     Helpz::DB::Base& _db;
 };
