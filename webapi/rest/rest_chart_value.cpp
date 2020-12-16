@@ -121,8 +121,8 @@ void Chart_Value::parse_params(const served::request &req)
     if (_range_close_to_now)
         _time_range._to = now;
 
-    string fl = req.query["first_last"];
-    _first_last_only = !fl.empty() && (fl == "1" || fl == "true");
+    string bo = req.query["bounds_only"];
+    _bounds_only = !bo.empty() && (bo == "1" || bo == "true");
 }
 
 QString Chart_Value::get_where() const
@@ -193,7 +193,7 @@ int64_t Chart_Value::fill_datamap()
     int64_t count = 0, timestamp;
     uint32_t item_id;
 
-    const QString sql = _first_last_only ? get_first_last_sql() : get_full_sql();
+    const QString sql = _bounds_only ? get_bounds_sql() : get_full_sql();
     QSqlQuery q = _db.exec(sql);
     auto it = _data_map.end();
 
@@ -209,7 +209,7 @@ int64_t Chart_Value::fill_datamap()
                 it = _data_map.emplace(item_id, std::map<int64_t, picojson::object>{}).first;
         }
 
-        if (_first_last_only)
+        if (_bounds_only)
             timestamp = timestamp <= _time_range._from ? _time_range._from : _time_range._to;
 
         it->second.emplace(timestamp, get_data_item(q, timestamp));
@@ -225,7 +225,7 @@ QString Chart_Value::get_full_sql() const
     //            + ';' + get_base_sql("COUNT(*)") + ' ' + _where
 }
 
-QString Chart_Value::get_first_last_sql() const
+QString Chart_Value::get_bounds_sql() const
 {
     QStringList one_point_sql_list;
     for (const QString& item_id: _data_in_list)

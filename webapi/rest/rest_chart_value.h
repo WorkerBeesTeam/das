@@ -64,7 +64,7 @@ private:
     QString get_limit_suffix(uint32_t offset, uint32_t limit) const;
     int64_t fill_datamap();
     QString get_full_sql() const;
-    QString get_first_last_sql() const;
+    QString get_bounds_sql() const;
     QString get_one_point_sql(int64_t timestamp, const QString &item_id, bool is_before_range_point) const;
     QString get_base_sql(const QString &what = QString()) const;
     picojson::object get_data_item(const QSqlQuery& query, int64_t timestamp) const;
@@ -74,7 +74,7 @@ private:
 
     bool _range_in_past;
     bool _range_close_to_now;
-    bool _first_last_only;
+    bool _bounds_only;
     uint32_t _offset, _limit;
     Time_Range _time_range;
     QString _scheme_where, _where;
