@@ -80,12 +80,12 @@ protected:
 
     QMap<uint32_t, uint16_t> get_structure_hash_map_by_type(uint8_t struct_type, Helpz::DB::Base& db, const Scheme_Info& scheme);
 private:
-    template<typename T>
-    QString get_db_list_suffix(uint8_t struct_type, const QVector<uint32_t>& id_vect, const Scheme_Info& scheme);
+    template<typename T, typename ID_T>
+    QString get_db_list_suffix(uint8_t struct_type, const QVector<ID_T>& id_vect, const Scheme_Info& scheme);
 
-    template<typename T>
+    template<typename T, typename ID_T>
     QVector<T> get_db_list(uint8_t struct_type, Helpz::DB::Base& db, const Scheme_Info& scheme,
-                           const QVector<uint32_t>& id_vect);
+                           const QVector<ID_T>& id_vect);
 
     void add_structure_template(uint8_t struct_type, QDataStream& ds, Helpz::DB::Base& db, const Scheme_Info& scheme, const QVector<uint32_t>& id_vect = {});
     template<typename T>

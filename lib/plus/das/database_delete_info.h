@@ -23,6 +23,7 @@
 #include <Das/db/dig_status.h>
 #include <Das/db/device_item_value.h>
 #include <Das/db/dig_mode.h>
+#include <Das/db/value_view.h>
 #include <Das/db/user.h>
 #include <Das/db/auth_group.h>
 #include <Das/device.h>
@@ -93,7 +94,8 @@ template<>
 inline Delete_Info_List db_delete_info<Device_Item_Type>(const QString& db_name)
 {
     return {
-        { Helpz::DB::db_table<Device_Item>(db_name), Device_Item::COL_type_id, db_delete_info<Device_Item>(db_name) }
+        { Helpz::DB::db_table<Device_Item>(db_name), Device_Item::COL_type_id, db_delete_info<Device_Item>(db_name) },
+        { Helpz::DB::db_table<Value_View>(db_name), Value_View::COL_type_id }
     };
 }
 
@@ -262,6 +264,9 @@ struct Scheme_Table_Helper<DIG_Param_Value> :
 template<>
 struct Scheme_Table_Helper<DIG_Mode> :
         Scheme_Table_Helper_Impl<DIG_Mode, &DIG_Mode::group_id, DIG_Mode::COL_group_id> {};
+template<>
+struct Scheme_Table_Helper<Value_View> :
+        Scheme_Table_Helper_Impl<Value_View, &Value_View::type_id, Value_View::COL_type_id> {};
 template<>
 struct Scheme_Table_Helper<User_Groups> :
         Scheme_Table_Helper_Impl<User_Groups, &User_Groups::id, User_Groups::COL_id, User_Groups::COL_user_id, User_Groups::COL_group_id> {};

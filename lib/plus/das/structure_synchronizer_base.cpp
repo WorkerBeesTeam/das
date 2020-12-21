@@ -71,6 +71,7 @@ Structure_Synchronizer_Base::~Structure_Synchronizer_Base()
         ST_DISABLED_STATUS,
         ST_CHART,
         ST_CHART_ITEM,
+        ST_VALUE_VIEW,
         ST_AUTH_GROUP,
         ST_AUTH_GROUP_PERMISSION,
         ST_USER,
@@ -122,6 +123,7 @@ void Structure_Synchronizer_Base::process_modify_message(uint32_t user_id, uint8
     case ST_DISABLED_STATUS:       Helpz::apply_parse(*data_dev, v, &T::modify<DB::Disabled_Status>            ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_CHART:                 Helpz::apply_parse(*data_dev, v, &T::modify<DB::Chart>                      ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_CHART_ITEM:            Helpz::apply_parse(*data_dev, v, &T::modify<DB::Chart_Item>                 ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_VALUE_VIEW:            Helpz::apply_parse(*data_dev, v, &T::modify<DB::Value_View>                 ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_AUTH_GROUP:            Helpz::apply_parse(*data_dev, v, &T::modify<Auth_Group>                     ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_AUTH_GROUP_PERMISSION: Helpz::apply_parse(*data_dev, v, &T::modify<Auth_Group_Permission>          ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_USER:                  Helpz::apply_parse(*data_dev, v, &T::modify<User>                           ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
@@ -224,6 +226,7 @@ QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_
     case ST_DISABLED_STATUS:       return get_structure_hash_map<DB::Disabled_Status>     (struct_type, db, scheme); break;
     case ST_CHART:                 return get_structure_hash_map<DB::Chart>               (struct_type, db, scheme); break;
     case ST_CHART_ITEM:            return get_structure_hash_map<DB::Chart_Item>          (struct_type, db, scheme); break;
+    case ST_VALUE_VIEW:            return get_structure_hash_map<DB::Value_View>          (struct_type, db, scheme); break;
     case ST_AUTH_GROUP:            return get_structure_hash_map<Auth_Group>              (struct_type, db, scheme); break;
     case ST_AUTH_GROUP_PERMISSION: return get_structure_hash_map<Auth_Group_Permission>   (struct_type, db, scheme); break;
     case ST_USER:                  return get_structure_hash_map<User>                    (struct_type, db, scheme); break;
@@ -240,8 +243,8 @@ QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_
     return {};
 }
 
-template<typename T>
-QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, const QVector<uint32_t>& id_vect,
+template<typename T, typename ID_T>
+QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, const QVector<ID_T>& id_vect,
                                                         const Scheme_Info &scheme)
 {
     using Helper = DB::Scheme_Table_Helper<T>;
@@ -278,8 +281,9 @@ QString Structure_Synchronizer_Base::get_db_list_suffix(uint8_t struct_type, con
     return suffix;
 }
 
-template<typename T>
-QVector<T> Structure_Synchronizer_Base::get_db_list(uint8_t struct_type, Helpz::DB::Base& db, const Scheme_Info &scheme, const QVector<uint32_t>& id_vect)
+template<typename T, typename ID_T>
+QVector<T> Structure_Synchronizer_Base::get_db_list(uint8_t struct_type, Helpz::DB::Base& db,
+                                                    const Scheme_Info &scheme, const QVector<ID_T>& id_vect)
 {
     return Helpz::DB::db_build_list<T>(db, get_db_list_suffix<T>(struct_type, id_vect, scheme));
 }
@@ -309,6 +313,7 @@ void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QD
     case ST_DISABLED_STATUS:       ds << get_db_list<DB::Disabled_Status>  (struct_type, db, scheme, id_vect); break;
     case ST_CHART:                 ds << get_db_list<DB::Chart>            (struct_type, db, scheme, id_vect); break;
     case ST_CHART_ITEM:            ds << get_db_list<DB::Chart_Item>       (struct_type, db, scheme, id_vect); break;
+    case ST_VALUE_VIEW:            ds << get_db_list<DB::Value_View>       (struct_type, db, scheme, id_vect); break;
     case ST_AUTH_GROUP:            ds << get_db_list<Auth_Group>           (struct_type, db, scheme, id_vect); break;
     case ST_AUTH_GROUP_PERMISSION: ds << get_db_list<Auth_Group_Permission>(struct_type, db, scheme, id_vect); break;
     case ST_USER:                  ds << get_db_list<User>                 (struct_type, db, scheme, id_vect); break;
@@ -436,7 +441,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
     QVector<PK_Type> id_vect;
     for (const T& item: update_vect)
     {
-        id_vect.push_back(item.id());
+        id_vect.push_back(Helper::get_pk(item));
         items.push_back(&item);
     }
 
@@ -520,11 +525,12 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
 
     // Insert if row for update in not found
     for (const T* item: items)
-        qCCritical(Struct_Log) << "Item:" << item->id() << "type:" << typeid(T).name() << "not updated!";
+        qCCritical(Struct_Log) << "Item:" << Helper::get_pk(*item)
+                               << "type:" << typeid(T).name() << "not updated!";
 
     // INSERT
 
-    if (Helper::pk_num != T::COL_id)
+    if (Helper::pk_num != 0)
         table.field_names().removeFirst();
 
     QVariant id;
@@ -536,10 +542,8 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
             item.set_scheme_id(scheme.id());
 
         values = T::to_variantlist(item);
-        if (Helper::pk_num != T::COL_id)
+        if (Helper::pk_num != 0)
             values.removeFirst();
-//        if (is_need_scheme_id_insert<T>())
-//            values.push_back(scheme_id);
 
         if (!db.insert(table, values, &id))
         {
@@ -547,7 +551,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
             return false;
         }
 
-        T::value_setter(item, T::COL_id, id);
+        T::value_setter(item, 0, id);
     }
 
     return true;

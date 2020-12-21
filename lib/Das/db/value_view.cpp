@@ -4,13 +4,13 @@
 namespace Das {
 namespace DB {
 
-Value_View::Value_View(uint32_t item_type, const QVariant& value, const QVariant& view) :
-    _item_type{item_type}, _value{value}, _view{view}
+Value_View::Value_View(uint32_t type_id, const QVariant& value, const QVariant& view) :
+    _type_id{type_id}, _value{value}, _view{view}
 {
 }
 
-uint32_t Value_View::item_type() const { return _item_type; }
-void Value_View::set_item_type(uint32_t item_type) { _item_type = item_type; }
+uint32_t Value_View::type_id() const { return _type_id; }
+void Value_View::set_type_id(uint32_t type_id) { _type_id = type_id; }
 
 QVariant Value_View::value() const { return _value; }
 void Value_View::set_value(const QVariant &value) { _value = value; }
@@ -40,12 +40,12 @@ void Value_View::set_view_from_db(const QVariant &view)
 
 QDataStream &operator>>(QDataStream &ds, Value_View &item)
 {
-    return ds >> item._item_type >> item._value >> item._view;
+    return ds >> item._type_id >> item._value >> item._view;
 }
 
 QDataStream &operator<<(QDataStream &ds, const Value_View &item)
 {
-    return ds << item.item_type() << item.value() << item.view();
+    return ds << item.type_id() << item.value() << item.view();
 }
 
 } // namespace DB

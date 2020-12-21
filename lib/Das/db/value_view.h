@@ -10,12 +10,12 @@ namespace DB {
 
 class Value_View : public Schemed_Model
 {
-    HELPZ_DB_META(Value_View, "value_view", "vv", DB_A(item_type), DB_AT(value), DB_AT(view), DB_A(scheme_id))
+    HELPZ_DB_META(Value_View, "value_view", "vv", DB_A(type_id), DB_AT(value), DB_AT(view), DB_A(scheme_id))
 public:
-    Value_View(uint32_t item_type = 0, const QVariant& value = {}, const QVariant& view = {});
+    Value_View(uint32_t type_id = 0, const QVariant& value = {}, const QVariant& view = {});
 
-    uint32_t item_type() const;
-    void set_item_type(uint32_t item_type);
+    uint32_t type_id() const;
+    void set_type_id(uint32_t item_type);
 
     QVariant value() const;
     void set_value(const QVariant& value);
@@ -28,7 +28,7 @@ public:
     void set_view_from_db(const QVariant& view);
 
 private:
-    uint32_t _item_type;
+    uint32_t _type_id;
     QVariant _value, _view;
 
     friend QDataStream &operator>>(QDataStream &ds, Value_View& item);

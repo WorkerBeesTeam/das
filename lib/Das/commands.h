@@ -84,6 +84,7 @@ enum Structure_Type
     ST_DISABLED_STATUS,
     ST_CHART,
     ST_CHART_ITEM,
+    ST_VALUE_VIEW,
     ST_AUTH_GROUP,
     ST_AUTH_GROUP_PERMISSION,
     ST_USER,
