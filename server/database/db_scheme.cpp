@@ -195,7 +195,7 @@ void global::check_auth(const Authentication_Info &auth_info, Server::Protocol_B
         return;
     }
 
-    if (compare_django_passhash(auth_info.password(), query.value(3).toByteArray()))
+    if (!compare_django_passhash(auth_info.password(), query.value(3).toByteArray()))
     {
         qWarning() << "Password not equals. Scheme:" << auth_info.scheme_name() << "Login:" << auth_info.login()
                    << "Pwd:" << auth_info.password();
