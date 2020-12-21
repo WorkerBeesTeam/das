@@ -194,7 +194,7 @@ void Protocol::auth(const Authentication_Info &info, bool modified, uint8_t msg_
 
     bool authenticated = id();
 
-    qDebug().noquote() << title() << "authentication" << info.scheme_name() << "login" << info.login() << ' '
+    qDebug() << qPrintable(title()) << "authentication" << info.scheme_name() << "login" << info.login()
               << info.using_key() << "status:" << (authenticated ? "true" : "false");
     send_answer(Cmd::AUTH, msg_id) << authenticated << device_connection_id;
 

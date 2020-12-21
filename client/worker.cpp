@@ -303,6 +303,12 @@ void Worker::init_network_client(QSettings* s)
     qRegisterMetaType<QVector<uint32_t>>("QVector<uint32_t>");
 
     Ver::Client::Config& config = Ver::Client::Config::instance();
+    Ver::Client::Config def_config;
+    config = Helpz::SettingsHelper{
+                s, "RemoteServer",
+                Z::Param<uint32_t>{"StartStreamTimeoutMs", def_config._start_stream_timeout_ms},
+            }.obj<Ver::Client::Config>();
+
     config._auth = Helpz::SettingsHelper{
                 s, "RemoteServer",
                 Z::Param<QString>{"Login",              QString()},
@@ -327,12 +333,6 @@ void Worker::init_network_client(QSettings* s)
                 DAS_PROTOCOL_SUPORTED, // Z::Param<QString>{"Protocols",          "das/2.0,das/1.1"},
                 Z::Param<uint32_t>{"ReconnectSeconds",  15}
             }();
-
-    Ver::Client::Config def_config;
-    config = Helpz::SettingsHelper{
-                s, "RemoteServer",
-                Z::Param<uint32_t>{"StartStreamTimeoutMs", def_config._start_stream_timeout_ms},
-            }.obj<Ver::Client::Config>();
 
     Helpz::DTLS::Create_Client_Protocol_Func_T func = [this](const std::string& app_protocol) -> std::shared_ptr<Helpz::Net::Protocol>
     {
