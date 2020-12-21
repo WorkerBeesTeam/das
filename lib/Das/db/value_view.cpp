@@ -4,7 +4,8 @@
 namespace Das {
 namespace DB {
 
-Value_View::Value_View(uint32_t type_id, const QVariant& value, const QVariant& view) :
+Value_View::Value_View(uint32_t id, uint32_t type_id, const QVariant& value, const QVariant& view) :
+    Base_Type{id},
     _type_id{type_id}, _value{value}, _view{view}
 {
 }
@@ -40,12 +41,12 @@ void Value_View::set_view_from_db(const QVariant &view)
 
 QDataStream &operator>>(QDataStream &ds, Value_View &item)
 {
-    return ds >> item._type_id >> item._value >> item._view;
+    return ds >> static_cast<Base_Type&>(item) >> item._type_id >> item._value >> item._view;
 }
 
 QDataStream &operator<<(QDataStream &ds, const Value_View &item)
 {
-    return ds << item.type_id() << item.value() << item.view();
+    return ds << static_cast<const Base_Type&>(item) << item.type_id() << item.value() << item.view();
 }
 
 } // namespace DB

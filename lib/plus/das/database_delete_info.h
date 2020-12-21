@@ -265,9 +265,6 @@ template<>
 struct Scheme_Table_Helper<DIG_Mode> :
         Scheme_Table_Helper_Impl<DIG_Mode, &DIG_Mode::group_id, DIG_Mode::COL_group_id> {};
 template<>
-struct Scheme_Table_Helper<Value_View> :
-        Scheme_Table_Helper_Impl<Value_View, &Value_View::type_id, Value_View::COL_type_id> {};
-template<>
 struct Scheme_Table_Helper<User_Groups> :
         Scheme_Table_Helper_Impl<User_Groups, &User_Groups::id, User_Groups::COL_id, User_Groups::COL_user_id, User_Groups::COL_group_id> {};
 
