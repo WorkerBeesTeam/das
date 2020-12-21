@@ -23,7 +23,7 @@ public:
         T_CHILD, // ?
         T_PARAM,
     };
-    Node(uint32_t id = 0, const QString& name = {}, uint32_t parent_id = 0, uint32_t type_id = 0);
+    Node(uint32_t id = 0, const QString& name = {}, uint32_t parent_id = 0, uint32_t type_id = 0, uint8_t order = 0);
 
     uint32_t parent_id() const;
     void set_parent_id(uint32_t parent_id);
@@ -36,7 +36,7 @@ public:
 
 private:
     uint8_t _order;
-    uint32_t parent_id_, type_id_;
+    uint32_t _parent_id, _type_id;
 
     friend QDataStream &operator>>(QDataStream& ds, Node& node);
 };

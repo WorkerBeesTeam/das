@@ -30,6 +30,7 @@ SOURCES += \
     db/auth_group.cpp \
     db/dig_param_value.cpp \
     db/translation.cpp \
+    db/value_view.cpp \
     device_item.cpp \
     device_item_group.cpp \
     log/log_base_item.cpp \
@@ -80,6 +81,7 @@ HEADERS +=\
     db/user.h \
     db/dig_param_value.h \
     db/translation.h \
+    db/value_view.h \
     device_item.h \
     device_item_group.h \
     log/log_base_item.h \
