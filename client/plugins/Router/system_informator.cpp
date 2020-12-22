@@ -144,7 +144,11 @@ vector<string> System_Informator::get_net_info() const
                 {
                     text += ' ';
                     text += get_essid(skfd, iface);
-                    text += " (" + to_string(channel) + ')';
+                    text += ' ';
+                    text += to_string(get_signal(skfd, iface));
+                    text += "dBm (";
+                    text += to_string(channel);
+                    text += ')';
                 }
 
                 net_vect.push_back(text);
@@ -195,6 +199,19 @@ int System_Informator::get_channel(int skfd, const char * ifname) const
     }
 
     return channel;
+}
+
+int System_Informator::get_signal(int skfd, const char *ifname) const
+{
+    struct iwreq wrq;
+    iw_statistics stats;
+
+    wrq.u.data.pointer = (caddr_t) &stats;
+    wrq.u.data.length = sizeof(iw_statistics);
+    wrq.u.data.flags = 0;
+    if(iw_get_ext(skfd, ifname, SIOCGIWSTATS, &wrq) < 0)
+        return -255;
+    return stats.qual.level - 256;
 }
 
 bool System_Informator::check_internet_connection() const

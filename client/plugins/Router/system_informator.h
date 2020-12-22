@@ -26,6 +26,7 @@ public:
     std::vector<std::string> get_net_info() const;
     std::string get_essid(int skfd, const char * ifname) const;
     int get_channel(int skfd, const char * ifname) const;
+    int get_signal(int skfd, const char * ifname) const;
 
     bool check_internet_connection() const;
 };
