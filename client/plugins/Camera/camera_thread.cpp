@@ -192,7 +192,7 @@ void Camera_Thread::start_stream(shared_ptr<Stream_Data> data)
         data->_promise.set_value(stream.param());
 
         auto socket_it = _sockets.find(data->_url);
-        if (stream_it == _streams.end())
+        if (socket_it == _sockets.end())
         {
             const QString url_str = data->_url;
             shared_ptr<Stream_Client_Thread> socket = make_shared<Stream_Client_Thread>(
