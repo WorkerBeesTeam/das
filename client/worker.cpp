@@ -36,8 +36,7 @@ Worker::Worker(QObject *parent) :
     checker_th_(nullptr),
     log_timer_thread_(nullptr),
     restart_user_id_(0),
-    dbus_(nullptr),
-    scheme_info_(1, {1})
+    dbus_(nullptr)
 {
     qsrand(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
     qRegisterMetaType<uint32_t>("uint32_t");
@@ -225,6 +224,7 @@ void Worker::init_database(QSettings* s)
                 Z::Param<uint32_t>{"SchemeId", 1})();
 
     DB::Schemed_Model::set_default_scheme_id(scheme_id);
+    scheme_info_.set_id(scheme_id);
 
     auto db_info = Helpz::SettingsHelper
         #if (__cplusplus < 201402L) || (defined(__GNUC__) && (__GNUC__ < 7))
@@ -245,6 +245,14 @@ void Worker::init_database(QSettings* s)
     Helpz::DB::Connection_Info::set_common(db_info);
 
     db_pending_thread_.reset(new Helpz::DB::Thread);
+    db_pending_thread_->add([this](Helpz::DB::Base* db)
+    {
+        std::set<uint32_t> scheme_groups;
+        auto query = db->select({"das_scheme_groups", {}, {"scheme_group_id"}}, "WHERE scheme_id = ?", {scheme_info_.id()});
+        while (query.next())
+            scheme_groups.insert(query.value(0).toUInt());
+        scheme_info_.set_scheme_groups(std::move(scheme_groups));
+    });
 }
 
 void Worker::init_scheme(QSettings* s)
