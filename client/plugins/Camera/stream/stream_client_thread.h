@@ -35,6 +35,7 @@ private:
 
     map<uint32_t, bool> _frame_sended;
 
+    mutable mutex _mutex;
     thread _thread;
 
     boost::asio::io_context _io_context;
