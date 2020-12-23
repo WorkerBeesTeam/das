@@ -1,3 +1,4 @@
+#include <cmath>
 
 #include <QSqlError>
 #include <QElapsedTimer>
@@ -52,7 +53,7 @@ struct Item_Status
         _raw_value.analyze(item.raw_value());
     }
 
-    void finalize(size_t data_count)
+    void finalize(size_t data_count, bool is_discrete)
     {
         _x = 0;
         for (auto&& it: _users)
@@ -65,8 +66,8 @@ struct Item_Status
         }
 
         _item.set_timestamp_msecs(_ts / data_count);
-        _item.set_value(_value.finalize(data_count / 2.));
-        _item.set_raw_value(_raw_value.finalize(data_count / 2.));
+        _item.set_value(_value.finalize(data_count / 2., is_discrete));
+        _item.set_raw_value(_raw_value.finalize(data_count / 2., is_discrete));
     }
 
     struct Value_Status
@@ -86,12 +87,15 @@ struct Item_Status
             _text.clear();
         }
 
-        QVariant finalize(double half_data_count)
+        QVariant finalize(double half_data_count, bool is_discrete)
         {
             if (_null_count > half_data_count)
                 return {};
             else if (_value_count > half_data_count)
-                return static_cast<double>(_value / _value_count);
+            {
+                double res = _value / _value_count;
+                return is_discrete ? round(res) : res;
+            }
 
             _value_count = 0;
             for (auto&& it: _text_count)
@@ -283,6 +287,7 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name, qint64 
     qint64 end_ts = start_ts + time_count, start_ts_s = start_ts,
            final_ts = get_final_timestamp(time_count);
     Data_Type data;
+    set<uint32_t> item_ids;
 
     QSqlQuery log_query{db.database()};
     log_query.prepare(db.select_query(_log_value_table, "WHERE timestamp_msecs >= ? AND timestamp_msecs < ?"));
@@ -300,13 +305,18 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name, qint64 
         while (log_query.next())
         {
             DB::Log_Value_Item item = db_build<DB::Log_Value_Item>(log_query);
+
+            item_ids.insert(item.item_id());
+
             data[item.scheme_id()][item.item_id()].push_back(move(item));
             ++selected;
         }
 
         elapsed += t.restart();
 
-        inserted += process_data(data, name);
+        item_ids = get_discrete(item_ids);
+        inserted += process_data(data, name, item_ids);
+        item_ids.clear();
 
         insert_elapsed += t.restart();
 
@@ -359,7 +369,23 @@ qint64 Layers_Filler::get_final_timestamp(qint64 time_count) const
     return get_prev_time(DB::Log_Base_Item::current_timestamp() - minus_ms, time_count);
 }
 
-vector<DB::Log_Value_Item> Layers_Filler::get_average_data(const Layers_Filler::Data_Type &data)
+set<uint32_t> Layers_Filler::get_discrete(const set<uint32_t> &item_ids)
+{
+    set<uint32_t> discrete_ids;
+
+    QString sql = "SELECT di.id FROM das_device_item di "
+                  "LEFT JOIN das_device_item_type t ON t.id = di.type_id "
+                  "WHERE t.register_type IN (1,2) AND di.";
+    sql += get_db_field_in_sql("id", item_ids);
+
+    Base& db = Base::get_thread_local_instance();
+    auto q = db.exec(sql);
+    while (q.next())
+        discrete_ids.insert(q.value(0).toUInt());
+    return discrete_ids;
+}
+
+vector<DB::Log_Value_Item> Layers_Filler::get_average_data(const Layers_Filler::Data_Type &data, const set<uint32_t>& discrete_ids)
 {
     vector<DB::Log_Value_Item> average;
 
@@ -377,7 +403,7 @@ vector<DB::Log_Value_Item> Layers_Filler::get_average_data(const Layers_Filler::
             for (const DB::Log_Value_Item& item: devitem_data.second)
                 s.analyze(item);
 
-            s.finalize(devitem_data.second.size());
+            s.finalize(devitem_data.second.size(), discrete_ids.find(devitem_data.first) != discrete_ids.cend());
             average.push_back(s._item);
         }
     }
@@ -390,14 +416,14 @@ vector<DB::Log_Value_Item> Layers_Filler::get_average_data(const Layers_Filler::
     return average;
 }
 
-int Layers_Filler::process_data(Layers_Filler::Data_Type &data, const QString &name)
+int Layers_Filler::process_data(Layers_Filler::Data_Type &data, const QString &name, const set<uint32_t>& discrete_ids)
 {
     if (data.empty())
         return 0;
 
     QVariantList values;
     {
-        vector<DB::Log_Value_Item> average_data = get_average_data(data);
+        vector<DB::Log_Value_Item> average_data = get_average_data(data, discrete_ids);
         for (const DB::Log_Value_Item& item: average_data)
             values += DB::Log_Value_Item::to_variantlist(item);
         data.clear();

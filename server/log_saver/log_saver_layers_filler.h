@@ -1,6 +1,7 @@
 #ifndef DAS_SERVER_LOG_SAVER_LAYERS_FILLER_H
 #define DAS_SERVER_LOG_SAVER_LAYERS_FILLER_H
 
+#include <set>
 #include <mutex>
 
 #include <Das/log/log_value_item.h>
@@ -45,8 +46,9 @@ private:
     qint64 fill_layer(qint64 time_count, const QString& name, qint64 last_end_time);
     qint64 get_start_timestamp(qint64 time_count) const;
     qint64 get_final_timestamp(qint64 time_count) const;
-    vector<DB::Log_Value_Item> get_average_data(const Data_Type &data);
-    int process_data(Data_Type &data, const QString& name);
+    set<uint32_t> get_discrete(const set<uint32_t> &item_ids);
+    vector<DB::Log_Value_Item> get_average_data(const Data_Type &data, const set<uint32_t> &discrete_ids);
+    int process_data(Data_Type &data, const QString& name, const set<uint32_t> &discrete_ids);
 
     Helpz::DB::Table _log_value_table, _layer_table;
 
