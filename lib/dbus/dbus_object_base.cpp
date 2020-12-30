@@ -58,7 +58,6 @@ uint16_t Object_Base::cmd_from_web_command(quint8 cmd, int proto_version) const
     case Das::WS_EXEC_SCRIPT:               return Ver::Cmd::EXEC_SCRIPT_COMMAND;
     case Das::WS_RESTART:                   return Ver::Cmd::RESTART;
     case Das::WS_STRUCT_MODIFY:             return Ver::Cmd::MODIFY_SCHEME;
-    case Das::WS_STREAM_TOGGLE:             return Ver::Cmd::STREAM_TOGGLE;
     default: break;
     }
     return 0;

@@ -46,6 +46,8 @@ private:
 signals:
 private slots:
 private:
+    void stream_toggle(uint32_t dev_item_id, bool state, uint32_t scheme_id, uint32_t user_id);
+
     Helpz::DB::Connection_Info* db_conn_info_;
     Helpz::DB::Thread* db_pending_thread_;
 

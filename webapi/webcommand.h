@@ -19,6 +19,7 @@ signals:
     uint8_t get_scheme_connection_state(const std::set<uint32_t> &scheme_group_set, uint32_t scheme_id);
     uint8_t get_scheme_connection_state2(uint32_t scheme_id);
     void send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& data);
+    void stream_toggle(uint32_t dev_item_id, bool state, uint32_t scheme_id, uint32_t user_id);
 public slots:
 private slots:
     void write_command(std::shared_ptr<Net::Websocket_Client> client, uint32_t scheme_id, quint8 cmd, const QByteArray& data);

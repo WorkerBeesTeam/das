@@ -18,16 +18,12 @@ Q_DECLARE_LOGGING_CATEGORY(NetClientLog)
 class Protocol_Base : public Helpz::Net::Protocol
 {
 public:
-    Protocol_Base(Worker* worker, const Authentication_Info &auth_info);
+    Protocol_Base(Worker* worker);
     virtual ~Protocol_Base() = default;
 
     Worker* worker() const;
-
-    const Authentication_Info& auth_info() const;
-
 private:
     Worker *worker_;
-    Authentication_Info auth_info_;
 };
 
 } // namespace Client

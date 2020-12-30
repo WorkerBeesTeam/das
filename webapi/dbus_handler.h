@@ -23,7 +23,7 @@ public:
     Dbus_Handler(Worker* worker);
 public slots:
 private slots:
-    void set_stream_param(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
+    void init_stream(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, const QByteArray& token);
 private:
     void connect_to(QDBusInterface* iface) override;
     void server_down() override;

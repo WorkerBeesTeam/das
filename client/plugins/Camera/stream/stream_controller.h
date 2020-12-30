@@ -9,6 +9,8 @@
 
 namespace Das {
 
+Q_DECLARE_LOGGING_CATEGORY(StreamLog)
+
 class Stream_Controller;
 class Stream_Client : public Helpz::Net::Protocol
 {

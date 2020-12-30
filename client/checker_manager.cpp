@@ -33,7 +33,6 @@ Manager::Manager(Worker *worker, QObject *parent) :
     connect(scheme_, &Scripted_Scheme::checker_stop, this, &Manager::stop, Qt::QueuedConnection);
     connect(scheme_, &Scripted_Scheme::checker_start, this, &Manager::start, Qt::QueuedConnection);
 
-    connect(scheme_, &Scripted_Scheme::change_stream_state, this, &Manager::toggle_stream, Qt::QueuedConnection);
 //    connect(prj, SIGNAL(modbusRead(int,uchar,int,quint16)),
 //            SLOT(read2(int,uchar,int,quint16)), Qt::BlockingQueuedConnection);
 //    connect(prj, SIGNAL(modbusWrite(int,uchar,int,quint16)), SLOT(write(int,uchar,int,quint16)), Qt::QueuedConnection);
@@ -196,6 +195,17 @@ void Manager::start()
     check_devices();
 }
 
+std::future<QByteArray> Manager::start_stream(uint32_t user_id, Device_Item *item, const QString &url)
+{
+    if (item->device())
+    {
+        Plugin_Type* plugin = item->device()->checker_type();
+        if (plugin && plugin->checker)
+            return plugin->checker->start_stream(user_id, item, url);
+    }
+    return {};
+}
+
 void Manager::check_devices()
 {
     b_break = false;   
@@ -293,16 +303,6 @@ void Manager::check_devices()
         write_cache();
 }
 
-void Manager::toggle_stream(uint32_t user_id, Device_Item *item, bool state)
-{
-    if (!item->device())
-        return;
-
-    Plugin_Type* plugin = item->device()->checker_type();
-    if (plugin && plugin->checker)
-        plugin->checker->toggle_stream(user_id, item, state);
-}
-
 void Manager::write_data(Device_Item *item, const QVariant &raw_data, uint32_t user_id)
 {
     if (!item || !item->device())
@@ -373,29 +373,6 @@ void Manager::write_items(Plugin_Type* plugin, std::vector<Write_Cache_Item>& it
 bool Manager::is_server_connected() const
 {
     return (bool)worker_->net_protocol();
-}
-
-void Manager::send_stream_toggled(uint32_t user_id, Device_Item *item, bool state)
-{
-    std::shared_ptr<Ver::Client::Protocol> proto = worker_->net_protocol();
-    if (proto)
-        proto->send_stream_toggled(user_id, item->id(), state);
-}
-
-void Manager::send_stream_param(Device_Item *item, const QByteArray &data)
-{
-    std::shared_ptr<Ver::Client::Protocol> proto = worker_->net_protocol();
-    if (proto)
-        proto->send_stream_param(item->id(), data);
-}
-
-void Manager::send_stream_data(Device_Item *item, const QByteArray &data)
-{
-    std::shared_ptr<Ver::Client::Protocol> proto = worker_->net_protocol();
-    if (proto)
-        proto->send_stream_data(item->id(), data);
-    else
-        toggle_stream(0, item, false);
 }
 
 } // namespace Checker

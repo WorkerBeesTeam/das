@@ -81,6 +81,14 @@ void Protocol::send_file(uint32_t user_id, uint32_t dev_item_id, const QString& 
     send(Cmd::WRITE_TO_ITEM_FILE).set_data_device(std::move(device));
 }
 
+void Protocol::send_start_stream(uint32_t user_id, uint32_t dev_item_id, const QString &url)
+{
+    send(Cmd::STREAM_START).answer([this, user_id, dev_item_id](QIODevice& data_dev)
+    {
+        apply_parse(data_dev, &Protocol::stream_started, user_id, dev_item_id);
+    }).timeout(nullptr, std::chrono::seconds(8)) << user_id << dev_item_id << url;
+}
+
 void Protocol::synchronize(bool full)
 {
     if (!disable_sync_)
@@ -149,18 +157,6 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
         }
         break;
 
-    case Cmd::STREAM_TOGGLE:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::stream_toggled);
-        break;
-    case Cmd::STREAM_PARAM:
-        send_answer(cmd, msg_id);
-        apply_parse(data_dev, &Protocol::stream_param);
-        break;
-    case Cmd::STREAM_DATA:
-        apply_parse(data_dev, &Protocol::stream_data);
-        break;
-
     default:
         break;
     }
@@ -198,7 +194,7 @@ void Protocol::auth(const Authentication_Info &info, bool modified, uint8_t msg_
 
     bool authenticated = id();
 
-    qDebug().noquote() << title() << "authentication" << info.scheme_name() << "login" << info.login() << ' '
+    qDebug() << qPrintable(title()) << "authentication" << info.scheme_name() << "login" << info.login()
               << info.using_key() << "status:" << (authenticated ? "true" : "false");
     send_answer(Cmd::AUTH, msg_id) << authenticated << device_connection_id;
 
@@ -270,22 +266,11 @@ void Protocol::set_time_offset(const QDateTime& scheme_time, const QTimeZone& ti
                        << (time().zone.isValid() ? time().zone.id().constData()/*displayName(QTimeZone::GenericTime).toStdString()*/ : "invalid");
 }
 
-void Protocol::stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state)
+void Protocol::stream_started(const QByteArray &data, uint32_t user_id, uint32_t dev_item_id)
 {
-    QMetaObject::invokeMethod(work_object()->dbus_, "stream_toggled", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, dev_item_id), Q_ARG(bool, state));
-}
-
-void Protocol::stream_param(uint32_t dev_item_id, const QByteArray &data)
-{
-    QMetaObject::invokeMethod(work_object()->dbus_, "stream_param", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, dev_item_id), Q_ARG(QByteArray, data));
-}
-
-void Protocol::stream_data(uint32_t dev_item_id, const QByteArray &data)
-{
-    QMetaObject::invokeMethod(work_object()->dbus_, "stream_data", Qt::QueuedConnection,
-                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, dev_item_id), Q_ARG(QByteArray, data));
+    QMetaObject::invokeMethod(work_object()->dbus_, "stream_started", Qt::QueuedConnection,
+                              Q_ARG(Scheme_Info, *this), Q_ARG(uint32_t, user_id),
+                              Q_ARG(uint32_t, dev_item_id), Q_ARG(QByteArray, data));
 }
 
 void Protocol::log_sync_check()

@@ -17,9 +17,9 @@ public:
     std::string normalize(Expr_T value);
 private:
     void parse_expression(const std::string& expression_string);
-    double expression_var_;
-    std::string expression_result_;
-    exprtk::expression<Expr_T> expression_;
+    double _expression_var;
+    std::string _expression_result;
+    exprtk::expression<Expr_T> _expression;
 };
 
 } // namespace User_Menu

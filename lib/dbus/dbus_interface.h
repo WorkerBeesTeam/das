@@ -36,8 +36,7 @@ public:
 //    virtual void dig_param_values_changed(const Scheme_Info& scheme, const QVector<DIG_Param_Value> &pack) {}
 //    virtual void dig_mode_changed(const Scheme_Info& scheme, const QVector<DIG_Mode> &pack) {}
 //    virtual void status_changed(const Scheme_Info& scheme, const QVector<DIG_Status>& pack) {}
-//    virtual void stream_toggled(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, bool state);
-//    virtual void stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
+//    virtual void stream_started(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, const QByteArray& token);
     virtual void connect_to(QDBusInterface* iface) { Q_UNUSED(iface); }
 
     bool is_manual_connect_ = false; // deprecated
@@ -91,6 +90,7 @@ public slots:
     void set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString& name);
     QVector<Device_Item_Value> get_device_item_values(uint32_t scheme_id) const;
     void send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& data);
+    void start_stream(uint32_t scheme_id, uint32_t user_id, uint32_t dev_item_id, const QString& url);
 };
 
 } // namespace DBus

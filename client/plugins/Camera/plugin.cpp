@@ -30,24 +30,26 @@ void Camera_Plugin::configure(QSettings *settings)
     // rtsp://10.10.2.141:554/user=admin_password=_channel=1_stream=0.sdp - if it's IP camera
     // For IP camera you can find correct URL on https://www.ispyconnect.com/man.aspx?n=china#
 
-    Camera::Config config = Helpz::SettingsHelper
+    Camera::Config& conf = Camera::Config::instance();
+    conf = Helpz::SettingsHelper
         #if (__cplusplus < 201402L) || (defined(__GNUC__) && (__GNUC__ < 7))
             <Param<QString>
         #endif
             (
                 settings, "Camera",
-                Param<QString>{"DevicePrefix", "/dev/video"},
-                Param<QString>{"StreamServer", "deviceaccess.ru"},
-                Param<QString>{"StreamServerPort", "6731"},
-                Param<QString>{"BaseParamName", "cam"},
-                Param<uint32_t>{"FrameDelayMs", 60},
-                Param<uint32_t>{"PictureSkip", 50},
-                Param<uint32_t>{"StreamWidth", 320},
-                Param<uint32_t>{"StreamHeight", 240},
-                Param<int32_t>{"Quality", -1}
+                Param<QString>{"DevicePrefix", conf._device_prefix},
+                Param<QString>{"BaseParamName", conf._base_param_name},
+                Param<uint16_t>{"DefaultStreamPort", conf._default_stream_port},
+                Param<uint32_t>{"FrameDelayMs", conf._frame_delay},
+                Param<uint32_t>{"FrameSendTimeoutMs", conf._frame_send_timeout_ms},
+                Param<uint32_t>{"RTSPSkipFrameMs", conf._rtsp_skip_frame_ms},
+                Param<uint32_t>{"PictureSkip", conf._picture_skip},
+                Param<uint32_t>{"StreamWidth", conf._stream_width},
+                Param<uint32_t>{"StreamHeight", conf._stream_height},
+                Param<int32_t>{"Quality", conf._quality}
     ).obj<Camera::Config>();
 
-    thread_.start(std::move(config), this);
+    thread_.start(this);
 }
 
 bool Camera_Plugin::check(Device* dev)
@@ -101,10 +103,9 @@ void Camera_Plugin::stop()
 
 void Camera_Plugin::write(std::vector<Write_Cache_Item>& /*items*/) {}
 
-void Camera_Plugin::toggle_stream(uint32_t user_id, Das::Device_Item *item, bool state)
+std::future<QByteArray> Camera_Plugin::start_stream(uint32_t user_id, Das::Device_Item *item, const QString &url)
 {
-    qCDebug(CameraLog).nospace() << user_id << "|Toggle stream " << item->display_name() << " to: " << state;
-    thread_.toggle_stream(user_id, item, state);
+    return thread_.start_stream(user_id, item, url);
 }
 
 void Camera_Plugin::save_frame(Device_Item *item)

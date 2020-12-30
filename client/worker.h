@@ -53,6 +53,8 @@ public:
 
     void close_net_client();
 
+    QByteArray start_stream(uint32_t user_id, uint32_t dev_item_id, const QString &url);
+
     static void store_connection_id(const QUuid& connection_id);
     Client::Dbus_Object *dbus() const;
 

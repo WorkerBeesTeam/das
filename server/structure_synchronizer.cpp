@@ -447,6 +447,7 @@ void Structure_Synchronizer::process_scheme_data(uint8_t struct_type, QIODevice*
     case ST_DISABLED_STATUS:       apply_parse(*data_dev, &T::sync_table<DB::Disabled_Status>          , scheme_info, delete_if_not_exist); break;
     case ST_CHART:                 apply_parse(*data_dev, &T::sync_table<DB::Chart>                    , scheme_info, delete_if_not_exist); break;
     case ST_CHART_ITEM:            apply_parse(*data_dev, &T::sync_table<DB::Chart_Item>               , scheme_info, delete_if_not_exist); break;
+    case ST_VALUE_VIEW:            apply_parse(*data_dev, &T::sync_table<DB::Value_View>               , scheme_info, delete_if_not_exist); break;
 //    case ST_AUTH_GROUP:            apply_parse(*data_dev, &T::sync_table<Auth_Group>                   , scheme_info, delete_if_not_exist); break;
 //    case ST_AUTH_GROUP_PERMISSION: apply_parse(*data_dev, &T::sync_table<Auth_Group_Permission>        , scheme_info, delete_if_not_exist); break;
 //    case ST_USER:                  apply_parse(*data_dev, &T::sync_table<User>                         , scheme_info, delete_if_not_exist); break;
@@ -490,6 +491,7 @@ bool Structure_Synchronizer::remove_scheme_rows(Base& db, uint8_t struct_type, c
     case ST_DISABLED_STATUS:       return DB::db_delete_rows<DB::Disabled_Status>        (db, delete_vect, scheme_info); break;
     case ST_CHART:                 return DB::db_delete_rows<DB::Chart>                  (db, delete_vect, scheme_info); break;
     case ST_CHART_ITEM:            return DB::db_delete_rows<DB::Chart_Item>             (db, delete_vect, scheme_info); break;
+    case ST_VALUE_VIEW:            return DB::db_delete_rows<DB::Value_View>             (db, delete_vect, scheme_info); break;
 //    case ST_AUTH_GROUP:            return DB::db_delete_rows<Auth_Group>                 (db, delete_vect, scheme_info); break;
 //    case ST_AUTH_GROUP_PERMISSION: return DB::db_delete_rows<Auth_Group_Permission>      (db, delete_vect, scheme_info); break;
 //    case ST_USER:                  return DB::db_delete_rows<User>                       (db, delete_vect, scheme_info); break;
@@ -764,7 +766,7 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, const Scheme_Info &s
     {
 //        sync_proc_helpher.insert(items);
 
-        if (Helper::pk_num != T::COL_id)
+        if (Helper::pk_num != 0)
             table.field_names().removeFirst();
 
         QVariantList values;
@@ -774,7 +776,7 @@ bool Structure_Synchronizer::sync_table(QVector<T>&& items, const Scheme_Info &s
                 item.set_scheme_id(scheme.id());
 
             values = T::to_variantlist(item);
-            if (Helper::pk_num != T::COL_id)
+            if (Helper::pk_num != 0)
                 values.removeFirst();
 
             if (!db_ptr->insert(table, values))

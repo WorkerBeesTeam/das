@@ -29,9 +29,7 @@ namespace DBus {
     void dig_param_values_changed(const Scheme_Info& scheme, const QVector<DIG_Param_Value> &pack); \
     void status_changed(const Scheme_Info& scheme, const QVector<DIG_Status>& pack); \
     void dig_mode_changed(const Scheme_Info& scheme, const QVector<DIG_Mode> &pack); \
-    void stream_toggled(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, bool state); \
-    void stream_param(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data); \
-    void stream_data(const Scheme_Info& scheme, uint32_t dev_item_id, const QByteArray& data);
+    void stream_started(const Scheme_Info& scheme, uint32_t user_id, uint32_t dev_item_id, const QByteArray& token); \
 
 class Object_Base : public QObject, protected QDBusContext
 {
@@ -55,6 +53,7 @@ public:
     virtual void send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& data) = 0;
     virtual QString get_ip_address(uint32_t scheme_id) const = 0;
     virtual void write_item_file(uint32_t scheme_id, uint32_t user_id, uint32_t dev_item_id, const QString& file_name, const QString& file_path) = 0;
+    virtual void start_stream(uint32_t scheme_id, uint32_t user_id, uint32_t dev_item_id, const QString& url) = 0;
 
 protected:
     uint16_t cmd_from_web_command(quint8 cmd, int proto_version = 202) const;

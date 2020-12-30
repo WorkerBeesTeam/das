@@ -1,7 +1,9 @@
 #ifndef DAS_CAMERA_THREAD_H
 #define DAS_CAMERA_THREAD_H
 
+#include <optional>
 #include <queue>
+#include <set>
 
 #include <thread>
 #include <mutex>
@@ -20,52 +22,87 @@ namespace Das {
 
 Q_DECLARE_LOGGING_CATEGORY(CameraLog)
 
+struct Data
+{
+    enum Type {
+        T_UNKNOWN,
+        T_TAKE_PICTURE,
+        T_STREAM_START,
+        T_STREAM_STOP
+    };
+
+    Data(Type type) : _type{type} {}
+    Type _type;
+};
+
+struct Dev_Item_Data : Data
+{
+    Dev_Item_Data(Type type, Device_Item* item) : Data{type}, _item{item} {}
+    Device_Item* _item;
+};
+
+struct Stream_Data : Dev_Item_Data
+{
+    Stream_Data(Type type, Device_Item* item, uint32_t user_id, const QString& url) :
+        Dev_Item_Data{type, item}, _user_id{user_id}, _url{url} {}
+    uint32_t _user_id;
+    promise<QByteArray> _promise;
+    QString _url; // udp://deviceaccess.ru:6731
+};
+
+struct Stop_Stream_Data : Data
+{
+    Stop_Stream_Data(Type type, const QString& url) : Data{type}, _url{url} {}
+    QString _url;
+};
+
 class Camera_Thread
 {
 public:
-    void start(Camera::Config config, Checker::Interface* iface);
+    void start(Checker::Interface* iface);
     void stop();
 
-    void toggle_stream(uint32_t user_id, Device_Item *item, bool state);
+    future<QByteArray> start_stream(uint32_t user_id, Device_Item *item, const QString &url);
+    void stop_stream(const QString& url);
 
     void save_frame(Device_Item* item);
 
-    std::string get_device_path(Device_Item* item, bool& is_local_cam, bool skip_connected = false) const;
-    const Camera::Config& config() const;
+    string get_device_path(Device_Item* item, bool& is_local_cam, bool skip_connected = false) const;
 private:
+    const Camera::Config& config() const;
+
     void run();
 
-    std::shared_ptr<Camera_Stream_Iface> open_stream(Device_Item* item, uint32_t width = 0, uint32_t height = 0);
-    bool send_stream_data(Device_Item *item, Camera_Stream_Iface* stream);
+    enum Send_Status
+    {
+        S_FAIL,
+        S_OK,
+        S_WAITING_PREV
+    };
+
+    void start_stream(shared_ptr<Stream_Data> data);
+    void stop_stream(shared_ptr<Stop_Stream_Data> data);
+    void process_streams();
+    shared_ptr<Camera_Stream_Iface> open_stream(Device_Item* item, uint32_t width = 0, uint32_t height = 0);
+    Send_Status send_stream_data(Device_Item *item, Camera_Stream_Iface* stream, const set<shared_ptr<Stream_Client_Thread>> &sockets);
     void read_item(Device_Item *item);
+    void remove_sockets(const set<shared_ptr<Stream_Client_Thread>>& sockets);
 
-    bool break_;
-    Checker::Interface* iface_;
+    bool _break;
+    Checker::Interface* _iface;
     DIG_Param_Type *_cam_param_type;
-    Camera::Config config_;
 
-    std::thread thread_;
-    std::mutex mutex_;
-    std::condition_variable cond_;
+    optional<chrono::milliseconds> _wait_timeout;
 
-    enum Data_Type {
-        DT_UNKNOWN,
-        DT_TAKE_PICTURE,
-        DT_STREAM_START,
-        DT_STREAM_STOP,
-    };
+    thread _thread;
+    mutex _mutex;
+    condition_variable _cond;
 
-    struct Data {
-        uint32_t user_id_;
-        Device_Item* item_;
-        Data_Type type_;
-    };
+    queue<shared_ptr<Data>> _data;
 
-    std::queue<Data> read_queue_;
-
-    std::map<Device_Item*, std::shared_ptr<Camera_Stream_Iface>> streams_;
-
-    std::unique_ptr<Stream_Client_Thread> socket_;
+    map<Device_Item*, shared_ptr<Camera_Stream_Iface>> _streams;
+    map<QString, shared_ptr<Stream_Client_Thread>> _sockets;
+    map<Device_Item*, set<shared_ptr<Stream_Client_Thread>>> _stream_to_socket;
 };
 
 } // namespace Das

@@ -42,9 +42,7 @@ namespace Cmd {
         DEVICE_ITEM_VALUES,
         GROUP_STATUSES,
 
-        STREAM_TOGGLE,
-        STREAM_PARAM,
-        STREAM_DATA,
+        STREAM_START,
 
         SET_SCHEME_NAME,
 
@@ -86,6 +84,7 @@ enum Structure_Type
     ST_DISABLED_STATUS,
     ST_CHART,
     ST_CHART_ITEM,
+    ST_VALUE_VIEW,
     ST_AUTH_GROUP,
     ST_AUTH_GROUP_PERMISSION,
     ST_USER,

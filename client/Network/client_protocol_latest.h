@@ -19,21 +19,23 @@ using namespace Das::Client;
 
 struct Config
 {
-    uint32_t stream_timeout_;
+    Config() = default;
+    Config(uint32_t start_stream_timeout_ms);
+    static Config& instance();
+
+    uint32_t _start_stream_timeout_ms = 3000;
+    Authentication_Info _auth;
 };
 
 class Protocol : public Protocol_Base
 {
 public:
-    Protocol(Worker* worker, const Authentication_Info &auth_info, const Config& config);
+    Protocol(Worker* worker);
     virtual ~Protocol();
 
     Log_Sender& log_sender();
     Structure_Synchronizer& structure_sync();
 
-    void send_stream_toggled(uint32_t user_id, uint32_t dev_item_id, bool state);
-    void send_stream_param(uint32_t dev_item_id, const QByteArray& data);
-    void send_stream_data(uint32_t dev_item_id, const QByteArray& data);
 //    void send_mode(const DIG_Mode &mode);
 //    void send_status_changed(const DIG_Status &status);
 //    void send_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack);
@@ -54,7 +56,7 @@ private:
     void process_answer_message(uint8_t msg_id, uint8_t cmd, QIODevice& data_dev) override;
 
     void parse_script_command(uint32_t user_id, const QString& script, QIODevice* data_dev);
-    void toggle_stream(uint32_t user_id, uint32_t dev_item_id, bool state);
+    void start_stream(uint32_t user_id, uint32_t dev_item_id, const QString &url, uint8_t msg_id);
     void process_item_file(QIODevice &data_dev);
 
     void start_authentication();
@@ -63,8 +65,6 @@ private:
     void send_time_info(uint8_t msg_id);
 
     Scripted_Scheme* prj_;
-
-    const Config conf_;
 
     Log_Sender log_sender_;
     Structure_Synchronizer structure_sync_;

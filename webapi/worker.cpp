@@ -155,6 +155,7 @@ void Worker::init_web_command(QSettings* /*s*/)
     connect(web_command_th_->ptr(), &Net::WebCommand::get_scheme_connection_state, dbus_, &DBus::Interface::get_scheme_connection_state, Qt::BlockingQueuedConnection);
     connect(web_command_th_->ptr(), &Net::WebCommand::get_scheme_connection_state2, dbus_, &DBus::Interface::get_scheme_connection_state2, Qt::BlockingQueuedConnection);
     connect(web_command_th_->ptr(), &Net::WebCommand::send_message_to_scheme, dbus_, &DBus::Interface::send_message_to_scheme, Qt::QueuedConnection);
+    connect(web_command_th_->ptr(), &Net::WebCommand::stream_toggle, this, &Worker::stream_toggle, Qt::QueuedConnection);
 }
 
 void Worker::init_restful(QSettings* s)
@@ -180,10 +181,28 @@ void Worker::init_restful(QSettings* s)
 
 void Worker::init_stream_server(QSettings *s)
 {
-    stream_server_ = Helpz::SettingsHelper(
-        s, "Stream", websock_th_->ptr(),
-        Helpz::Param<uint16_t>{"Port", 6731}
-    ).ptr<Stream_Server_Thread>();
+    Stream_Config def_config;
+    Stream_Config::instance() = Helpz::SettingsHelper(
+        s, "Stream",
+        Helpz::Param<uint16_t>{"Port", def_config._port},
+        Helpz::Param<QString>{"ConnectUrl", def_config._connect_url}
+    ).obj<Stream_Config>();
+
+    stream_server_ = new Stream_Server_Thread{websock_th_->ptr()};
+}
+
+void Worker::stream_toggle(uint32_t dev_item_id, bool state, uint32_t scheme_id, uint32_t user_id)
+{
+    if (state)
+        QMetaObject::invokeMethod(dbus_, "start_stream", Qt::QueuedConnection,
+                                  Q_ARG(uint32_t, scheme_id), Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, dev_item_id),
+                                  Q_ARG(QString, Stream_Config::instance()._connect_url));
+    else
+    {
+        stream_server_->remove_stream(scheme_id, dev_item_id);
+        QMetaObject::invokeMethod(websock_th_->ptr(), "send_stream_toggled", Q_ARG(Scheme_Info, Scheme_Info{scheme_id}),
+                                  Q_ARG(uint32_t, user_id), Q_ARG(uint32_t, dev_item_id), Q_ARG(bool, false));
+    }
 }
 
 } // namespace WebApi

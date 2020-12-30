@@ -9,18 +9,32 @@
 
 namespace Das {
 
-Stream_Server_Thread::Stream_Server_Thread(Net::WebSocket* websock, uint16_t port)
+Stream_Config::Stream_Config(uint16_t port, QString connect_url) :
+    _port{port}, _connect_url{connect_url}
 {
-    if (port == std::numeric_limits<uint16_t>::max())
+}
+
+/*static*/ Stream_Config &Stream_Config::instance()
+{
+    static Stream_Config conf;
+    return conf;
+}
+
+// ------------------------------
+
+Stream_Server_Thread::Stream_Server_Thread(Net::WebSocket* websock)
+{
+    if (Stream_Config::instance()._port == std::numeric_limits<uint16_t>::max())
         return;
 
-    std::thread th(&Stream_Server_Thread::run, this, websock, port);
+    std::thread th(&Stream_Server_Thread::run, this, websock);
     thread_.swap(th);
 }
 
 Stream_Server_Thread::~Stream_Server_Thread()
 {
-    io_context_->stop();
+    if (io_context_)
+        io_context_->stop();
     if (thread_.joinable())
         thread_.join();
 }
@@ -48,14 +62,14 @@ void Stream_Server_Thread::remove_stream(uint32_t scheme_id, uint32_t dev_item_i
     });
 }
 
-void Stream_Server_Thread::run(Net::WebSocket* websock, uint16_t port)
+void Stream_Server_Thread::run(Net::WebSocket* websock)
 {
     try
     {
         boost::asio::io_context io_context;
         io_context_ = &io_context;
 
-        Stream_Server server(io_context, websock, port);
+        Stream_Server server(io_context, websock, Stream_Config::instance()._port);
         server_ = &server;
         io_context.run();
     }

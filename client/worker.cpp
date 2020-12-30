@@ -36,8 +36,7 @@ Worker::Worker(QObject *parent) :
     checker_th_(nullptr),
     log_timer_thread_(nullptr),
     restart_user_id_(0),
-    dbus_(nullptr),
-    scheme_info_(1, {1})
+    dbus_(nullptr)
 {
     qsrand(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
     qRegisterMetaType<uint32_t>("uint32_t");
@@ -143,9 +142,37 @@ void Worker::close_net_client()
     if (net_thread_)
     {
         auto client = net_thread_->client();
-        if (client)
-            client->close();
+//        if (client)
+//            client->close();
     }
+}
+
+QByteArray Worker::start_stream(uint32_t user_id, uint32_t dev_item_id, const QString &url)
+{
+    // ATTENTION: This function calls from diffrent threads
+
+    QByteArray token;
+    Scripted_Scheme* scheme = prj();
+    if (scheme)
+    {
+        Device_Item* item = scheme->item_by_id(dev_item_id);
+        if (item)
+        {
+            Checker::Manager* checker = checker_th_->ptr();
+            std::future<QByteArray> token_future = checker->start_stream(user_id, item, url);
+
+            try {
+                std::chrono::milliseconds timeout{Ver::Client::Config::instance()._start_stream_timeout_ms};
+                if (token_future.wait_for(timeout) != std::future_status::ready)
+                    throw std::runtime_error{"Timeout"};
+                token = token_future.get();
+            } catch(const std::exception& e) {
+                qCWarning(Service::Log).nospace() << user_id << "|Start stream " << item->display_name()
+                                                << " failed: " << e.what();
+            }
+        }
+    }
+    return token;
 }
 
 /*static*/ void Worker::store_connection_id(const QUuid &connection_id)
@@ -197,6 +224,7 @@ void Worker::init_database(QSettings* s)
                 Z::Param<uint32_t>{"SchemeId", 1})();
 
     DB::Schemed_Model::set_default_scheme_id(scheme_id);
+    scheme_info_.set_id(scheme_id);
 
     auto db_info = Helpz::SettingsHelper
         #if (__cplusplus < 201402L) || (defined(__GNUC__) && (__GNUC__ < 7))
@@ -217,6 +245,14 @@ void Worker::init_database(QSettings* s)
     Helpz::DB::Connection_Info::set_common(db_info);
 
     db_pending_thread_.reset(new Helpz::DB::Thread);
+    db_pending_thread_->add([this](Helpz::DB::Base* db)
+    {
+        std::set<uint32_t> scheme_groups;
+        auto query = db->select({"das_scheme_groups", {}, {"scheme_group_id"}}, "WHERE scheme_id = ?", {scheme_info_.id()});
+        while (query.next())
+            scheme_groups.insert(query.value(0).toUInt());
+        scheme_info_.set_scheme_groups(std::move(scheme_groups));
+    });
 }
 
 void Worker::init_scheme(QSettings* s)
@@ -274,7 +310,14 @@ void Worker::init_network_client(QSettings* s)
     qRegisterMetaType<QVector<Log_Event_Item>>("QVector<Log_Event_Item>");
     qRegisterMetaType<QVector<uint32_t>>("QVector<uint32_t>");
 
-    Authentication_Info auth_info = Helpz::SettingsHelper{
+    Ver::Client::Config& config = Ver::Client::Config::instance();
+    Ver::Client::Config def_config;
+    config = Helpz::SettingsHelper{
+                s, "RemoteServer",
+                Z::Param<uint32_t>{"StartStreamTimeoutMs", def_config._start_stream_timeout_ms},
+            }.obj<Ver::Client::Config>();
+
+    config._auth = Helpz::SettingsHelper{
                 s, "RemoteServer",
                 Z::Param<QString>{"Login",              QString()},
                 Z::Param<QString>{"Password",           QString()},
@@ -282,11 +325,11 @@ void Worker::init_network_client(QSettings* s)
                 Z::Param<QUuid>{"Device",               QUuid()}
             }.obj<Authentication_Info>();
 
-    if (!auth_info)
+    if (!config._auth)
         return;
 
-#define DAS_PROTOCOL_LATEST "das/2.6"
-#define DAS_PROTOCOL_SUPORTED DAS_PROTOCOL_LATEST",das/2.5"
+#define DAS_PROTOCOL_LATEST "das/2.7"
+#define DAS_PROTOCOL_SUPORTED DAS_PROTOCOL_LATEST",das/2.6"
 
     const QString default_dir = qApp->applicationDirPath() + '/';
     auto [ tls_policy_file, host, port, protocols, recpnnect_interval_sec ]
@@ -299,14 +342,9 @@ void Worker::init_network_client(QSettings* s)
                 Z::Param<uint32_t>{"ReconnectSeconds",  15}
             }();
 
-    const Ver::Client::Config config = Helpz::SettingsHelper{
-                s, "RemoteServer",
-                Z::Param<uint32_t>{"StreamTimeoutMs", 1500},
-            }.obj<Ver::Client::Config>();
-
-    Helpz::DTLS::Create_Client_Protocol_Func_T func = [this, auth_info, config](const std::string& app_protocol) -> std::shared_ptr<Helpz::Net::Protocol>
+    Helpz::DTLS::Create_Client_Protocol_Func_T func = [this](const std::string& app_protocol) -> std::shared_ptr<Helpz::Net::Protocol>
     {
-        std::shared_ptr<Ver::Client::Protocol> ptr = std::make_shared<Ver::Client::Protocol>(this, auth_info, config);
+        std::shared_ptr<Ver::Client::Protocol> ptr = std::make_shared<Ver::Client::Protocol>(this);
 
         if (app_protocol != DAS_PROTOCOL_LATEST)
         {
@@ -473,12 +511,8 @@ QString Worker::get_user_devices()
 QString Worker::get_user_status()
 {
     QJsonObject json;
-    auto proto = net_protocol();
-    if (proto)
-    {
-        json["user"] = proto->auth_info().login();
-        json["device"] = proto->auth_info().using_key().toString();
-    }
+    json["user"] = Ver::Client::Config::instance()._auth.login();
+    json["device"] = Ver::Client::Config::instance()._auth.using_key().toString();
     return QJsonDocument(json).toJson(QJsonDocument::Compact);
 }
 
@@ -529,11 +563,7 @@ void Worker::clear_server_config()
 
 void Worker::save_server_auth_data(const QString &login, const QString &password)
 {
-    auto proto = net_protocol();
-    if (proto)
-    {
-        save_server_data(proto->auth_info().using_key(), login, password);
-    }
+    save_server_data(Ver::Client::Config::instance()._auth.using_key(), login, password);
 }
 
 void Worker::save_server_data(const QUuid &devive_uuid, const QString &login, const QString &password)
@@ -580,9 +610,7 @@ QVariant db_get_dig_status_id(Helpz::DB::Base* db, const QString& table_name, ui
 {
     auto q = db->select({table_name, {}, {"id"}}, QString("WHERE group_id = %1 AND status_id = %2").arg(group_id).arg(info_id));
     if (q.next())
-    {
         return q.value(0);
-    }
     return {};
 }
 

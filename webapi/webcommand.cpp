@@ -38,8 +38,13 @@ void WebCommand::write_command(std::shared_ptr<Net::Websocket_Client> client, ui
     case WS_EXEC_SCRIPT:
     case WS_RESTART:
     case WS_STRUCT_MODIFY:
-    case WS_STREAM_TOGGLE:
         send_message_to_scheme(scheme_id, cmd, client->id_, data);
+        break;
+
+    case WS_STREAM_TOGGLE:
+        try {
+            Helpz::apply_parse(data, QDataStream::Qt_DefaultCompiledVersion, &WebCommand::stream_toggle, this, scheme_id, client->id_);
+        } catch(...) {}
         break;
 
     default:

@@ -139,6 +139,12 @@ void Dbus_Object::write_item_file(uint32_t /*scheme_id*/, uint32_t user_id, uint
     QMetaObject::invokeMethod(worker_->prj(), "write_to_item_file", Qt::QueuedConnection, Q_ARG(QString, file_path));
 }
 
+void Dbus_Object::start_stream(uint32_t scheme_id, uint32_t user_id, uint32_t dev_item_id, const QString &url)
+{
+    QByteArray token = worker_->start_stream(user_id, dev_item_id, url);
+    emit stream_started(Scheme_Info{scheme_id}, user_id, dev_item_id, token);
+}
+
 void Dbus_Object::write_to_item(uint32_t user_id, uint32_t item_id, const QVariant& raw_data)
 {
     QMetaObject::invokeMethod(worker_->prj(), "write_to_item", Qt::QueuedConnection,

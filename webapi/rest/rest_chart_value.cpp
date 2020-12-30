@@ -1,4 +1,5 @@
 #include <string>
+#include <algorithm>
 
 #include <boost/algorithm/string.hpp>
 
@@ -119,6 +120,9 @@ void Chart_Value::parse_params(const served::request &req)
                           && (_time_range._to - _time_range._from) < config()._hour_ratio_sec;
     if (_range_close_to_now)
         _time_range._to = now;
+
+    string bo = req.query["bounds_only"];
+    _bounds_only = !bo.empty() && (bo == "1" || bo == "true");
 }
 
 QString Chart_Value::get_where() const
@@ -189,55 +193,73 @@ int64_t Chart_Value::fill_datamap()
     int64_t count = 0, timestamp;
     uint32_t item_id;
 
-    const QString sql = get_full_sql();
+    const QString sql = _bounds_only ? get_bounds_sql() : get_full_sql();
     QSqlQuery q = _db.exec(sql);
+    auto it = _data_map.end();
 
-    enum Step_Type { DATA_STEP, ONE_POINTS_STEP };
-    int step = DATA_STEP;
-    do
+    while (q.next())
     {
-        while (q.next())
+        timestamp = q.value(FT_TIME).toLongLong();
+        item_id = q.value(FT_ITEM_ID).toUInt();
+
+        if (it == _data_map.end() || it->first != item_id)
         {
-            timestamp = q.value(FT_TIME).toLongLong();
-            item_id = q.value(FT_ITEM_ID).toUInt();
-
-            if (step == DATA_STEP)
-            {
-                std::map<int64_t, picojson::object>& item_data = _data_map[item_id];
-                item_data.emplace(timestamp, get_data_item(q, timestamp));
-
-                ++count;
-            }
-            else if (timestamp <= _time_range._from)
-            {
-                _before_range_point_map.emplace(item_id, get_data_item(q, _time_range._from));
-            }
-            else // if (timestamp >= _time_range._to)
-            {
-                _after_range_point_map.emplace(item_id, get_data_item(q, _time_range._to));
-            }
+            it = _data_map.find(item_id);
+            if (it == _data_map.cend())
+                it = _data_map.emplace(item_id, std::map<int64_t, picojson::object>{}).first;
         }
 
-//        ++step;
+        if (_bounds_only)
+            timestamp = timestamp <= _time_range._from ? _time_range._from : _time_range._to;
+
+        it->second.emplace(timestamp, get_data_item(q, timestamp));
+        ++count;
     }
-    while (q.nextResult());
 
     return count;
 }
 
 QString Chart_Value::get_full_sql() const
 {
-//    QStringList one_point_sql_list;
-//    for (const QString& item_id: _data_in_list)
-//    {
-//        one_point_sql_list.push_back(get_one_point_sql(_time_range._from, item_id, true));
-//        if (_range_in_past)
-//            one_point_sql_list.push_back(get_one_point_sql(_time_range._to, item_id, false));
-//    }
-
     return get_base_sql() + ' ' + _where + ' ' + get_limit_suffix(_offset, _limit);
-//            + ';' + get_base_sql("COUNT(*)") + ' ' + _where
-//            + ";(" + one_point_sql_list.join(") UNION (") + ')';
+    //            + ';' + get_base_sql("COUNT(*)") + ' ' + _where
+}
+
+QString Chart_Value::get_bounds_sql() const
+{
+    QStringList one_point_sql_list;
+    for (const QString& item_id: _data_in_list)
+    {
+        one_point_sql_list.push_back(get_one_point_sql(_time_range._from, item_id, true));
+        if (_range_in_past)
+            one_point_sql_list.push_back(get_one_point_sql(_time_range._to, item_id, false));
+    }
+    return '(' + one_point_sql_list.join(") UNION (") + ')';
+}
+
+QString Chart_Value::get_one_point_sql(int64_t timestamp, const QString& item_id, bool is_before_range_point) const
+{
+    static QString limit_suffix = get_limit_suffix(0, 1);
+
+    const QString time_field_name = get_field_name(FT_TIME);
+    QString sql = get_base_sql();
+    sql += " WHERE ";
+    sql += time_field_name;
+    sql += is_before_range_point ? " < " : " > ";
+    sql += QString::number(timestamp);
+    sql += " AND ";
+    sql += _scheme_where;
+    sql += " AND ";
+    sql += get_field_name(FT_ITEM_ID);
+    sql += " = ";
+    sql += item_id;
+    sql += " ORDER BY ";
+    sql += time_field_name;
+    if (is_before_range_point)
+        sql += " DESC";
+    sql += ' ';
+    sql += limit_suffix;
+    return sql;
 }
 
 QString Chart_Value::get_base_sql(const QString& what) const
@@ -312,7 +334,7 @@ void Chart_Value::fill_object(picojson::object &obj, const QSqlQuery &q) const
     if (user_id)
         obj.emplace("user_id", user_id);
 
-    const QVariant value     = Device_Item_Value::variant_from_string(q.value(FT_VALUE));
+    const QVariant value = Device_Item_Value::variant_from_string(q.value(FT_VALUE));
     obj.emplace("value", variant_to_json(value));
 
     fill_additional_fields(obj, q, value);
@@ -325,24 +347,8 @@ void Chart_Value::fill_results(picojson::array &results) const
     for (const auto& it: _data_map)
     {
         picojson::array data_arr;
-
-        if (it.second.empty() || it.second.cbegin()->first > _time_range._from)
-        {
-            const auto point_it = _before_range_point_map.find(it.first);
-            if (point_it != _before_range_point_map.cend())
-                data_arr.push_back(picojson::value(point_it->second));
-        }
-
         for (auto&& data_it: it.second)
             data_arr.push_back(picojson::value(std::move(data_it.second)));
-
-        if (_range_in_past
-            && (it.second.empty() || it.second.crbegin()->first < _time_range._to))
-        {
-            const auto point_it = _after_range_point_map.find(it.first);
-            if (point_it != _after_range_point_map.cend())
-                data_arr.push_back(picojson::value(point_it->second));
-        }
 
         picojson::object obj;
         obj.emplace("item_id", static_cast<int64_t>(it.first));
@@ -350,31 +356,6 @@ void Chart_Value::fill_results(picojson::array &results) const
 
         results.push_back(picojson::value(std::move(obj)));
     }
-}
-
-QString Chart_Value::get_one_point_sql(int64_t timestamp, const QString& item_id, bool is_before_range_point) const
-{
-    static QString limit_suffix = get_limit_suffix(0, 1);
-
-    const QString time_field_name = get_field_name(FT_TIME);
-    QString sql = get_base_sql();
-    sql += " WHERE ";
-    sql += time_field_name;
-    sql += is_before_range_point ? " < " : " > ";
-    sql += QString::number(timestamp);
-    sql += " AND ";
-    sql += _scheme_where;
-    sql += " AND ";
-    sql += get_field_name(FT_ITEM_ID);
-    sql += " = ";
-    sql += item_id;
-    sql += " ORDER BY ";
-    sql += time_field_name;
-    if (is_before_range_point)
-        sql += " DESC";
-    sql += ' ';
-    sql += limit_suffix;
-    return sql;
 }
 
 } // namespace Rest

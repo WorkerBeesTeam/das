@@ -189,58 +189,65 @@ void global::check_auth(const Authentication_Info &auth_info, Server::Protocol_B
         "WHERE u.username = ? AND s.name = ?"; // AND (s.using_key IS NULL OR s.using_key = ?)
 
     QSqlQuery query = exec(sql, {auth_info.login(), auth_info.scheme_name()});
-    if (query.next())
+    if (!query.next())
     {
-        if (compare_django_passhash(auth_info.password(), query.value(3).toByteArray()))
+        qWarning() << "Cant exec auth sql. Scheme:" << auth_info.scheme_name() << "Login:" << auth_info.login();
+        return;
+    }
+
+    if (!compare_django_passhash(auth_info.password(), query.value(3).toByteArray()))
+    {
+        qWarning() << "Password not equals. Scheme:" << auth_info.scheme_name() << "Login:" << auth_info.login()
+                   << "Pwd:" << auth_info.password();
+        return;
+    }
+
+    QUuid using_key = QUuid::fromRfc4122(query.value(5).toByteArray());
+    if (using_key.isNull())
+    {
+        QSqlQuery using_key_query;
+        sql = "SELECT 1 FROM das_scheme WHERE using_key = ?";
+        do
         {
-            QUuid using_key = QUuid::fromRfc4122(query.value(5).toByteArray());
-            if (using_key.isNull())
-            {
-                QSqlQuery using_key_query;
-                sql = "SELECT 1 FROM das_scheme WHERE using_key = ?";
-                do
-                {
-                    using_key = QUuid::createUuid();
-                    using_key_query = exec(sql, { QString::fromLocal8Bit(using_key.toRfc4122().toHex()) });
-                }
-                while (using_key_query.next());
+            using_key = QUuid::createUuid();
+            using_key_query = exec(sql, { QString::fromLocal8Bit(using_key.toRfc4122().toHex()) });
+        }
+        while (using_key_query.next());
 
-                QVariantList values{ QString::fromLocal8Bit(using_key.toRfc4122().toHex()), query.value(0) };
-                if (!update({"das_scheme", {}, {"using_key"}}, values, "id=?").isActive())
-                {
-                    qWarning() << "Failed create using_key for:" << auth_info.scheme_name();
+        QVariantList values{ QString::fromLocal8Bit(using_key.toRfc4122().toHex()), query.value(0) };
+        if (!update({"das_scheme", {}, {"using_key"}}, values, "id=?").isActive())
+        {
+            qWarning() << "Failed create using_key for:" << auth_info.scheme_name();
 //                    return;
-                }
-            }
-            else if (using_key != auth_info.using_key())
-            {
-                qWarning() << "Attempt to twice connect for:" << auth_info.scheme_name();
-//                return;
-            }
-            device_connection_id = using_key;
-
-            info_out->set_id(query.value(0).toUInt());
-            info_out->set_name(query.value(1).toString());
-
-            std::set<uint32_t> extending_ids;
-            if (!query.isNull(4)) // TODO: get array from specific table
-                extending_ids.insert(query.value(4).toUInt());
-            info_out->set_extending_scheme_ids(std::move(extending_ids));
-//            info_out->set_scheme_title(query.value(2).toString());
-
-            std::shared_ptr<Helpz::Net::Protocol_Writer> writer = info_out->writer();
-            if (writer)
-                writer->set_title(info_out->title() + " (" + info_out->name() + ')');
-
-            std::set<uint32_t> scheme_groups;
-            query.finish();
-            query.clear();
-            query = select({"das_scheme_groups", {}, {"scheme_group_id"}}, "WHERE scheme_id = ?", {info_out->id()});
-            while (query.next())
-                scheme_groups.insert(query.value(0).toUInt());
-            info_out->set_scheme_groups(std::move(scheme_groups));
         }
     }
+    else if (using_key != auth_info.using_key())
+    {
+        qWarning() << "Attempt to twice connect for:" << auth_info.scheme_name();
+//                return;
+    }
+    device_connection_id = using_key;
+
+    info_out->set_id(query.value(0).toUInt());
+    info_out->set_name(query.value(1).toString());
+
+    std::set<uint32_t> extending_ids;
+    if (!query.isNull(4)) // TODO: get array from specific table
+        extending_ids.insert(query.value(4).toUInt());
+    info_out->set_extending_scheme_ids(std::move(extending_ids));
+//            info_out->set_scheme_title(query.value(2).toString());
+
+    std::shared_ptr<Helpz::Net::Protocol_Writer> writer = info_out->writer();
+    if (writer)
+        writer->set_title(info_out->title() + " (" + info_out->name() + ')');
+
+    std::set<uint32_t> scheme_groups;
+    query.finish();
+    query.clear();
+    query = select({"das_scheme_groups", {}, {"scheme_group_id"}}, "WHERE scheme_id = ?", {info_out->id()});
+    while (query.next())
+        scheme_groups.insert(query.value(0).toUInt());
+    info_out->set_scheme_groups(std::move(scheme_groups));
 }
 
 /*static*/ bool global::compare_django_passhash(const QString& password, const QByteArray& passHashData)

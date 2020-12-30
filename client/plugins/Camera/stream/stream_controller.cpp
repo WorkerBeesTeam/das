@@ -3,6 +3,8 @@
 
 namespace Das {
 
+Q_LOGGING_CATEGORY(StreamLog, "cam.stream")
+
 Stream_Client::Stream_Client(Stream_Controller *controller) :
     controller_(controller)
 {
@@ -13,12 +15,12 @@ void Stream_Client::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data
     if (cmd == Helpz::Net::Cmd::CLOSE)
         controller_->close();
     else
-        qDebug() << "Stream_Client::process_message unknown" << cmd << data_dev.size();
+        qCDebug(StreamLog) << "Stream_Client::process_message unknown" << cmd << data_dev.size();
 }
 
 void Stream_Client::process_answer_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
 {
-    qDebug() << "Stream_Client::process_answer_message unknown" << cmd;
+    qCDebug(StreamLog) << "Stream_Client::process_answer_message unknown" << cmd << data_dev.size();
 }
 
 // ------------------------------------------------------------------------
@@ -67,11 +69,11 @@ void Stream_Controller::on_protocol_timeout(boost::asio::ip::udp::endpoint endpo
     }
     catch(const std::exception& e)
     {
-        qDebug() << "Stream_Controller::on_protocol_timeout excrption:" << e.what();
+        qCDebug(StreamLog) << "Stream_Controller::on_protocol_timeout excrption:" << e.what();
     }
     catch(...)
     {
-        qDebug() << "Stream_Controller::on_protocol_timeout excrption!";
+        qCDebug(StreamLog) << "Stream_Controller::on_protocol_timeout excrption!";
     }
 }
 
@@ -92,11 +94,11 @@ void Stream_Controller::write(const QByteArray &data)
 void Stream_Controller::handle_send(std::unique_ptr<uint8_t[]> &data, std::size_t size, const boost::system::error_code &error, const std::size_t &bytes_transferred)
 {
     if (error.value() != 0)
-        std::cerr << "SEND ERROR " << error.category().name() << ": " << error.message() << " size: " << size << std::endl;
+        qCCritical(StreamLog) << "SEND ERROR" << error.category().name() << ":" << error.message().c_str() << "size:" << size;
     else if (size != bytes_transferred)
-        std::cerr << "SEND ERROR wrong size " << size << " transfered: " << bytes_transferred << std::endl;
+        qCCritical(StreamLog) << "SEND ERROR wrong size" << size << "transfered:" << bytes_transferred;
     else if (!data)
-        std::cerr << "SEND ERROR empty data pointer" << std::endl;
+        qCCritical(StreamLog) << "SEND ERROR empty data pointer";
 }
 
 void Stream_Controller::write(std::shared_ptr<Helpz::Net::Message_Item> message)
@@ -124,16 +126,12 @@ void Stream_Controller::start_receive()
 void Stream_Controller::handle_receive(const boost::system::error_code &err, std::size_t size)
 {
     if (err)
+        qCCritical(StreamLog) << "RECV ERROR" << err.category().name() << ":" << err.message().c_str();
+    else
     {
-        std::cerr << "Stream_Server::handle_receive RECV ERROR " << err.category().name() << ": " << err.message() << std::endl;
-        return;
+        client_->process_bytes(recv_buffer_.get(), size);
+        start_receive();
     }
-
-//    std::cout << "RECV " << sender_endpoint_ << " size " << size << std::endl;
-
-    client_->process_bytes(recv_buffer_.get(), size);
-
-    start_receive();
 }
 
 } // namespace Das

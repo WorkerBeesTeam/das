@@ -21,7 +21,7 @@ bool Camera_Stream_Iface::is_valid() const { return _error_text.empty(); }
 
 std::string Camera_Stream_Iface::last_error() const { return _error_text; }
 
-const QByteArray &Camera_Stream_Iface::param()
+const QByteArray &Camera_Stream_Iface::param() const
 {
     return _param;
 }

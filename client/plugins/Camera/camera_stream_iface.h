@@ -15,7 +15,7 @@ public:
     bool is_valid() const;
     std::string last_error() const;
 
-    const QByteArray& param();
+    const QByteArray& param() const;
 
     virtual uint32_t width() const = 0;
     virtual uint32_t height() const = 0;

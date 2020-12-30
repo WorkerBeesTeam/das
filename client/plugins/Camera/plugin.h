@@ -29,7 +29,7 @@ public:
     bool check(Device *dev) override;
     void stop() override;
     void write(std::vector<Write_Cache_Item>& items) override;
-    void toggle_stream(uint32_t user_id, Device_Item *item, bool state) override;
+    std::future<QByteArray> start_stream(uint32_t user_id, Device_Item *item, const QString &url) override;
 public slots:
     void save_frame(Device_Item* item);
 private:

@@ -156,9 +156,7 @@ QString Dbus_Object::get_ip_address(uint32_t scheme_id) const
 {
     auto node = find_client(scheme_id);
     if (node)
-    {
         return QString::fromStdString(node->address());
-    }
     return {};
 }
 
@@ -170,9 +168,18 @@ void Dbus_Object::write_item_file(uint32_t scheme_id, uint32_t user_id, uint32_t
     {
         auto proto = std::static_pointer_cast<Protocol_Base>(node->protocol());
         if (proto)
-        {
             proto->send_file(user_id, dev_item_id, file_name, file_path);
-        }
+    }
+}
+
+void Dbus_Object::start_stream(uint32_t scheme_id, uint32_t user_id, uint32_t dev_item_id, const QString &url)
+{
+    auto node = find_client(scheme_id);
+    if (node)
+    {
+        auto proto = std::static_pointer_cast<Protocol_Base>(node->protocol());
+        if (proto)
+            proto->send_start_stream(user_id, dev_item_id, url);
     }
 }
 
