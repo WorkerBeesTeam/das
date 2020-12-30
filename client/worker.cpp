@@ -142,8 +142,8 @@ void Worker::close_net_client()
     if (net_thread_)
     {
         auto client = net_thread_->client();
-        if (client)
-            client->close();
+//        if (client)
+//            client->close();
     }
 }
 
@@ -610,9 +610,7 @@ QVariant db_get_dig_status_id(Helpz::DB::Base* db, const QString& table_name, ui
 {
     auto q = db->select({table_name, {}, {"id"}}, QString("WHERE group_id = %1 AND status_id = %2").arg(group_id).arg(info_id));
     if (q.next())
-    {
         return q.value(0);
-    }
     return {};
 }
 
