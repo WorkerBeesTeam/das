@@ -35,15 +35,19 @@ void Plugin::configure(QSettings *settings)
 {
     // system("/sbin/modprobe bcm2835_wdt");
     using Helpz::Param;
-    auto [stop_at_exit, max_interval, dev] = Helpz::SettingsHelper{
+    auto [stop_at_exit, max_interval, delay_after_check, dev] = Helpz::SettingsHelper{
             settings, "Watchdog",
             Param{"StopAtExit", false},
             Param{"MaxIntervalSecs", 15},
+            Param{"DelayAfterCheck", 5},
             Param{"Device", "/dev/watchdog"}
     }();
 
     _stop_at_exit = stop_at_exit;
     _max_interval = max_interval;
+    _delay_after_check = delay_after_check;
+    if (_delay_after_check < 1)
+        _delay_after_check = 1;
     _dev = dev;
     _reset_cause = get_reset_cause();
 }
@@ -56,7 +60,7 @@ bool Plugin::check(Device* dev)
     if (_dev_handle < 0)
     {
         int interval_sec = std::round(dev->check_interval() / 1000.);
-        interval_sec += 3;
+        interval_sec += _delay_after_check;
 
         open_device(std::min(_max_interval, interval_sec));
     }

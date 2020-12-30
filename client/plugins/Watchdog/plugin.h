@@ -37,6 +37,7 @@ private:
 
     bool _stop_at_exit;
     int _max_interval;
+    int _delay_after_check;
     int _dev_handle = -1;
     QString _dev;
     QVariant _reset_cause;
