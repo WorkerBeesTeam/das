@@ -6,6 +6,8 @@
 #include <memory>
 #include <set>
 
+#include <Helpz/zfile.h>
+
 #include "../plugin_global.h"
 #include <Das/checker_interface.h>
 
@@ -27,7 +29,7 @@ public:
 public:
     void configure(QSettings* settings) override;
     bool check(Device *dev) override;
-    void stop() override;
+    void stop() override final;
     void write(std::vector<Write_Cache_Item>& items) override;
 
 private:
@@ -35,11 +37,9 @@ private:
     void reset_timer();
     QVariant get_reset_cause();
 
-    bool _stop_at_exit;
+    bool _is_error = false, _stop_at_exit;
     int _max_interval;
-    int _delay_after_check;
-    int _dev_handle = -1;
-    QString _dev;
+    Helpz::File _file;
     QVariant _reset_cause;
 };
 

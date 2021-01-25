@@ -20,16 +20,17 @@ Q_LOGGING_CATEGORY(DS18B20Log, "DS18B20")
 
 DS18B20_Plugin::DS18B20_Plugin() :
     QObject(),
-    is_error_printed_(false),
-    rom_count_(0),
-    one_wire_(nullptr)
+    _is_error_printed(false),
+    _rom_count(0),
+    _one_wire(nullptr)
 {
 }
 
 DS18B20_Plugin::~DS18B20_Plugin()
 {
-    if (one_wire_)
-        delete one_wire_;
+    stop();
+    if (_thread.joinable())
+        _thread.join();
 }
 
 void DS18B20_Plugin::configure(QSettings *settings)
@@ -39,27 +40,14 @@ void DS18B20_Plugin::configure(QSettings *settings)
                                                         (settings, "DS18B20",
                                                            Param<uint16_t>{"Pin", 7}
                                                            )();
-
-#ifndef NO_WIRINGPI
-    one_wire_ = new One_Wire(pin);
-
-    try
-    {
-        one_wire_->init();
-        search_rom();
-    }
-    catch(const std::exception& e)
-    {
-        qCCritical(DS18B20Log, "%s", e.what());
-    }
-#endif
+    _thread = std::thread{&DS18B20_Plugin::run, this, pin};
 }
 
 bool DS18B20_Plugin::check(Device* dev)
 {
-    std::map<uint32_t, Device_Item*> rom_item_vect_;
+    std::vector<Data_Item> rom_item_vect;
     QVariant raw_num;
-    uint32_t num, max_num = 0;
+    uint32_t num;
     bool is_ok;
 
     for (Device_Item * item: dev->items())
@@ -69,55 +57,89 @@ bool DS18B20_Plugin::check(Device* dev)
         {
             num = raw_num.toUInt(&is_ok);
             if (is_ok)
-            {
-                rom_item_vect_.emplace(num, item);
-                if (max_num < num)
-                    max_num = num;
-            }
+                rom_item_vect.push_back(Data_Item{num, item});
         }
     }
 
-    if (rom_item_vect_.empty())
-        return true;
-
-    if (!rom_array_ || rom_count_ < max_num)
-        search_rom();
-
-    const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
-
-    std::map<Device_Item*, Device::Data_Item> device_items_values;
-    std::vector<Device_Item*> device_items_disconnected;
-    double value;
-
-    for (auto it = rom_item_vect_.begin(); it != rom_item_vect_.end(); ++it)
-    {
-        value = get_temperature(it->first, is_ok);
-        if (is_ok)
-        {
-            Device::Data_Item data_item{0, timestamp_msecs, std::floor(value * 10) / 10};
-            device_items_values.emplace(it->second, std::move(data_item));
-        }
-        else
-            device_items_disconnected.push_back(it->second);
-    }
-
-    if (!device_items_values.empty())
-    {
-        QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
-                                  QArgument<std::map<Device_Item*, Device::Data_Item>>("std::map<Device_Item*, Device::Data_Item>", device_items_values),
-                                  Q_ARG(bool, true));
-    }
-
-    if (!device_items_disconnected.empty())
-    {
-        QMetaObject::invokeMethod(dev, "set_device_items_disconnect", Qt::QueuedConnection,
-                                  Q_ARG(std::vector<Device_Item*>, device_items_disconnected));
-    }
+    if (!rom_item_vect.empty())
+        add_roms_to_queue(std::move(rom_item_vect));
     return true;
 }
 
-void DS18B20_Plugin::stop() {}
+void DS18B20_Plugin::stop()
+{
+    _break = true;
+    _cond.notify_one();
+}
+
 void DS18B20_Plugin::write(std::vector<Write_Cache_Item>& /*items*/) {}
+
+void DS18B20_Plugin::add_roms_to_queue(std::vector<DS18B20_Plugin::Data_Item> rom_item_vect)
+{
+    {
+        std::lock_guard lock(_mutex);
+
+        for (auto data_it = rom_item_vect.begin(); data_it != rom_item_vect.end(); ++data_it)
+        {
+            Data_Item& data = *data_it;
+            const auto it = std::find(_data.cbegin(), _data.cend(), data._rom);
+            if (it == _data.cend())
+                _data.push_back(std::move(data));
+        }
+    }
+
+    _cond.notify_one();
+}
+
+void DS18B20_Plugin::run(uint16_t pin)
+{
+    if (!init(pin))
+        return;
+
+    std::unique_lock lock(_mutex, std::defer_lock);
+
+    while (!_break)
+    {
+        lock.lock();
+        _cond.wait(lock, [this]() { return _break || !_data.empty(); });
+
+        if (_break)
+            break;
+
+        const Data_Item data = _data.front();
+        lock.unlock();
+
+        process_item(data._rom, data._item);
+
+        lock.lock();
+        if (!_data.empty() && data._rom == _data.front()._rom)
+            _data.pop_front();
+        lock.unlock();
+    }
+
+    delete _one_wire;
+}
+
+bool DS18B20_Plugin::init(uint16_t pin)
+{
+#ifndef NO_WIRINGPI
+    try
+    {
+        _one_wire = new One_Wire(pin);
+        _one_wire->init();
+        search_rom();
+        return true;
+    }
+    catch(const std::exception& e)
+    {
+        qCCritical(DS18B20Log, "%s", e.what());
+    }
+
+    if (_one_wire)
+        delete _one_wire;
+#endif
+    return false;
+}
 
 void DS18B20_Plugin::search_rom()
 {
@@ -127,7 +149,7 @@ void DS18B20_Plugin::search_rom()
     QString error_text;
     try
     {
-        one_wire_->search_rom(roms, n);
+        _one_wire->search_rom(roms, n, _break);
     }
     catch(const std::exception& e)
     {
@@ -140,51 +162,72 @@ void DS18B20_Plugin::search_rom()
 
     if (n)
     {
-        rom_count_ = n;
-        rom_array_.reset(new uint64_t[n]);
-        memcpy(rom_array_.get(), roms, n * sizeof(uint64_t));
+        _rom_count = n;
+        _rom_array.reset(new uint64_t[n]);
+        memcpy(_rom_array.get(), roms, n * sizeof(uint64_t));
 
-        if (is_error_printed_)
-            is_error_printed_ = false;
+        if (_is_error_printed)
+            _is_error_printed = false;
     }
     else
     {
-        if (rom_array_)
-            rom_array_.reset();
+        if (_rom_array)
+            _rom_array.reset();
 
-        if (!is_error_printed_)
+        if (!_is_error_printed)
         {
+            _is_error_printed = true;
             qCCritical(DS18B20Log) << "Unable to find temperature sensor:";
-            is_error_printed_ = true;
         }
     }
+}
+
+void DS18B20_Plugin::process_item(uint32_t rom, Device_Item *item)
+{
+    if (!_rom_array || _rom_count < rom)
+        search_rom();
+
+    bool is_ok;
+    double value = get_temperature(rom, is_ok);
+    if (is_ok)
+    {
+        const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
+        Device::Data_Item data_item{0, timestamp_msecs, std::floor(value * 10) / 10};
+
+        QArgument<std::map<Device_Item*,Device::Data_Item>> arg("std::map<Device_Item*,Device::Data_Item>", {{item, data_item}});
+        QMetaObject::invokeMethod(item->device(), "set_device_items_values", Qt::QueuedConnection,
+                                  arg, Q_ARG(bool, true));
+    }
+    else
+        QMetaObject::invokeMethod(item->device(), "set_device_items_disconnect", Qt::QueuedConnection,
+                                  Q_ARG(std::vector<Device_Item*>, {item}));
 }
 
 double DS18B20_Plugin::get_temperature(uint32_t num, bool &is_ok)
 {
 #ifndef NO_WIRINGPI
-    if (num < rom_count_)
+    if (num < _rom_count)
     {
-        uint64_t rom = rom_array_[num];
+        uint64_t rom = _rom_array[num];
 
         uint8_t data[9], attempt = 0;
 
         do
         {
-            one_wire_->set_device(rom);
-            one_wire_->write_byte(CMD_CONVERTTEMP);
+            _one_wire->set_device(rom);
+            _one_wire->write_byte(CMD_CONVERTTEMP);
 
             delay(750);
 
-            one_wire_->set_device(rom);
-            one_wire_->write_byte(CMD_RSCRATCHPAD);
+            _one_wire->set_device(rom);
+            _one_wire->write_byte(CMD_RSCRATCHPAD);
 
             for (int i = 0; i < 9; i++)
-                data[i] = one_wire_->read_byte();
+                data[i] = _one_wire->read_byte();
         }
-        while (one_wire_->crc8(data, 8) != data[8] && ++attempt < 5);
+        while (!_break && _one_wire->crc8(data, 8) != data[8] && ++attempt < 5);
 
-        if (attempt < 5)
+        if (!_break && attempt < 5)
         {
             is_ok = true;
             return ((data[1] << 8) + data[0]) * 0.0625;

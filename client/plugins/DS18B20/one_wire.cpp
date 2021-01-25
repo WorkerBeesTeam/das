@@ -222,7 +222,7 @@ uint8_t One_Wire::crc8(uint8_t addr[], uint8_t len)
 /*
  * поиск устройств
  */
-void One_Wire::search_rom(uint64_t * roms, int & n)
+void One_Wire::search_rom(uint64_t * roms, int & n, const bool &break_flag)
 {
     uint64_t lastAddress = 0;
     int lastDiscrepancy = 0;
@@ -234,7 +234,7 @@ void One_Wire::search_rom(uint64_t * roms, int & n)
         {
             try
             {
-                lastAddress = search_next_address(lastAddress, lastDiscrepancy);
+                lastAddress = search_next_address(lastAddress, lastDiscrepancy, break_flag);
                 int crc = crc_check(lastAddress, 8);
                 if (crc == 0)
                 {
@@ -251,16 +251,16 @@ void One_Wire::search_rom(uint64_t * roms, int & n)
                     throw e;
             }
         }
-        while (err != 0);
+        while (!break_flag && err != 0);
     }
-    while (lastDiscrepancy != 0 && i < n);
+    while (!break_flag && lastDiscrepancy != 0 && i < n);
     n = i;
 }
 
 /*
  * поиск следующего подключенного устройства
  */
-uint64_t One_Wire::search_next_address(uint64_t last_address, int & last_discrepancy)
+uint64_t One_Wire::search_next_address(uint64_t last_address, int & last_discrepancy, const bool& break_flag)
 {
     uint64_t newAddress = 0;
     int searchDirection = 0;

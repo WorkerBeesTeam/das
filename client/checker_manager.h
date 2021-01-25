@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <QLoggingCategory>
 #include <QMutexLocker>
+#include <QPluginLoader>
 
 #include <map>
 
@@ -35,20 +36,21 @@ class Manager : public QObject, public Manager_Interface
 public:
     explicit Manager(Worker* worker, QObject *parent = 0);
     ~Manager();
-    void loadPlugins(Worker* worker);
 
     void break_checking();
 public slots:
     void stop();
     void start();
     std::future<QByteArray> start_stream(uint32_t user_id, Device_Item* item, const QString &url);
-private:
 private slots:
     void check_devices();
     void write_data(Device_Item* item, const QVariant& raw_data, uint32_t user_id = 0);
     void write_cache();
 private:
     void write_items(DB::Plugin_Type* plugin, std::vector<Write_Cache_Item>& items);
+
+    void load_plugins(Worker* worker);
+    DB::Plugin_Type* load_plugin(const QString& file_path, std::shared_ptr<QPluginLoader>& loader, bool &need_update_param);
 
     bool is_server_connected() const override;
 

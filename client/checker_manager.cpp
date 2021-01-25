@@ -16,6 +16,7 @@ namespace Das {
 namespace Checker {
 
 Q_LOGGING_CATEGORY(Log, "checker")
+Q_LOGGING_CATEGORY(LogDetail, "checker.detail", QtWarningMsg)
 
 #define MINIMAL_WRITE_INTERVAL    50
 
@@ -26,7 +27,7 @@ Manager::Manager(Worker *worker, QObject *parent) :
     scheme_(worker->prj())
 {
     plugin_type_mng_ = scheme_->plugin_type_mng_;
-    loadPlugins(worker);
+    load_plugins(worker);
 
     connect(scheme_, &Scheme::control_state_changed, this, &Manager::write_data, Qt::QueuedConnection);
 
@@ -63,111 +64,6 @@ Manager::~Manager()
     for (const Plugin_Type& plugin: plugin_type_mng_->types())
         if (plugin.loader && !plugin.loader->unload())
             qCWarning(Log) << "Unload fail" << plugin.loader->fileName() << plugin.loader->errorString();
-}
-
-void Manager::loadPlugins(Worker *worker)
-{
-    //    pluginLoader.emplace("modbus", nullptr);
-    QString type;
-    QObject *plugin;
-    Plugin_Type* pl_type;
-    QVector<Plugin_Type> plugins_update_vect;
-    bool plugin_updated;
-    Checker::Interface *checker_interface;
-    QJsonObject meta_data;
-
-    QDir pluginsDir(qApp->applicationDirPath());
-    pluginsDir.cd("plugins");
-
-    std::unique_ptr<QSettings> settings;
-
-    auto qJsonArray_to_qStringList = [](const QJsonArray& arr) -> QStringList
-    {
-        QStringList names;
-        for (const QJsonValue& val: arr)
-            names.push_back(val.toString());
-        return names;
-    };
-
-    std::map<QString, QString> loaded_map;
-
-    for (const QString& fileName: pluginsDir.entryList(QDir::Files))
-    {
-        std::shared_ptr<QPluginLoader> loader = std::make_shared<QPluginLoader>(pluginsDir.absoluteFilePath(fileName));
-        if (loader->load() || loader->isLoaded())
-        {
-            meta_data = loader->metaData()["MetaData"].toObject();
-            type = meta_data["type"].toString();
-
-            if (!type.isEmpty() && type.length() < 128)
-            {
-                pl_type = plugin_type_mng_->get_type(type);
-                if (pl_type->id() && pl_type->need_it && !pl_type->loader)
-                {
-                    loaded_map.emplace(type, fileName);
-
-                    plugin = loader->instance();
-                    checker_interface = qobject_cast<Checker::Interface *>(plugin);
-                    if (checker_interface)
-                    {
-                        pl_type->loader = loader;
-                        pl_type->checker = checker_interface;
-
-                        if (meta_data.constFind("param") != meta_data.constEnd())
-                        {
-                            plugin_updated = false;
-                            QJsonObject param = meta_data["param"].toObject();
-
-                            QStringList dev_names = qJsonArray_to_qStringList(param["device"].toArray());
-                            if (pl_type->param_names_device() != dev_names)
-                            {
-                                qCDebug(Log) << "Plugin" << pl_type->name() << "dev_names" << pl_type->param_names_device() << dev_names;
-                                pl_type->set_param_names_device(dev_names);
-                                plugin_updated = true;
-                            }
-
-                            QStringList dev_item_names = qJsonArray_to_qStringList(param["device_item"].toArray());
-                            if (pl_type->param_names_device_item() != dev_item_names)
-                            {
-                                qCDebug(Log) << "Plugin" << pl_type->name() << "dev_item_names" << pl_type->param_names_device_item() << dev_item_names;
-                                pl_type->set_param_names_device_item(dev_item_names);
-                                if (!plugin_updated) plugin_updated = true;
-                            }
-
-                            if (plugin_updated)
-                                plugins_update_vect.push_back(*pl_type);
-                        }
-
-                        if (!settings)
-                            settings = Worker::settings();
-                        init_checker(pl_type->checker, scheme_);
-                        pl_type->checker->configure(settings.get());
-                        continue;
-                    }
-                    else
-                        qCWarning(Log) << "Bad plugin" << plugin << loader->errorString();
-                }
-            }
-            else
-                qCWarning(Log) << "Bad type in plugin" << fileName << type;
-
-            loader->unload();
-        }
-        else
-            qCWarning(Log) << "Fail to load plugin" << fileName << loader->errorString();
-    }
-
-    if (!loaded_map.empty() && Log().isDebugEnabled())
-    {
-        auto dbg = qDebug(Log).nospace().noquote() << "Loaded plugins:";
-        for (const auto& it: loaded_map)
-            dbg << "\n  - " << it.first << " (" << it.second << ')';
-    }
-
-    if (plugins_update_vect.size())
-    {
-        worker->update_plugin_param_names(plugins_update_vect);
-    }
 }
 
 void Manager::break_checking()
@@ -214,9 +110,7 @@ void Manager::check_devices()
     for (Device* dev: scheme_->devices())
     {
         if (dev->check_interval() <= 0)
-        {
             continue;
-        }
 
         Check_Info& check_info = last_check_time_map_[dev->id()];
         now_ms = QDateTime::currentMSecsSinceEpoch();
@@ -233,9 +127,7 @@ void Manager::check_devices()
                     if (dev->checker_type()->checker->check(dev))
                     {
                         if (!check_info.status_)
-                        {
                             check_info.status_ = true;
-                        }
                     }
                     else if (check_info.status_)
                     {
@@ -263,14 +155,9 @@ void Manager::check_devices()
                     else
                     {
                         std::vector<Device_Item*> items;
-
                         for (Device_Item* dev_item: dev->items())
-                        {
                             if (dev_item->is_connected())
-                            {
                                 items.push_back(dev_item);
-                            }
-                        }
 
                         if (!items.empty())
                         {
@@ -281,8 +168,15 @@ void Manager::check_devices()
                 }
             }
 
-            now_ms = QDateTime::currentMSecsSinceEpoch();
-            check_info.time_ = now_ms;
+            check_info.time_ = QDateTime::currentMSecsSinceEpoch();
+            if (LogDetail().isDebugEnabled())
+            {
+                auto delta = check_info.time_ - now_ms;
+                if (delta > 10)
+                    qDebug(LogDetail).nospace() << delta << "ms elapsed for " << dev->name();
+            }
+
+            now_ms = check_info.time_;
             next_shot = now_ms + dev->check_interval();
         }
         min_shot = std::min(min_shot, next_shot);
@@ -294,9 +188,7 @@ void Manager::check_devices()
     now_ms = QDateTime::currentMSecsSinceEpoch();
     min_shot -= now_ms;
     if (min_shot < MINIMAL_WRITE_INTERVAL)
-    {
         min_shot = MINIMAL_WRITE_INTERVAL;
-    }
     check_timer_.start(min_shot);
 
     if (write_cache_.size() && !write_timer_.isActive())
@@ -364,10 +256,119 @@ void Manager::write_items(Plugin_Type* plugin, std::vector<Write_Cache_Item>& it
             Device* dev = device_items_values.begin()->first->device();
             QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
                                       QArgument<std::map<Device_Item*, Device::Data_Item>>
-                                      ("std::map<Device_Item*, Device::Data_Item>", device_items_values),
+                                      ("std::map<Device_Item*,Device::Data_Item>", device_items_values),
                                       Q_ARG(bool, true));
         }
     }
+}
+
+void Manager::load_plugins(Worker *worker)
+{
+    QVector<Plugin_Type> plugins_update_vect;
+
+    QDir pluginsDir(qApp->applicationDirPath());
+    pluginsDir.cd("plugins");
+
+    std::unique_ptr<QSettings> settings;
+
+    std::map<QString, QString> loaded_map;
+
+    for (const QString& file_name: pluginsDir.entryList(QDir::Files))
+    {
+        std::shared_ptr<QPluginLoader> loader;
+
+        try
+        {
+            bool need_update_param = false;
+            Plugin_Type* pl_type = load_plugin(pluginsDir.absoluteFilePath(file_name), loader, need_update_param);
+
+            init_checker(pl_type->checker, scheme_);
+
+            if (!settings)
+                settings = Worker::settings();
+            pl_type->checker->configure(settings.get());
+
+            loaded_map.emplace(pl_type->name(), file_name);
+
+            if (need_update_param)
+                plugins_update_vect.push_back(*pl_type);
+        }
+        catch (const std::exception& e)
+        {
+            if (loader->isLoaded())
+                loader->unload();
+            if (*e.what() != 0)
+                qCCritical(Log) << "Fail to load plugin" << file_name << e.what();
+        }
+    }
+
+    if (!loaded_map.empty() && Log().isDebugEnabled())
+    {
+        auto dbg = qDebug(Log).nospace().noquote() << "Loaded plugins:";
+        for (const auto& it: loaded_map)
+            dbg << "\n  - " << it.first << " (" << it.second << ')';
+    }
+
+    if (plugins_update_vect.size())
+    {
+        worker->update_plugin_param_names(plugins_update_vect);
+    }
+}
+
+QStringList qJsonArray_to_qStringList(const QJsonArray& arr)
+{
+    QStringList names;
+    for (const QJsonValue& val: arr)
+        names.push_back(val.toString());
+    return names;
+}
+
+DB::Plugin_Type *Manager::load_plugin(const QString &file_path, std::shared_ptr<QPluginLoader>& loader, bool& need_update_param)
+{
+    loader = std::make_shared<QPluginLoader>(file_path);
+    if (!loader->load() && !loader->isLoaded())
+        throw std::runtime_error(loader->errorString().toStdString());
+
+    QJsonObject meta_data = loader->metaData()["MetaData"].toObject();
+    QString type = meta_data["type"].toString();
+
+    if (type.isEmpty() || type.length() > 128)
+        throw std::runtime_error("Bad type " + type.toStdString());
+
+    Plugin_Type* pl_type = plugin_type_mng_->get_type(type);
+    if (!pl_type->id() || !pl_type->need_it || pl_type->loader)
+        throw std::runtime_error("\0");
+
+    QObject *plugin = loader->instance();
+    Checker::Interface *checker_interface = qobject_cast<Checker::Interface *>(plugin);
+    if (!checker_interface)
+        throw std::runtime_error(loader->errorString().toStdString());
+
+    pl_type->loader = loader;
+    pl_type->checker = checker_interface;
+
+    if (meta_data.constFind("param") != meta_data.constEnd())
+    {
+        QJsonObject param = meta_data["param"].toObject();
+
+        QStringList dev_names = qJsonArray_to_qStringList(param["device"].toArray());
+        if (pl_type->param_names_device() != dev_names)
+        {
+            qCDebug(Log) << "Plugin" << pl_type->name() << "dev_names" << pl_type->param_names_device() << dev_names;
+            pl_type->set_param_names_device(dev_names);
+            need_update_param = true;
+        }
+
+        QStringList dev_item_names = qJsonArray_to_qStringList(param["device_item"].toArray());
+        if (pl_type->param_names_device_item() != dev_item_names)
+        {
+            qCDebug(Log) << "Plugin" << pl_type->name() << "dev_item_names" << pl_type->param_names_device_item() << dev_item_names;
+            pl_type->set_param_names_device_item(dev_item_names);
+            need_update_param = true;
+        }
+    }
+
+    return pl_type;
 }
 
 bool Manager::is_server_connected() const

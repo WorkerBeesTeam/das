@@ -40,11 +40,11 @@ public:
   int crc_check(uint64_t data8x8bit, uint8_t len);
   uint8_t crc8(uint8_t addr[], uint8_t len);
 
-  void search_rom(uint64_t* roms, int& n);
+  void search_rom(uint64_t* roms, int& n, const bool &break_flag);
 
 private:
   int pin_;
-  uint64_t search_next_address(uint64_t last_address, int& last_discrepancy);
+  uint64_t search_next_address(uint64_t last_address, int& last_discrepancy, const bool &break_flag);
 };
 
 } // namespace Das

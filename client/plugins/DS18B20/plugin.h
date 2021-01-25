@@ -2,6 +2,10 @@
 #define DAS_HTU21PLUGIN_H
 
 #include <memory>
+#include <deque>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #include <QLoggingCategory>
 
@@ -27,18 +31,41 @@ public:
 public:
     void configure(QSettings* settings) override;
     bool check(Device *dev) override;
-    void stop() override;
+    void stop() override final;
     void write(std::vector<Write_Cache_Item>& items) override;
 private:
+
+    struct Data_Item
+    {
+        uint32_t _rom;
+        Device_Item* _item;
+
+        bool operator ==(uint32_t rom) const
+        {
+            return _rom == rom;
+        }
+    };
+
+    void add_roms_to_queue(std::vector<Data_Item> rom_item_vect);
+
+    void run(uint16_t pin);
+    bool init(uint16_t pin);
     void search_rom();
+    void process_item(uint32_t rom, Device_Item* item);
     double get_temperature(uint32_t num, bool& is_ok);
 
-    bool is_error_printed_;
+    bool _is_error_printed, _break = false;
 
-    std::unique_ptr<uint64_t[]> rom_array_;
-    uint32_t rom_count_;
+    std::unique_ptr<uint64_t[]> _rom_array;
+    uint32_t _rom_count;
 
-    One_Wire* one_wire_;
+    One_Wire* _one_wire;
+
+    std::thread _thread;
+    std::mutex _mutex;
+    std::condition_variable _cond;
+
+    std::deque<Data_Item> _data;
 };
 
 } // namespace Das
