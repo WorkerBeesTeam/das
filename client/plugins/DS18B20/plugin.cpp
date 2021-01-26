@@ -191,12 +191,13 @@ void DS18B20_Plugin::process_item(uint32_t rom, Device_Item *item)
     double value = get_temperature(rom, is_ok);
     if (is_ok)
     {
-        const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
-        Device::Data_Item data_item{0, timestamp_msecs, std::floor(value * 10) / 10};
+        value = std::floor(value * 10) / 10;
 
-        QArgument<std::map<Device_Item*,Device::Data_Item>> arg("std::map<Device_Item*,Device::Data_Item>", {{item, data_item}});
+        std::map<Device_Item*, Device::Data_Item> data;
+        data.emplace(item, Device::Data_Item{0, DB::Log_Base_Item::current_timestamp(), value});
         QMetaObject::invokeMethod(item->device(), "set_device_items_values", Qt::QueuedConnection,
-                                  arg, Q_ARG(bool, true));
+                                  QArgument<std::map<Device_Item*,Device::Data_Item>>{"std::map<Device_Item*,Device::Data_Item>", data},
+                                  Q_ARG(bool, true));
     }
     else
         QMetaObject::invokeMethod(item->device(), "set_device_items_disconnect", Qt::QueuedConnection,
