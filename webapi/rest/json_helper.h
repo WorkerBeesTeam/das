@@ -128,6 +128,106 @@ T stoa_or(const std::string& text, T default_value = static_cast<T>(0), T(*func)
     return default_value;
 }
 
+
+inline picojson::value pico_from_qvariant(const QVariant& value)
+{
+    switch (value.type())
+    {
+    case QVariant::Invalid: return picojson::value{};
+    case QVariant::Bool: return picojson::value{value.toBool()};
+    case QVariant::Double: return picojson::value{value.toDouble()};
+    case QVariant::Int:
+    case QVariant::UInt:
+    case QVariant::LongLong:
+    case QVariant::ULongLong: return picojson::value{value.value<int64_t>()};
+
+    case QVariant::StringList:
+    case QVariant::List:
+    {
+        picojson::array arr;
+        QList<QVariant> value_list = value.toList();
+        for (const QVariant& elem: value_list)
+            arr.push_back(pico_from_qvariant(elem));
+        return picojson::value{arr};
+    }
+
+    case QVariant::Map:
+    {
+        picojson::object obj;
+        QMap<QString, QVariant> value_obj = value.toMap();
+        for (auto it = value_obj.cbegin(); it != value_obj.cend(); ++it)
+            obj.emplace(it.key().toStdString(), pico_from_qvariant(it.value()));
+        return picojson::value{obj};
+    }
+
+    case QVariant::String:
+    case QVariant::ByteArray:
+    default:
+        return picojson::value{value.toString().toStdString()};
+    }
+}
+
+inline QVariant pico_to_qvariant(const picojson::value& value)
+{
+    if (value.is<bool>())
+        return value.get<bool>();
+    else if (value.is<int64_t>())
+        return QVariant::fromValue(value.get<int64_t>());
+    else if (value.is<double>())
+        return value.get<double>();
+    else if (value.is<std::string>())
+        return QString::fromStdString(value.get<std::string>());
+    return {};
+}
+
+template<typename T>
+T obj_from_pico(const picojson::object& item, const Helpz::DB::Table& table)
+{
+    T obj;
+
+    int i;
+    for (const auto& it: item)
+    {
+        i = table.field_names().indexOf(QString::fromStdString(it.first));
+        if (i < 0 || i >= table.field_names().size())
+            throw std::runtime_error("Unknown property: " + it.first);
+        T::value_setter(obj, i, pico_to_qvariant(it.second));
+    }
+
+    return obj;
+}
+
+template<typename T>
+T obj_from_pico(const picojson::object& item)
+{
+    const auto table = Helpz::DB::db_table<T>();
+    return obj_from_pico<T>(item, table);
+}
+
+template<typename T>
+T obj_from_pico(const picojson::value& value, const Helpz::DB::Table& table)
+{
+    if (!value.is<picojson::object>())
+        throw std::runtime_error("Is not an object");
+    return obj_from_pico<T>(value.get<picojson::object>(), table);
+}
+
+template<typename T>
+T obj_from_pico(const picojson::value& value)
+{
+    const auto table = Helpz::DB::db_table<T>();
+    return obj_from_pico<T>(value, table);
+}
+
+template<typename T>
+picojson::object obj_to_pico(const T& item, const QStringList& names)
+{
+    picojson::object obj;
+    for (int i = 0; i < T::COL_COUNT; ++i)
+        obj.emplace(names.at(i).toStdString(), pico_from_qvariant(T::value_getter(item, i)));
+    return obj;
+}
+
 } // namespace Rest
 } // namespace Das
 

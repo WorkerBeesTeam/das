@@ -20,6 +20,7 @@
 
 #include <dbus/dbus_interface.h>
 
+#include "rest_helper.h"
 #include "json_helper.h"
 #include "filter.h"
 #include "csrf_middleware.h"
@@ -27,6 +28,7 @@
 #include "scheme_copier.h"
 #include "rest_chart.h"
 #include "rest_chart_data_controller.h"
+#include "rest_scheme_structure.h"
 #include "rest_scheme.h"
 
 namespace Das {
@@ -46,6 +48,7 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
     dbus_iface_(dbus_iface)
 {
     const std::string scheme_path = get_scheme_path();
+    structure_ = std::make_shared<Scheme_Structure>(mux, scheme_path);
     chart_ = std::make_shared<Chart>(mux, scheme_path);
     chart_data_ = std::make_shared<Chart_Data_Controller>(mux, scheme_path);
 
@@ -242,10 +245,7 @@ void Scheme::get_disabled_status(served::response &res, const served::request &r
 
 void Scheme::del_disabled_status(served::response &res, const served::request &req)
 {
-    picojson::value val;
-    const std::string err = picojson::parse(val, req.body());
-    if (!err.empty() || !val.is<picojson::array>())
-        throw served::request_error(served::status_4XX::BAD_REQUEST, err);
+    const picojson::array arr = Helper::parse_array(req.body());
 
     std::set<uint32_t> id_set;
     uint32_t id;
@@ -263,7 +263,6 @@ void Scheme::del_disabled_status(served::response &res, const served::request &r
         return false;
     };
 
-    const picojson::array& arr = val.get<picojson::array>();
     for (const picojson::value& value: arr)
     {
         if (!checkAdd(value) && value.is<picojson::object>())
@@ -292,64 +291,9 @@ void Scheme::del_disabled_status(served::response &res, const served::request &r
     res.set_status(204);
 }
 
-inline QVariant pico_to_qvariant(const picojson::value& value)
-{
-    if (value.is<bool>())
-        return value.get<bool>();
-    else if (value.is<int64_t>())
-        return QVariant::fromValue(value.get<int64_t>());
-    else if (value.is<double>())
-        return value.get<double>();
-    else if (value.is<std::string>())
-        return QString::fromStdString(value.get<std::string>());
-    return {};
-}
-
-template<typename T>
-T obj_from_pico(const picojson::object& item, const Helpz::DB::Table& table)
-{
-    T obj;
-
-    int i;
-    for (const auto& it: item)
-    {
-        i = table.field_names().indexOf(QString::fromStdString(it.first));
-        if (i < 0 || i >= table.field_names().size())
-            throw std::runtime_error("Unknown property: " + it.first);
-        T::value_setter(obj, i, pico_to_qvariant(it.second));
-    }
-
-    return obj;
-}
-
-template<typename T>
-T obj_from_pico(const picojson::object& item)
-{
-    const auto table = db_table<T>();
-    return obj_from_pico<T>(item, table);
-}
-
-template<typename T>
-T obj_from_pico(const picojson::value& value, const Helpz::DB::Table& table)
-{
-    if (!value.is<picojson::object>())
-        throw std::runtime_error("Is not an object");
-    return obj_from_pico<T>(value.get<picojson::object>(), table);
-}
-
-template<typename T>
-T obj_from_pico(const picojson::value& value)
-{
-    const auto table = db_table<T>();
-    return obj_from_pico<T>(value, table);
-}
-
 void Scheme::add_disabled_status(served::response &res, const served::request &req)
 {
-    picojson::value val;
-    const std::string err = picojson::parse(val, req.body());
-    if (!err.empty() || !val.is<picojson::array>())
-        throw served::request_error(served::status_4XX::BAD_REQUEST, err);
+    const picojson::array arr = Helper::parse_array(req.body());
 
     Auth_Middleware::check_permission("add_disabled_status");
     const Scheme_Info scheme = get_info(req);
@@ -358,7 +302,6 @@ void Scheme::add_disabled_status(served::response &res, const served::request &r
 
     Table table = db_table<DB::Disabled_Status>();
 
-    const picojson::array& arr = val.get<picojson::array>();
     for (const picojson::value& value: arr)
     {
         DB::Disabled_Status item = obj_from_pico<DB::Disabled_Status>(value, table);
@@ -411,12 +354,8 @@ void Scheme::get_list(served::response &res, const served::request &req)
 
 void Scheme::create(served::response &res, const served::request &req)
 {
-    picojson::value val;
-    const std::string err = picojson::parse(val, req.body());
-    if (!err.empty() || !val.is<picojson::object>())
-        throw served::request_error(served::status_4XX::BAD_REQUEST, err);
+    picojson::object obj = Helper::parse_object(req.body());
 
-    picojson::object& obj = val.get<picojson::object>();
     auto s_groups_it = obj.find("scheme_groups");
     if (s_groups_it == obj.cend() || !s_groups_it->second.is<picojson::array>())
         throw served::request_error(served::status_4XX::BAD_REQUEST, "scheme_groups is required");
@@ -492,22 +431,17 @@ void Scheme::create(served::response &res, const served::request &req)
     }
 
     obj["id"] = picojson::value(new_id.value<int64_t>());
+    const picojson::value val{std::move(obj)};
     res << val.serialize();
     std::cerr << "Scheme::create: " << val.serialize() << std::endl;
 }
 
 void Scheme::set_name(served::response &res, const served::request &req)
 {
+    const picojson::object obj = Helper::parse_object(req.body());
     const Scheme_Info scheme = get_info(req);
 
-    picojson::value val;
-    const std::string err = picojson::parse(val, req.body());
-    if (!err.empty() || !val.is<picojson::object>())
-        throw served::request_error(served::status_4XX::BAD_REQUEST, err);
-
-    const picojson::object& obj = val.get<picojson::object>();
-    const std::string scheme_name = obj.at("name").get<std::string>();
-
+    const std::string& scheme_name = obj.at("name").get<std::string>();
     std::cerr << "set_name: " << scheme_name << std::endl;
 
     const uint32_t user_id = Auth_Middleware::get_thread_local_user().id_;
@@ -520,12 +454,8 @@ void Scheme::set_name(served::response &res, const served::request &req)
 
 void Scheme::copy(served::response &res, const served::request &req)
 {
-    picojson::value val;
-    const std::string err = picojson::parse(val, req.body());
-    if (!err.empty() || !val.is<picojson::object>())
-        throw served::request_error(served::status_4XX::BAD_REQUEST, err);
+    const picojson::object obj = Helper::parse_object(req.body());
 
-    const picojson::object& obj = val.get<picojson::object>();
     const uint32_t dest_scheme_id = obj.at("scheme_id").get<int64_t>();
     const bool is_dry_run = obj.at("dry_run").get<bool>();
 

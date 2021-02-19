@@ -2,14 +2,12 @@
 
 #include <served/request_error.hpp>
 
-#define PICOJSON_USE_INT64
-#include <plus/jwt-cpp/include/jwt-cpp/picojson.h>
-
 #include <plus/das/jwt_helper.h>
 #include <plus/das/database.h>
 
 #include <Helpz/db_base.h>
 
+#include "rest_helper.h"
 #include "auth_middleware.h"
 
 namespace Das {
@@ -25,7 +23,7 @@ void Auth_Middleware::check_permission(const std::string &permission)
 {
     const uint32_t user_id = get_thread_local_user().id_;
     if (!DB::Helper::check_permission(user_id, permission))
-        throw served::request_error(served::status_4XX::FORBIDDEN, "You don't have permission for this");
+        throw served::request_error(served::status_4XX::FORBIDDEN, "You don't have permission for this: " + permission);
 }
 
 Auth_Middleware::Auth_Middleware(std::shared_ptr<JWT_Helper> jwt_helper, const std::vector<std::string>& exclude_path) :
@@ -65,15 +63,10 @@ void Auth_Middleware::check_token(const served::request &req)
     try
     {
         const std::string json_raw = jwt_helper_->decode_and_verify(token);
-        picojson::value val;
-        const std::string err = picojson::parse(val, json_raw);
-        if (!err.empty() || !val.is<picojson::object>())
-            throw served::request_error(served::status_4XX::BAD_REQUEST, err);
-
-        const picojson::object obj = val.get<picojson::object>();
+        const picojson::object obj = Helper::parse_object(json_raw);
         thread_local_user.id_ = obj.at("user_id").get<int64_t>();
 
-        const picojson::array scheme_groups = obj.at("groups").get<picojson::array>();
+        const picojson::array& scheme_groups = obj.at("groups").get<picojson::array>();
         for (const picojson::value& scheme_group_id: scheme_groups)
             thread_local_user.scheme_group_set_.insert(scheme_group_id.get<int64_t>());
     }

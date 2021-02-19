@@ -1,8 +1,5 @@
 #include <iostream>
 
-#define PICOJSON_USE_INT64
-#include <picojson/picojson.h>
-
 #include <served/served.hpp>
 #include <served/status.hpp>
 #include <served/request_error.hpp>
@@ -15,6 +12,7 @@
 
 #include "dbus_object.h"
 
+#include "rest_helper.h"
 #include "json_helper.h"
 #include "multipart_form_data_parser.h"
 #include "csrf_middleware.h"
@@ -64,14 +62,9 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
         const std::string token_auth {"/token/auth"};
         mux.handle(token_auth).post([](served::response &res, const served::request &req)
         {
-            picojson::value val;
-            const std::string err = picojson::parse(val, req.body());
-            if (!err.empty() || !val.is<picojson::object>())
-                throw served::request_error(served::status_4XX::BAD_REQUEST, err);
-
-            const picojson::object& obj = val.get<picojson::object>();
-            const std::string username = obj.at("username").get<std::string>();
-            const std::string password = obj.at("password").get<std::string>();
+            const picojson::object obj = Helper::parse_object(req.body());
+            const std::string& username = obj.at("username").get<std::string>();
+            const std::string& password = obj.at("password").get<std::string>();
 
             std::cout << username << " + " << password << std::endl;
 
@@ -90,13 +83,8 @@ void Restful::run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_h
 
         mux.handle("bot/auth").post([](served::response &res, const served::request &req)
         {
-            picojson::value val;
-            const std::string err = picojson::parse(val, req.body());
-            if (!err.empty() || !val.is<picojson::object>())
-                throw served::request_error(served::status_4XX::BAD_REQUEST, err);
-
-            const picojson::object& obj = val.get<picojson::object>();
-            const std::string token = obj.at("token").get<std::string>();
+            const picojson::object obj = Helper::parse_object(req.body());
+            const std::string& token = obj.at("token").get<std::string>();
 
             const qint64 now = DB::Log_Base_Item::current_timestamp();
             const QString where = "WHERE expired > " + QString::number(now) + " AND token = ?";

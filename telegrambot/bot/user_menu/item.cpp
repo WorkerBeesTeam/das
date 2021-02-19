@@ -60,7 +60,7 @@ picojson::object Item::read_template(const std::string &template_path)
     picojson::value val;
     const std::string err = picojson::parse(val, template_raw);
     if (!err.empty() || !val.is<picojson::object>())
-        throw std::runtime_error(err);
+        throw std::runtime_error(err.empty() ? "Object is expected" : err);
 
     return val.get<picojson::object>();
 }

@@ -440,7 +440,7 @@ void Structure_Synchronizer::process_scheme_data(uint8_t struct_type, QIODevice*
     case ST_DIG_STATUS_CATEGORY:   apply_parse(*data_dev, &T::sync_table<DIG_Status_Category>          , scheme_info, delete_if_not_exist); break;
     case ST_DIG_PARAM:             apply_parse(*data_dev, &T::sync_table<DIG_Param>                    , scheme_info, delete_if_not_exist); break;
     case ST_SIGN_TYPE:             apply_parse(*data_dev, &T::sync_table<Sign_Type>                    , scheme_info, delete_if_not_exist); break;
-    case ST_CODES:                 apply_parse(*data_dev, &T::sync_table<Code_Item>                    , scheme_info, delete_if_not_exist); break;
+    case ST_CODE_ITEM:             apply_parse(*data_dev, &T::sync_table<Code_Item>                    , scheme_info, delete_if_not_exist); break;
     case ST_TRANSLATION:           apply_parse(*data_dev, &T::sync_table<Translation>                  , scheme_info, delete_if_not_exist); break;
     case ST_NODE:                  apply_parse(*data_dev, &T::sync_table<DB::Node>                     , scheme_info, delete_if_not_exist); break;
     case ST_DISABLED_PARAM:        apply_parse(*data_dev, &T::sync_table<DB::Disabled_Param>           , scheme_info, delete_if_not_exist); break;
@@ -484,7 +484,7 @@ bool Structure_Synchronizer::remove_scheme_rows(Base& db, uint8_t struct_type, c
     case ST_DIG_STATUS_CATEGORY:   return DB::db_delete_rows<DIG_Status_Category>        (db, delete_vect, scheme_info); break;
     case ST_DIG_PARAM:             return DB::db_delete_rows<DIG_Param>                  (db, delete_vect, scheme_info); break;
     case ST_SIGN_TYPE:             return DB::db_delete_rows<Sign_Type>                  (db, delete_vect, scheme_info); break;
-    case ST_CODES:                 return DB::db_delete_rows<Code_Item>                  (db, delete_vect, scheme_info); break;
+    case ST_CODE_ITEM:             return DB::db_delete_rows<Code_Item>                  (db, delete_vect, scheme_info); break;
     case ST_TRANSLATION:           return DB::db_delete_rows<Translation>                (db, delete_vect, scheme_info); break;
     case ST_NODE:                  return DB::db_delete_rows<DB::Node>                   (db, delete_vect, scheme_info); break;
     case ST_DISABLED_PARAM:        return DB::db_delete_rows<DB::Disabled_Param>         (db, delete_vect, scheme_info); break;

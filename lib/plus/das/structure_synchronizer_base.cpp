@@ -64,7 +64,7 @@ Structure_Synchronizer_Base::~Structure_Synchronizer_Base()
         ST_DIG_STATUS_CATEGORY,
         ST_DIG_PARAM,
         ST_SIGN_TYPE,
-        ST_CODES,
+        ST_CODE_ITEM,
         ST_TRANSLATION,
         ST_NODE,
         ST_DISABLED_PARAM,
@@ -116,7 +116,7 @@ void Structure_Synchronizer_Base::process_modify_message(uint32_t user_id, uint8
     case ST_DIG_STATUS_CATEGORY:   Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Status_Category>            ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_DIG_PARAM:             Helpz::apply_parse(*data_dev, v, &T::modify<DIG_Param>                      ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_SIGN_TYPE:             Helpz::apply_parse(*data_dev, v, &T::modify<Sign_Type>                      ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
-    case ST_CODES:                 Helpz::apply_parse(*data_dev, v, &T::modify<Code_Item>                      ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
+    case ST_CODE_ITEM:             Helpz::apply_parse(*data_dev, v, &T::modify<Code_Item>                      ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_TRANSLATION:           Helpz::apply_parse(*data_dev, v, &T::modify<Translation>                    ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_NODE:                  Helpz::apply_parse(*data_dev, v, &T::modify<DB::Node>                       ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
     case ST_DISABLED_PARAM:        Helpz::apply_parse(*data_dev, v, &T::modify<DB::Disabled_Param>             ,this, user_id, struct_type, scheme_id, get_bad_fix); break;
@@ -218,7 +218,7 @@ QMap<uint32_t, uint16_t> Structure_Synchronizer_Base::get_structure_hash_map_by_
     case ST_DIG_STATUS_TYPE:       return get_structure_hash_map<DIG_Status_Type>         (struct_type, db, scheme); break;
     case ST_DIG_STATUS_CATEGORY:   return get_structure_hash_map<DIG_Status_Category>     (struct_type, db, scheme); break;
     case ST_SIGN_TYPE:             return get_structure_hash_map<Sign_Type>               (struct_type, db, scheme); break;
-    case ST_CODES:                 return get_structure_hash_map<Code_Item>               (struct_type, db, scheme); break;
+    case ST_CODE_ITEM:             return get_structure_hash_map<Code_Item>               (struct_type, db, scheme); break;
     case ST_SAVE_TIMER:            return get_structure_hash_map<Save_Timer>              (struct_type, db, scheme); break;
     case ST_TRANSLATION:           return get_structure_hash_map<Translation>             (struct_type, db, scheme); break;
     case ST_NODE:                  return get_structure_hash_map<DB::Node>                (struct_type, db, scheme); break;
@@ -306,7 +306,7 @@ void Structure_Synchronizer_Base::add_structure_template(uint8_t struct_type, QD
     case ST_DIG_STATUS_CATEGORY:   ds << get_db_list<DIG_Status_Category>  (struct_type, db, scheme, id_vect); break;
     case ST_DIG_PARAM:             ds << get_db_list<DIG_Param>            (struct_type, db, scheme, id_vect); break;
     case ST_SIGN_TYPE:             ds << get_db_list<Sign_Type>            (struct_type, db, scheme, id_vect); break;
-    case ST_CODES:                 ds << get_db_list<Code_Item>            (struct_type, db, scheme, id_vect); break;
+    case ST_CODE_ITEM:             ds << get_db_list<Code_Item>            (struct_type, db, scheme, id_vect); break;
     case ST_TRANSLATION:           ds << get_db_list<Translation>          (struct_type, db, scheme, id_vect); break;
     case ST_NODE:                  ds << get_db_list<DB::Node>             (struct_type, db, scheme, id_vect); break;
     case ST_DISABLED_PARAM:        ds << get_db_list<DB::Disabled_Param>   (struct_type, db, scheme, id_vect); break;

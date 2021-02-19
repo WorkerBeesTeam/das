@@ -37,6 +37,13 @@ private:
     void reset_timer();
     QVariant get_reset_cause();
 
+    void send_reset_cause(Device_Item* dev_item);
+    void send_reset_cause(Device_Item* dev_item, qint64 ts, const QVariant& value);
+
+    void print_reset_cause() const;
+    QString get_uptime() const;
+    QString reset_cause_str() const;
+
     bool _is_error = false, _stop_at_exit;
     int _max_interval;
     Helpz::File _file;

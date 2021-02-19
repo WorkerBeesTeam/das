@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <cstring>
 #include <linux/watchdog.h>
 
 #include <cmath>
@@ -51,6 +52,7 @@ void Plugin::configure(QSettings *settings)
     _reset_cause = get_reset_cause();
 
     _file = Helpz::File{dev_file_name};
+    print_reset_cause();
 }
 
 bool Plugin::check(Device* dev)
@@ -67,6 +69,12 @@ bool Plugin::check(Device* dev)
         now = std::chrono::system_clock::now();
     }
 
+    if (!_file.is_opened())
+    {
+        Device_Item* dev_item = dev->items().front();
+        send_reset_cause(dev_item);
+    }
+
     if (!_file.name().empty())
     {
         if (!_file.is_opened())
@@ -74,23 +82,6 @@ bool Plugin::check(Device* dev)
 
         if (_file.is_opened())
             reset_timer();
-    }
-
-    Device_Item* dev_item = dev->items().front();
-
-    if (_reset_cause.isValid())
-    {
-        std::map<Device_Item*, Device::Data_Item> data;
-        data.emplace(dev_item, Device::Data_Item{0, DB::Log_Base_Item::current_timestamp(), _reset_cause});
-
-        QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
-                                  QArgument<std::map<Device_Item*, Device::Data_Item>>
-                                  ("std::map<Device_Item*,Device::Data_Item>", data), Q_ARG(bool, true));
-    }
-    else
-    {
-        QMetaObject::invokeMethod(dev, "set_device_items_disconnect", Qt::QueuedConnection,
-                                  Q_ARG(std::vector<Device_Item*>, {dev_item}));
     }
 
     return true;
@@ -216,6 +207,67 @@ QVariant Plugin::get_reset_cause()
 
     qCWarning(Log) << "Unknown reset cause:" << rsts;
     return {}; // Unknown or Error
+}
+
+void Plugin::send_reset_cause(Device_Item *dev_item)
+{
+    if (_reset_cause.isValid())
+    {
+        const qint64 ts = DB::Log_Base_Item::current_timestamp();
+        send_reset_cause(dev_item, ts - 1, 0);
+        send_reset_cause(dev_item, ts, _reset_cause);
+    }
+    else
+    {
+        QMetaObject::invokeMethod(dev_item->device(), "set_device_items_disconnect", Qt::QueuedConnection,
+                                  Q_ARG(std::vector<Device_Item*>, {dev_item}));
+    }
+}
+
+void Plugin::send_reset_cause(Device_Item* dev_item, qint64 ts, const QVariant &value)
+{
+    std::map<Device_Item*, Device::Data_Item> data;
+    data.emplace(dev_item, Device::Data_Item{0, ts, value});
+
+    QMetaObject::invokeMethod(dev_item->device(), "set_device_items_values", Qt::QueuedConnection,
+                              QArgument<std::map<Device_Item*, Device::Data_Item>>
+                              ("std::map<Device_Item*,Device::Data_Item>", data), Q_ARG(bool, true));
+}
+
+void Plugin::print_reset_cause() const
+{
+    qInfo(Log).noquote().nospace() << "Boot cause: " << reset_cause_str() << ". Uptime: " << get_uptime();
+}
+
+QString Plugin::get_uptime() const
+{
+    FILE *fp = popen("/usr/bin/uptime -p", "r");
+    if (fp)
+    {
+        char buf[256];
+        char* res = fgets(buf, 256, fp);
+        pclose(fp);
+
+        if (res != nullptr)
+        {
+            buf[255] = 0;
+            return buf;
+        }
+    }
+
+    return std::strerror(errno);
+}
+
+QString Plugin::reset_cause_str() const
+{
+    switch (_reset_cause.toUInt())
+    {
+    case 1: return "Software";
+    case 2: return "Watchdog";
+    case 3: return "Power";
+    default: break;
+    }
+    return "Unknown";
 }
 
 } // namespace Watchdog

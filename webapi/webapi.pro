@@ -30,8 +30,10 @@ SOURCES += main.cpp \
     rest/rest_chart_param.cpp \
     rest/rest_chart_value.cpp \
     rest/rest_config.cpp \
+    rest/rest_helper.cpp \
     rest/rest_scheme.cpp \
     rest/rest_scheme_group.cpp \
+    rest/rest_scheme_structure.cpp \
     rest/scheme_copier.cpp \
     worker.cpp \
     websocket.cpp \
@@ -57,8 +59,10 @@ HEADERS += \
     rest/rest_chart_param.h \
     rest/rest_chart_value.h \
     rest/rest_config.h \
+    rest/rest_helper.h \
     rest/rest_scheme.h \
     rest/rest_scheme_group.h \
+    rest/rest_scheme_structure.h \
     rest/scheme_copier.h \
     worker.h \
     websocket.h \

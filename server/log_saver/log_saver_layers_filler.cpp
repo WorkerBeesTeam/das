@@ -371,6 +371,9 @@ qint64 Layers_Filler::get_final_timestamp(qint64 time_count) const
 
 set<uint32_t> Layers_Filler::get_discrete(const set<uint32_t> &item_ids)
 {
+    if (item_ids.empty())
+        return {};
+
     set<uint32_t> discrete_ids;
 
     QString sql = "SELECT di.id FROM das_device_item di "

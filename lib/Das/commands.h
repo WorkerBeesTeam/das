@@ -77,7 +77,7 @@ enum Structure_Type
     ST_DIG_STATUS_CATEGORY,
     ST_DIG_PARAM,
     ST_SIGN_TYPE,
-    ST_CODES,
+    ST_CODE_ITEM,
     ST_TRANSLATION,
     ST_NODE,
     ST_DISABLED_PARAM,
