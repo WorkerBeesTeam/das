@@ -84,7 +84,7 @@ void Plugin::stop()
     if (thread_.joinable())
         thread_.join();
 }
-void Plugin::write(std::vector<Write_Cache_Item>& /*items*/) {}
+void Plugin::write(Device */*dev*/, std::vector<Write_Cache_Item>& /*items*/) {}
 
 Param* parse_param(Das::Param* param, const QStringList& param_name_list)
 {

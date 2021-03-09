@@ -1,7 +1,7 @@
 {
     "type": "modbus",
     "param": {
-        "device": ["address"],
+        "device": ["address", "conn_str"],
         "device_item": ["unit"]
     }
 }

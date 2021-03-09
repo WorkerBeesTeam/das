@@ -12,7 +12,7 @@ namespace Das {
 
 Q_DECLARE_LOGGING_CATEGORY(HTU21Log)
 
-class DAS_PLUGIN_SHARED_EXPORT HTU21Plugin : public QObject, public Checker::Interface
+class DAS_PLUGIN_SHARED_EXPORT HTU21Plugin final : public QObject, public Checker::Interface
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID DasCheckerInterface_iid FILE "checkerinfo.json")
@@ -27,7 +27,7 @@ public:
     void configure(QSettings* settings) override;
     bool check(Device *dev) override;
     void stop() override;
-    void write(std::vector<Write_Cache_Item>& items) override;
+    void write(Device* dev, std::vector<Write_Cache_Item>& items) override;
 private:
     double get_sensor_value(int fd, int sensor_id, bool& is_error_out);
     double get_temperature(int fd, bool& is_error_out);

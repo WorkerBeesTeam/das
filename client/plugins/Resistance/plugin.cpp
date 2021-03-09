@@ -102,7 +102,7 @@ void ResistancePlugin::stop()
     if (thread_.joinable())
         thread_.join();
 }
-void ResistancePlugin::write(std::vector<Write_Cache_Item>& /*items*/) {}
+void ResistancePlugin::write(Device */*dev*/, std::vector<Write_Cache_Item>& /*items*/) {}
 
 void ResistancePlugin::run()
 {

@@ -13,7 +13,7 @@ namespace WiringPi {
 
 Q_DECLARE_LOGGING_CATEGORY(WiringPiLog)
 
-class DAS_PLUGIN_SHARED_EXPORT WiringPiPlugin : public QObject, public Checker::Interface
+class DAS_PLUGIN_SHARED_EXPORT WiringPiPlugin final : public QObject, public Checker::Interface
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID DasCheckerInterface_iid FILE "checkerinfo.json")
@@ -28,7 +28,7 @@ public:
     void configure(QSettings* settings) override;
     bool check(Device *dev) override;
     void stop() override;
-    void write(std::vector<Write_Cache_Item>& items) override;
+    void write(Device* dev, std::vector<Write_Cache_Item>& items) override;
 };
 
 } // namespace WiringPi

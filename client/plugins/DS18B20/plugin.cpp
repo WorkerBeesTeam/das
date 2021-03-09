@@ -72,7 +72,7 @@ void DS18B20_Plugin::stop()
     _cond.notify_one();
 }
 
-void DS18B20_Plugin::write(std::vector<Write_Cache_Item>& /*items*/) {}
+void DS18B20_Plugin::write(Device */*dev*/, std::vector<Write_Cache_Item>& /*items*/) {}
 
 void DS18B20_Plugin::add_roms_to_queue(std::vector<DS18B20_Plugin::Data_Item> rom_item_vect)
 {
@@ -231,7 +231,7 @@ double DS18B20_Plugin::get_temperature(uint32_t num, bool &is_ok)
         if (!_break && attempt < 5)
         {
             is_ok = true;
-            return ((data[1] << 8) + data[0]) * 0.0625;
+            return static_cast<int16_t>(((data[1] << 8) | data[0])) * 0.0625;
         }
     }
 

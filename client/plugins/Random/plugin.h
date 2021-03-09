@@ -14,7 +14,7 @@ namespace Random {
 
 Q_DECLARE_LOGGING_CATEGORY(RandomLog)
 
-class DAS_PLUGIN_SHARED_EXPORT RandomPlugin : public QObject, public Checker::Interface
+class DAS_PLUGIN_SHARED_EXPORT RandomPlugin final : public QObject, public Checker::Interface
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID DasCheckerInterface_iid FILE "checkerinfo.json")
@@ -27,7 +27,7 @@ public:
     void configure(QSettings* settings) override;
     bool check(Device *dev) override;
     void stop() override;
-    void write(std::vector<Write_Cache_Item>& items) override;
+    void write(Device* dev, std::vector<Write_Cache_Item>& items) override;
 private:
     int random(int min, int max) const;
     std::set<uint32_t> writed_list_;

@@ -71,7 +71,7 @@ void Chart::upsert(served::response &res, const served::request &req)
         const QString where = scheme.ids_to_sql() + " AND id = " + QString::number(chart_id);
         auto q = db.select(table, "WHERE " + where);
         if (!q.isActive() || !q.next())
-            throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, q.lastError().text().toStdString());
+            throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, db.last_error().toStdString());
 
         const DB::Chart chart = db_build<DB::Chart>(q);
         if (chart.id() != chart_id)
@@ -81,7 +81,7 @@ void Chart::upsert(served::response &res, const served::request &req)
         {
             q = db.update(table, {new_name}, where, {DB::Chart::COL_name});
             if (!q.isActive())
-                throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, q.lastError().text().toStdString());
+                throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, db.last_error().toStdString());
         }
     }
     else
@@ -156,7 +156,7 @@ void Chart::upsert(served::response &res, const served::request &req)
     {
         const auto q = db.del(item_table.name(), where + get_item_where(item));
         if (!q.isActive())
-            throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, q.lastError().text().toStdString());
+            throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, db.last_error().toStdString());
     }
 
     picojson::array new_items;
@@ -179,7 +179,7 @@ void Chart::upsert(served::response &res, const served::request &req)
     {
         const auto q = db.update(item_table, {item.extra()}, where + get_item_where(item), {DB::Chart_Item::COL_extra});
         if (!q.isActive())
-            throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, q.lastError().text().toStdString());
+            throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, db.last_error().toStdString());
         add_new_item(item);
     }
 

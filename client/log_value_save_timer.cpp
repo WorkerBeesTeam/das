@@ -394,12 +394,8 @@ void Log_Value_Save_Timer::save_dig_param_values(std::shared_ptr<QVector<Log_Par
     const QString where = DB::Helper::get_default_suffix() + " AND group_param_id = ";
     QVariantList values{QVariant(), QVariant(), QVariant()};
 
-    auto dbg = qDebug(Service::Log()).nospace() << pack->front().user_id() << "|Params changed:";
-
     for (const Log_Param_Item& item: *pack)
     {
-        dbg << '\n' << item.group_param_id() << ": " << item.value().left(16);
-
         values.front() = item.timestamp_msecs();
         values[1] = item.user_id();
         values.back() = item.value();
@@ -415,7 +411,7 @@ void Log_Value_Save_Timer::save_dig_param_values(std::shared_ptr<QVector<Log_Par
 
             if (!db.insert(table, ins_values))
             {
-                dbg << " failed";
+                qCWarning(Service::Log()) << "Failed save dig param" << item.group_param_id() << item.value().size() << item.value().left(16);
                 // TODO: do something
             }
         }

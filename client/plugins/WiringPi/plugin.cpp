@@ -139,7 +139,7 @@ bool WiringPiPlugin::check(Device* dev)
 
 void WiringPiPlugin::stop() {}
 
-void WiringPiPlugin::write(std::vector<Write_Cache_Item>& items)
+void WiringPiPlugin::write(Device* dev, std::vector<Write_Cache_Item>& items)
 {
     std::map<Device_Item*, Device::Data_Item> device_items_values;
 
@@ -166,7 +166,6 @@ void WiringPiPlugin::write(std::vector<Write_Cache_Item>& items)
 
     if (!device_items_values.empty())
     {
-        Device* dev = device_items_values.begin()->first->device();
         QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
                                   QArgument<std::map<Device_Item*, Device::Data_Item>>
                                   ("std::map<Device_Item*, Device::Data_Item>", device_items_values),

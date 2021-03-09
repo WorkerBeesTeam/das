@@ -44,7 +44,7 @@ void Plugin::configure(QSettings *settings)
             settings, "Watchdog",
             Param{"StopAtExit", false},
             Param{"MaxIntervalSecs", 15},
-            Param<std::string>{"Device", "/dev/watchdog"}
+            Param<std::string>{"DevicePath", "/dev/watchdog"}
     }();
 
     _stop_at_exit = stop_at_exit;
@@ -104,7 +104,7 @@ void Plugin::stop()
     }
 }
 
-void Plugin::write(std::vector<Write_Cache_Item>& /*items*/) {}
+void Plugin::write(Device */*dev*/, std::vector<Write_Cache_Item>& /*items*/) {}
 
 void Plugin::open_device(int interval_sec)
 {

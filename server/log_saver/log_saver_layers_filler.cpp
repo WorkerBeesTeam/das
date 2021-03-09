@@ -298,7 +298,7 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name, qint64 
         log_query.addBindValue(end_ts);
         if (!log_query.exec())
         {
-            qCCritical(LogLayerFiller) << "Layer filler: Can't select data from das_log_value:" << log_query.lastError().text();
+            qCCritical(LogLayerFiller) << "Layer filler: Can't select data from das_log_value:" << db.last_error();
             return start_ts;
         }
 

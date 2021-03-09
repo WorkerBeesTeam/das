@@ -98,28 +98,24 @@ void Scheme::set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id)
         }
 }
 
-void Scheme::set_dig_param_values(uint32_t user_id, QVector<DB::DIG_Param_Value_Base> params)
+void Scheme::set_dig_param_values(uint32_t user_id, const QVector<DB::DIG_Param_Value_Base> &params)
 {
-    Param* p;
+    if (params.empty())
+        return;
 
-    for(Section* sct: scts_)
+    auto dbg = qDebug(SchemeLog).nospace().noquote() << user_id << "|Params changed:";
+
+    for (const DB::DIG_Param_Value_Base& item: params)
     {
-        for (Device_item_Group* group: sct->groups())
+        Param* p = dig_param_by_id(item.group_param_id());
+        if (p)
         {
-            params.erase(std::remove_if(params.begin(), params.end(), [&](const DB::DIG_Param_Value_Base& param)
-            {
-                if (p = group->params()->get_by_id(param.group_param_id()), p)
-                {
-                    p->set_value_from_string(param.value(), user_id);
-                    return true;
-                }
-                return false;
-            }), params.end());
+            dbg << '\n' << item.group_param_id() << ' ' << p->toString() << ": \"" << item.value().left(128) << "\"";
+            p->set_value_from_string(item.value(), user_id);
         }
+        else
+            qCWarning(SchemeLog) << "Can't find dig param with id:" << item.group_param_id();
     }
-
-    if (params.size() != 0)
-        qCWarning(SchemeLog) << "Failed to set param values, size:" << params.size();
 }
 
 Device *Scheme::dev_by_id(uint32_t id) const { return by_id(id, devs_); }
@@ -130,6 +126,16 @@ Device_Item* Scheme::item_by_id(uint32_t id) const
         for (Device_Item* item: dev->items())
             if (item->id() == id)
                 return item;
+    return nullptr;
+}
+
+Param *Scheme::dig_param_by_id(uint32_t id) const
+{
+    Param* p;
+    for(Section* sct: scts_)
+        for (Device_item_Group* group: sct->groups())
+            if (p = group->params()->get_by_id(id), p)
+                return p;
     return nullptr;
 }
 

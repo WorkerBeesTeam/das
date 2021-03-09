@@ -269,8 +269,8 @@ struct Scheme_Table_Helper<User_Groups> :
         Scheme_Table_Helper_Impl<User_Groups, &User_Groups::id, User_Groups::COL_id, User_Groups::COL_user_id, User_Groups::COL_group_id> {};
 
 // db_delete_rows
-template<typename T, typename PK_Type = typename Scheme_Table_Helper<T>::PK_Type>
-bool db_delete_rows(Helpz::DB::Base& db, const QVector<PK_Type>& delete_vect, const Scheme_Info& scheme,
+template<typename T, typename PK_Type = typename Scheme_Table_Helper<T>::PK_Type, template<typename> class Container = QVector>
+bool db_delete_rows(Helpz::DB::Base& db, const Container<PK_Type>& delete_vect, const Scheme_Info& scheme,
                     const QString& db_name = QString())
 {
     using namespace Helpz::DB;

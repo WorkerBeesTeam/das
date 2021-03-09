@@ -101,7 +101,7 @@ void Camera_Plugin::stop()
     thread_.stop();
 }
 
-void Camera_Plugin::write(std::vector<Write_Cache_Item>& /*items*/) {}
+void Camera_Plugin::write(Device* /*dev*/, std::vector<Write_Cache_Item>& /*items*/) {}
 
 std::future<QByteArray> Camera_Plugin::start_stream(uint32_t user_id, Das::Device_Item *item, const QString &url)
 {

@@ -128,7 +128,7 @@ bool HTU21Plugin::check(Device* dev)
 }
 
 void HTU21Plugin::stop() {}
-void HTU21Plugin::write(std::vector<Write_Cache_Item>& /*items*/) {}
+void HTU21Plugin::write(Device* /*dev*/, std::vector<Write_Cache_Item>& /*items*/) {}
 
 double HTU21Plugin::get_sensor_value(int fd, int sensor_id, bool &is_error_out)
 {

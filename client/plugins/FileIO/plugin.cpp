@@ -137,7 +137,7 @@ bool FileIO_Plugin::check(Device* dev)
 
 void FileIO_Plugin::stop() {}
 
-void FileIO_Plugin::write(std::vector<Write_Cache_Item>& items)
+void FileIO_Plugin::write(Device *dev, std::vector<Write_Cache_Item>& items)
 {
     if (items.empty())
         return;
@@ -147,7 +147,7 @@ void FileIO_Plugin::write(std::vector<Write_Cache_Item>& items)
 
     for (const Write_Cache_Item& item: items)
     {
-        const QString prefix = prefix_ + item.dev_item_->device()->param("prefix").toString();
+        const QString prefix = prefix_ + dev->param("prefix").toString();
 
         file_.setFileName(prefix + item.dev_item_->param("file").toString());
         if (file_.exists() && file_.open(QIODevice::WriteOnly | QIODevice::Truncate))
@@ -163,7 +163,6 @@ void FileIO_Plugin::write(std::vector<Write_Cache_Item>& items)
 
     if (!device_items_values.empty())
     {
-        Device* dev = device_items_values.begin()->first->device();
         QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
                                   QArgument<std::map<Device_Item*, Device::Data_Item>>("std::map<Device_Item*, Device::Data_Item>", device_items_values), Q_ARG(bool, true));
     }

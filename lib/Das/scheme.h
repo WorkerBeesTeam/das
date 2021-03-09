@@ -54,6 +54,7 @@ public:
     Device* dev_by_id(uint32_t id) const;
     Section* section_by_id(uint32_t id) const;
     Device_Item *item_by_id(uint32_t id) const;
+    Param* dig_param_by_id(uint32_t id) const;
 //    Device_item_Group* group_by_id(uint32_t id) const;
 signals:
     void log_item_available(const Log_Value_Item& log_value_item);
@@ -62,7 +63,7 @@ signals:
 public slots:
     void set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
 
-    void set_dig_param_values(uint32_t user_id, QVector<DB::DIG_Param_Value_Base> params);
+    void set_dig_param_values(uint32_t user_id, const QVector<DB::DIG_Param_Value_Base>& params);
 private:
     template<class T>
     T* by_id(uint32_t id, const QVector< T* >& items) const;

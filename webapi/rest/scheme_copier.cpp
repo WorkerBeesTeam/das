@@ -122,6 +122,8 @@ void Scheme_Copier::copy(uint32_t orig_id, uint32_t dest_id)
     copy_table<DB::Disabled_Param>(db, suffix, orig_id, dest_id, nullptr, {{DB::Disabled_Param::COL_param_id, dig_param_type_id_map}});
     copy_table<DB::Disabled_Status>(db, suffix, orig_id, dest_id, nullptr, {{DB::Disabled_Status::COL_status_id, dig_status_type_id_map}});
 
+    copy_table<DB::Value_View>(db, suffix, orig_id, dest_id, nullptr, {{DB::Value_View::COL_type_id, device_item_type_id_map}});
+
     std::map<uint32_t, uint32_t> node_id_map;
     copy_table<DB::Node>(db, suffix, orig_id, dest_id, &node_id_map, {}, DB::Node::COL_parent_id);
 }
@@ -270,6 +272,7 @@ DECL_SCHEME_COPY_TRAILS(DB::Chart_Item,         chart_id, item_id, param_id)
 DECL_SCHEME_COPY_TRAILS(DB::Disabled_Param,     group_id, param_id)
 DECL_SCHEME_COPY_TRAILS(DB::Disabled_Status,    group_id, status_id)
 DECL_SCHEME_COPY_TRAILS(DB::Node,               name, type_id, parent_id)
+DECL_SCHEME_COPY_TRAILS(DB::Value_View,         type_id, value, view)
 
 template<typename T>
 void Scheme_Copier::fill_vects(uint32_t dest_id, std::vector<T>& skipped_vect, std::vector<T>& insert_vect, std::vector<T>& delete_vect,
@@ -437,7 +440,7 @@ void Scheme_Copier::proc_vects(Base& db, const std::vector<T>& insert_vect, cons
             {
                 ++scheme_item.counter_[Item::SCI_UPDATE_ERROR];
                 qWarning() << "Scheme_Copier: Update error:" << item.id() << "scheme_id:" << item.scheme_id() << "table" << table.name() << T::value_getter(item, 1).toString()
-                           << "Error:" << query.lastError().text();
+                           << "Error:" << db.last_error();
             }
         }
     }
@@ -469,7 +472,7 @@ void Scheme_Copier::proc_vects(Base& db, const std::vector<T>& insert_vect, cons
             {
                 ++scheme_item.counter_[Item::SCI_INSERT_ERROR];
                 qDebug() << "Scheme_Copier: Insert error:" << item.id() << "scheme_id:" << item.scheme_id() << "table" << table.name() << T::value_getter(item, 1).toString()
-                         << "Error:" << query.lastError().text();
+                         << "Error:" << db.last_error();
             }
         }
     }

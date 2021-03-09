@@ -200,7 +200,7 @@ void Manager::write_data(Device_Item *item, const QVariant &raw_data, uint32_t u
     if (!item || !item->device())
         return;
 
-    std::vector<Write_Cache_Item>& cache = write_cache_[item->device()->checker_type()];
+    std::vector<Write_Cache_Item>& cache = write_cache_[item->device()];
 
     auto it = std::find(cache.begin(), cache.end(), item);
     if (it == cache.end())
@@ -218,7 +218,7 @@ void Manager::write_data(Device_Item *item, const QVariant &raw_data, uint32_t u
 
 void Manager::write_cache()
 {
-    std::map<Plugin_Type*, std::vector<Write_Cache_Item>> cache(std::move(write_cache_));
+    std::map<Device*, std::vector<Write_Cache_Item>> cache(std::move(write_cache_));
     write_cache_.clear();
 
     while (cache.size())
@@ -228,16 +228,16 @@ void Manager::write_cache()
     }
 }
 
-void Manager::write_items(Plugin_Type* plugin, std::vector<Write_Cache_Item>& items)
+void Manager::write_items(Device* dev, std::vector<Write_Cache_Item>& items)
 {
     if (items.size() == 0)
-    {
         return;
-    }
+
+    Plugin_Type* plugin = dev->checker_type();
 
     if (plugin && plugin->id() && plugin->checker)
     {        
-        plugin->checker->write(items);
+        plugin->checker->write(dev, items);
         last_check_time_map_[items.begin()->dev_item_->device_id()].time_ = 0;
     }
     else

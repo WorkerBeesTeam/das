@@ -38,7 +38,7 @@ public:
     virtual bool check(Device *dev) = 0;
     virtual void stop() = 0;
 
-    virtual void write(std::vector<Write_Cache_Item>& items) = 0;
+    virtual void write(Device* dev, std::vector<Write_Cache_Item>& items) = 0;
 
     virtual std::future<QByteArray> start_stream(uint32_t user_id, Device_Item* item, const QString &url)
     {

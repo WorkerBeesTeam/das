@@ -34,9 +34,8 @@ picojson::array get_elements(const served::request &req, const std::string& stru
     sql += scheme.ids_to_sql();
 
     QSqlQuery q = db.select(table, sql);
-    const QSqlError err = q.lastError();
-    if (err.type() != QSqlError::NoError)
-        throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, err.text().toStdString());
+    if (!q.isActive())
+        throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, db.last_error().toStdString());
 
     picojson::array json;
 
@@ -54,17 +53,16 @@ void get_element_list(served::response &res, const served::request &req, const s
     res << picojson::value{json}.serialize();
 }
 
-int del_elements(const QString& table_name, const Scheme_Info& scheme, const std::vector<uint32_t>& id_vect)
+template<typename T>
+int del_elements(const Scheme_Info& scheme, const std::vector<uint32_t>& id_vect)
 {
     if (id_vect.empty())
         return 0;
 
     Base& db = Base::get_thread_local_instance();
-    const QSqlQuery q = db.del(table_name, get_db_field_in_sql("id", id_vect) + " AND " + scheme.ids_to_sql());
-    const QSqlError err = q.lastError();
-    if (err.type() != QSqlError::NoError)
-        throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, err.text().toStdString());
-    return q.numRowsAffected();
+    if (!DB::db_delete_rows<T>(db, id_vect, scheme))
+        throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, db.last_error().toStdString());
+    return id_vect.size(); // TODO: Либо возвращать кол-во строк, либо JSON с удалёнными объектами
 }
 
 template<typename T>
@@ -76,9 +74,8 @@ picojson::value create_element_impl(const Table& table, T& elem)
     const QVariantList values = T::to_variantlist(elem);
     const QString sql = db.insert_query(table, values.size());
     const QSqlQuery q = db.exec(sql, values, &id);
-    const QSqlError err = q.lastError();
-    if (err.type() != QSqlError::NoError)
-        throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, err.text().toStdString());
+    if (!q.isActive())
+        throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, db.last_error().toStdString());
 
     elem.set_id(id.toUInt());
     return picojson::value{obj_to_pico(elem, table.field_names())};
@@ -93,9 +90,8 @@ bool update_element_impl(const Table& table, T& elem, const QString& where_suffi
 
     Base& db = Base::get_thread_local_instance();
     const QSqlQuery q = db.update(table, values, "id = " + QString::number(elem.id()) + where_suffix);
-    const QSqlError err = q.lastError();
-    if (err.type() != QSqlError::NoError)
-        throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, err.text().toStdString());
+    if (!q.isActive())
+        throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, db.last_error().toStdString());
     return q.numRowsAffected() > 0;
 }
 
@@ -147,7 +143,7 @@ void modify_element_list(served::response &res, const served::request &req, cons
 
     try
     {
-        int64_t deleted = del_elements(table.name(), scheme, del_vect);
+        int64_t deleted = del_elements<T>(scheme, del_vect);
         json.emplace("deleted", picojson::value{deleted});
 
         if (!ins_vect.empty())
@@ -216,7 +212,7 @@ void del_element(served::response &res, const served::request &req, const std::s
 
     const Scheme_Info scheme = Scheme::get_info(req);
 
-    int deleted = del_elements(db_table_name<T>(), scheme, {elem_id});
+    int deleted = del_elements<T>(scheme, {elem_id});
     if (deleted == 0)
         throw served::request_error(served::status_4XX::NOT_FOUND, "Unknown element id");
 

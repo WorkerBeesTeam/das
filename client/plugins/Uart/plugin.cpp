@@ -58,7 +58,7 @@ void Uart_Plugin::stop()
     _thread.stop();
 }
 
-void Uart_Plugin::write(std::vector<Write_Cache_Item>& items)
+void Uart_Plugin::write(Device */*dev*/, std::vector<Write_Cache_Item>& items)
 {
     _thread.write(items);
 }

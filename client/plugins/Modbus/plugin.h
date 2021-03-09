@@ -6,7 +6,7 @@
 namespace Das {
 namespace Modbus {
 
-class DAS_PLUGIN_SHARED_EXPORT Modbus_Plugin : public Modbus_Plugin_Base
+class DAS_PLUGIN_SHARED_EXPORT Modbus_Plugin final : public Modbus_Plugin_Base
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID DasCheckerInterface_iid FILE "checkerinfo.json")

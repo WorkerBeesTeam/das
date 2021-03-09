@@ -47,7 +47,7 @@ private slots:
     void write_data(Device_Item* item, const QVariant& raw_data, uint32_t user_id = 0);
     void write_cache();
 private:
-    void write_items(DB::Plugin_Type* plugin, std::vector<Write_Cache_Item>& items);
+    void write_items(Device* dev, std::vector<Write_Cache_Item>& items);
 
     void load_plugins(Worker* worker);
     DB::Plugin_Type* load_plugin(const QString& file_path, std::shared_ptr<QPluginLoader>& loader, bool &need_update_param);
@@ -60,7 +60,7 @@ private:
 
     Worker* worker_;
     Scripted_Scheme* scheme_;
-    std::map<DB::Plugin_Type*, std::vector<Write_Cache_Item>> write_cache_;
+    std::map<Device*, std::vector<Write_Cache_Item>> write_cache_;
 
 
     std::shared_ptr<DB::Plugin_Type_Manager> plugin_type_mng_;

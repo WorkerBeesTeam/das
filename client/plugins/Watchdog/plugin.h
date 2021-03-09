@@ -1,5 +1,5 @@
-#ifndef DAS_RANDOMPLUGIN_H
-#define DAS_RANDOMPLUGIN_H
+#ifndef DAS_WATCHDOG_PLUGIN_H
+#define DAS_WATCHDOG_PLUGIN_H
 
 #include <QLoggingCategory>
 
@@ -16,7 +16,7 @@ namespace Watchdog {
 
 Q_DECLARE_LOGGING_CATEGORY(Log)
 
-class DAS_PLUGIN_SHARED_EXPORT Plugin : public QObject, public Checker::Interface
+class DAS_PLUGIN_SHARED_EXPORT Plugin final : public QObject, public Checker::Interface
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID DasCheckerInterface_iid FILE "checkerinfo.json")
@@ -30,7 +30,7 @@ public:
     void configure(QSettings* settings) override;
     bool check(Device *dev) override;
     void stop() override final;
-    void write(std::vector<Write_Cache_Item>& items) override;
+    void write(Device* dev, std::vector<Write_Cache_Item>& items) override;
 
 private:
     void open_device(int interval_sec);
@@ -53,4 +53,4 @@ private:
 } // namespace Watchdog
 } // namespace Das
 
-#endif // DAS_RANDOMPLUGIN_H
+#endif // DAS_WATCHDOG_PLUGIN_H

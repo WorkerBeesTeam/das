@@ -82,7 +82,7 @@ bool RandomPlugin::check(Device* dev)
 
 void RandomPlugin::stop() {}
 
-void RandomPlugin::write(std::vector<Write_Cache_Item>& items)
+void RandomPlugin::write(Device* dev, std::vector<Write_Cache_Item>& items)
 {
     std::map<Device_Item*, Device::Data_Item> device_items_values;
     const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
@@ -97,7 +97,6 @@ void RandomPlugin::write(std::vector<Write_Cache_Item>& items)
 
     if (!device_items_values.empty())
     {
-        Device* dev = device_items_values.begin()->first->device();
         QMetaObject::invokeMethod(dev, "set_device_items_values", Qt::QueuedConnection,
                                   QArgument<std::map<Device_Item*, Device::Data_Item>>
                                   ("std::map<Device_Item*, Device::Data_Item>", device_items_values), Q_ARG(bool, true));

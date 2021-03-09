@@ -259,6 +259,13 @@ void Worker::init_scheme(QSettings* s)
 {
     qRegisterMetaType<QVector<DIG_Status>>("QVector<DIG_Status>");
 
+    auto [ssh_host, allow_shell, offie] = Helpz::SettingsHelper{
+                        s, "Server",
+                        Z::Param<QString>{"SSHHost", "80.89.129.98"},
+                        Z::Param<bool>{"AllowShell", false},
+                        Z::Param<bool>{"OnlyFromFolderIfExist", false}
+                    }();
+
     Helpz::ConsoleReader* cr = nullptr;
     if (Service::instance().isImmediately())
     {
@@ -269,26 +276,14 @@ void Worker::init_scheme(QSettings* s)
         if (qApp->arguments().indexOf("-debugger") != -1)
         {
             qApp->setQuitOnLastWindowClosed(false);
-
-            auto server_conf = Helpz::SettingsHelper{
-                                s, "Server",
-                                Z::Param<QString>{"SSHHost", "80.89.129.98"},
-                                Z::Param<bool>{"AllowShell", false},
-                                Z::Param<bool>{"OnlyFromFolderIfExist", false}
-                            }();
-            prj_ = new Scripted_Scheme(this, cr, std::get<0>(server_conf), std::get<1>(server_conf));
+            prj_ = new Scripted_Scheme(this, cr, ssh_host, allow_shell, offie);
         }
 #endif
     }
 
     if (!prj_)
     {
-        scheme_thread_ = Scripts_Thread()(s, "Server", this,
-                              cr,
-                              Z::Param<QString>{"SSHHost", "80.89.129.98"},
-                              Z::Param<bool>{"AllowShell", false},
-                              Z::Param<bool>{"OnlyFromFolderIfExist", false}
-                              );
+        scheme_thread_ = new Scripts_Thread(this, cr, ssh_host, allow_shell, offie);
         scheme_thread_->start(QThread::HighPriority);
     }
 }
@@ -331,17 +326,6 @@ void Worker::init_network_client(QSettings* s)
 #define DAS_PROTOCOL_LATEST "das/2.7"
 #define DAS_PROTOCOL_SUPORTED DAS_PROTOCOL_LATEST",das/2.6"
 
-    const QString default_dir = qApp->applicationDirPath() + '/';
-    auto [ tls_policy_file, host, port, protocols, recpnnect_interval_sec ]
-            = Helpz::SettingsHelper{
-                s, "RemoteServer",
-                Z::Param<QString>{"TlsPolicyFile", default_dir + "tls_policy.conf"},
-                Z::Param<QString>{"Host",               "deviceaccess.ru"},
-                Z::Param<QString>{"Port",               "25588"},
-                DAS_PROTOCOL_SUPORTED, // Z::Param<QString>{"Protocols",          "das/2.0,das/1.1"},
-                Z::Param<uint32_t>{"ReconnectSeconds",  15}
-            }();
-
     Helpz::DTLS::Create_Client_Protocol_Func_T func = [this](const std::string& app_protocol) -> std::shared_ptr<Helpz::Net::Protocol>
     {
         std::shared_ptr<Ver::Client::Protocol> ptr = std::make_shared<Ver::Client::Protocol>(this);
@@ -363,8 +347,20 @@ void Worker::init_network_client(QSettings* s)
         return std::static_pointer_cast<Helpz::Net::Protocol>(ptr);
     };
 
-    Helpz::DTLS::Client_Thread_Config conf{ tls_policy_file.toStdString(), host.toStdString(), port.toStdString(),
-                Botan::split_on(protocols.toStdString(), ','), recpnnect_interval_sec };
+    const std::string default_dir = qApp->applicationDirPath().toStdString() + '/';
+
+    const Helpz::DTLS::Client_Thread_Config def_conf;
+    auto conf = Helpz::SettingsHelper{
+        s, "RemoteServer",
+            Z::Param<std::string>{"TlsPolicyFile", default_dir + "tls_policy.conf"},
+            Z::Param<std::string>{"Host",          "deviceaccess.ru"},
+            Z::Param<std::string>{"Port",          def_conf.port()},
+            Botan::split_on(DAS_PROTOCOL_SUPORTED, ','),
+            Z::Param<std::chrono::seconds>{"ReconnectSeconds",     def_conf.reconnect_interval()},
+            Z::Param<std::chrono::milliseconds>{"OCSPTimeoutMsec", def_conf.ocsp_timeout()},
+            Z::Param<std::vector<std::string>>{"CertPaths",        def_conf.cert_paths()}
+    }.obj<Helpz::DTLS::Client_Thread_Config>();
+
     conf.set_create_protocol_func(std::move(func));
 
     net_thread_.reset(new Helpz::DTLS::Client_Thread{std::move(conf)});

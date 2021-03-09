@@ -104,8 +104,8 @@ private:
     std::unique_ptr<Helpz::DB::Thread> db_pending_thread_;
     Worker_Structure_Synchronizer* structure_sync_;
 
-    using Scripts_Thread = Helpz::SettingsThreadHelper<Scripted_Scheme, Worker*, Helpz::ConsoleReader*, QString, bool, bool>;
-    Scripts_Thread::Type* scheme_thread_;
+    using Scripts_Thread = Helpz::ParamThread<Scripted_Scheme, Worker*, Helpz::ConsoleReader*, QString, bool, bool>;
+    Scripts_Thread* scheme_thread_;
     Scripted_Scheme* prj_;
 
     friend class Checker::Manager;

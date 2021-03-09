@@ -35,7 +35,7 @@ bool OneWireThermPlugin::check(Device* dev)
 }
 
 void OneWireThermPlugin::stop() {}
-void OneWireThermPlugin::write(std::vector<Write_Cache_Item>& /*items*/) {}
+void OneWireThermPlugin::write(Device */*dev*/, std::vector<Write_Cache_Item>& /*items*/) {}
 
 } // namespace Modbus
 } // namespace Das
