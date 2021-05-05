@@ -11,7 +11,6 @@
 #include "log_saver_data.h"
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 Q_DECLARE_LOGGING_CATEGORY(Log_Saver_Log)
@@ -36,7 +35,6 @@ private:
 };
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das
 
 #endif // DAS_SERVER_LOG_SAVER_BASE_H

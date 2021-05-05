@@ -7,7 +7,6 @@
 #include "log_saver_cache_data.h"
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 template<typename T>
@@ -274,7 +273,6 @@ public:
 };
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das
 
 #endif // DAS_SERVER_LOG_SAVER_CACHE_H

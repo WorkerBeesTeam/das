@@ -10,6 +10,8 @@
 
 #include <Helpz/db_base.h>
 
+#include "rest_log.h"
+
 namespace Das {
 namespace Rest {
 
@@ -49,16 +51,10 @@ protected:
 private:
     void parse_params(const served::request& req);
 
-    struct Time_Range {
-        int64_t _from;
-        int64_t _to;
-    };
-
     QString get_where() const;
-    Time_Range get_time_range(const std::string& from_str, const std::string& to_str) const;
+    Log_Time_Range get_time_range(const std::string& from_str, const std::string& to_str) const;
     QString get_time_range_where() const;
     QString get_scheme_where(const served::request &req) const;
-    void parse_data_in(const std::string& param);
     QString get_data_in_where() const;
     void parse_limits(const std::string& offset_str, const std::string& limit_str);
     QString get_limit_suffix(uint32_t offset, uint32_t limit) const;
@@ -76,9 +72,9 @@ private:
     bool _range_close_to_now;
     bool _bounds_only;
     uint32_t _offset, _limit;
-    Time_Range _time_range;
+    Log_Time_Range _time_range;
     QString _scheme_where, _where;
-    QStringList _data_in_list;
+    std::vector<std::string> _data_in_list;
 
     std::map<uint32_t/*item_id*/, std::map<int64_t/*timestamp*/, picojson::object>> _data_map;
 

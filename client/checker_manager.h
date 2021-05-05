@@ -49,8 +49,8 @@ private slots:
 private:
     void write_items(Device* dev, std::vector<Write_Cache_Item>& items);
 
-    void load_plugins(Worker* worker);
-    DB::Plugin_Type* load_plugin(const QString& file_path, std::shared_ptr<QPluginLoader>& loader, bool &need_update_param);
+    void load_plugins();
+    DB::Plugin_Type* load_plugin(const QString& file_path, std::shared_ptr<QPluginLoader>& loader);
 
     bool is_server_connected() const override;
 

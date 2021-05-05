@@ -1,12 +1,11 @@
-#ifndef DAS_SERVER_LOG_SAVER_HELPER_H
-#define DAS_SERVER_LOG_SAVER_HELPER_H
+#ifndef DAS_LOG_SAVER_HELPER_H
+#define DAS_LOG_SAVER_HELPER_H
 
 #include <Das/log/log_pack.h>
 
 #include "log_saver_def.h"
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 template<typename T> struct Type_Base { using Type = void; };
@@ -84,7 +83,6 @@ inline vector<uint32_t> Cache_Helper<Device_Item_Value>::get_values_fields()
 
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das
 
-#endif // DAS_SERVER_LOG_SAVER_HELPER_H
+#endif // DAS_LOG_SAVER_HELPER_H

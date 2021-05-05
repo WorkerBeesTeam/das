@@ -152,11 +152,12 @@ void Dbus_Object::write_to_item(uint32_t user_id, uint32_t item_id, const QVaria
 
 }
 
-void Dbus_Object::set_dig_param_values(uint32_t user_id, const QVector<DIG_Param_Value>& pack)
+void Dbus_Object::set_dig_param_values(uint32_t user_id, const QVector<DB::DIG_Param_Value_Base> &pack)
 {
     if (!pack.empty())
     {
-        QMetaObject::invokeMethod(worker_->prj(), "set_dig_param_values", Qt::QueuedConnection, Q_ARG(uint32_t, user_id), Q_ARG(QVector<DIG_Param_Value>, pack));
+        QMetaObject::invokeMethod(worker_->prj(), "set_dig_param_values", Qt::QueuedConnection,
+                                  Q_ARG(uint32_t, user_id), Q_ARG(QVector<DB::DIG_Param_Value_Base>, pack));
     }
 }
 

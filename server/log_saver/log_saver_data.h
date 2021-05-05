@@ -1,10 +1,9 @@
 #ifndef DAS_SERVER_LOG_SAVER_DATA_H
 #define DAS_SERVER_LOG_SAVER_DATA_H
 
-#include "log_saver_def.h"
+#include <plus/das/log_saver_def.h>
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 class Data
@@ -31,7 +30,6 @@ public:
 };
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das
 
 #endif // DAS_SERVER_LOG_SAVER_DATA_H

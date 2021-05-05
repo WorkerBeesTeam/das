@@ -39,8 +39,9 @@ void Uart_Plugin::configure(QSettings *settings)
                 Param<QSerialPort::Parity>{"Parity", config._parity},
                 Param<QSerialPort::StopBits>{"StopBits", config._stop_bits},
                 Param<QSerialPort::FlowControl>{"FlowControl", config._flow_control},
-                Param<int>{"ReadTimeout", config._read_timeout},
+                Param<int>{"MinReadTimeout", config._min_read_timeout},
                 Param<int>{"WriteTimeout", config._write_timeout},
+                Param<int>{"RepeatCount", config._repeat_count},
                 Param<std::string>{"LuaScript", config._lua_script_file},
                 Param<bool>{"LuaUseLibs", config._lua_use_libs}
     ).obj<Uart::Config>();

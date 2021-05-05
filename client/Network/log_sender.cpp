@@ -1,3 +1,5 @@
+#include <QSqlError>
+
 #include <Helpz/db_builder.h>
 
 #include <Das/commands.h>
@@ -43,9 +45,11 @@ void prepare_pack(QVector<T>& /*log_data*/) {}
 template<>
 void prepare_pack<Log_Value_Item>(QVector<Log_Value_Item>& log_data)
 {
-    // Отправлять только одно большое значение в пачке данных.
     for (auto it = log_data.begin(); it != log_data.end(); ++it)
     {
+        it->set_need_to_save(true);
+
+        // Отправлять только одно большое значение в пачке данных.
         if (it->is_big_value())
         {
             log_data.erase(++it, log_data.end());
@@ -73,15 +77,7 @@ void Log_Sender::send_log_data(const Log_Type_Wrapper &log_type, std::shared_ptr
     {
         if (request_data_size_ < request_max_data_size_)
             ++request_data_size_;
-
-        QString where = DB::Helper::get_default_suffix() + " AND "
-                + T::table_column_names().at(T::COL_timestamp_msecs) + " IN (";
-        for (const T& item: *log_data)
-            where += QString::number(item.timestamp_msecs()) + ',';
-        where.replace(where.length() - 1, 1, ')');
-
-        Base& db = Base::get_thread_local_instance();
-        db.del(db_table_name<T>(), where);
+        remove_data(*log_data);
     })
     .timeout([this, log_type, log_data]()
     {
@@ -93,6 +89,46 @@ void Log_Sender::send_log_data(const Log_Type_Wrapper &log_type, std::shared_ptr
 
         send_log_data<T>(log_type, log_data);
     }, std::chrono::seconds{23}, std::chrono::seconds{10}) << log_type << *log_data;
+}
+
+template<typename T>
+std::vector<uint32_t> get_compared_fields() { return {}; }
+
+#define DECL_GET_COMPARED_FIELDS(X, Y) \
+    template<> std::vector<uint32_t> get_compared_fields<X>() { return { X::COL_##Y }; }
+
+DECL_GET_COMPARED_FIELDS(Log_Param_Item, group_param_id)
+DECL_GET_COMPARED_FIELDS(Log_Mode_Item,  group_id)
+DECL_GET_COMPARED_FIELDS(Log_Value_Item, item_id)
+
+template<> std::vector<uint32_t> get_compared_fields<Log_Status_Item>() {
+    using T = Log_Status_Item;
+    return { T::COL_group_id, T::COL_status_id, T::COL_direction };
+}
+
+template<typename T>
+void Log_Sender::remove_data(const QVector<T> &data)
+{
+    Base& db = Base::get_thread_local_instance();
+    const QStringList field_names = T::table_column_names();
+    QString sql = db.del_query(db_table_name<T>(), DB::Helper::get_default_suffix() + " AND "
+            + field_names.at(T::COL_timestamp_msecs) + "=?");
+
+    const std::vector<uint32_t> fields = get_compared_fields<T>();
+    for (uint32_t field: fields)
+        sql += " AND " + field_names.at(field) + "=?";
+
+    QSqlQuery q{db.database()};
+    q.prepare(sql);
+
+    for (const T& item: data)
+    {
+        q.addBindValue(item.timestamp_msecs());
+        for (uint32_t field: fields)
+            q.addBindValue(T::value_getter(item, field));
+        if (!q.exec())
+            qWarning() << q.lastError().text();
+    }
 }
 
 } // namespace Client

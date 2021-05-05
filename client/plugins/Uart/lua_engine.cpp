@@ -62,14 +62,6 @@ void Lua_Engine::init()
         stop();
         throw runtime_error(err_text);
     }
-
-    if (get_process_func())
-        lua_pop(_lua, 1);
-    else
-    {
-        stop();
-        throw runtime_error("Lua: function 'process' doesn't exist.");
-    }
 }
 
 void Lua_Engine::stop()
@@ -83,26 +75,18 @@ void Lua_Engine::stop()
 
 Lua_Engine::operator bool() const { return _lua; }
 
-QVariant Lua_Engine::operator()(const QByteArray &data)
+QVariant Lua_Engine::operator()(const QByteArray &send_data, const QByteArray &recv_data,
+                                const string &func_name, const QVariant &arg)
 {
 //    lua_settop(_lua, 0);
-    if (!get_process_func())
-        return data;
+    if (!_lua || !get_process_func(func_name))
+        return recv_data;
 
-    lua_newtable(_lua);
+    push_bytearray(send_data);
+    push_bytearray(recv_data);
+    push_variant(arg);
 
-    for (int i = 0; i < data.size(); ++i)
-    {
-        lua_pushnumber(_lua, i); // note, you can replace this with a string if you want to access table cells by 'key'
-        lua_pushnumber(_lua, data.at(i));
-        lua_settable(_lua, -3); // insert the new cell (and pop index/value off stack)
-    }
-
-    lua_pushliteral(_lua, "n");
-    lua_pushnumber(_lua, data.size()); // number of cells
-    lua_rawset(_lua, -3);
-
-    if (lua_pcall(_lua, 1, 2, 0) != LUA_OK)
+    if (lua_pcall(_lua, 3, 2, 0) != LUA_OK)
         throw runtime_error(get_error_msg());
 
     QVariant val;
@@ -115,14 +99,60 @@ QVariant Lua_Engine::operator()(const QByteArray &data)
     return val;
 }
 
-bool Lua_Engine::get_process_func()
+bool Lua_Engine::get_process_func(const string &func_name)
 {
-    lua_getglobal(_lua, "process");
+    lua_getglobal(_lua, func_name.c_str());
     if (lua_isfunction(_lua, -1))
         return true;
 
     lua_pop(_lua, 1);
     return false;
+}
+
+void Lua_Engine::push_bytearray(const QByteArray &data)
+{
+    lua_newtable(_lua);
+
+    for (int i = 0; i < data.size(); ++i)
+    {
+        // lua: #data - return last valid key. #data == data.size() - 1
+        lua_pushnumber(_lua, i + 1); // note, you can replace this with a string if you want to access table cells by 'key'
+        lua_pushinteger(_lua, static_cast<uint8_t>(data.at(i)));
+        lua_settable(_lua, -3); // insert the new cell (and pop index/value off stack)
+    }
+
+//    lua_pushliteral(_lua, "n");
+//    lua_pushnumber(_lua, recv_data.size()); // number of cells
+//    lua_rawset(_lua, -3);
+}
+
+void Lua_Engine::push_variant(const QVariant &data)
+{
+    switch (data.type()) {
+
+    case QVariant::Invalid:
+        lua_pushnil(_lua);
+        break;
+
+    case QVariant::Bool:
+        lua_pushboolean(_lua, data.toBool());
+        break;
+
+    case QVariant::Double:
+        lua_pushnumber(_lua, data.toDouble());
+        break;
+
+    case QVariant::Int:
+    case QVariant::UInt:
+        lua_pushinteger(_lua, data.toInt());
+        break;
+
+    case QVariant::String:
+    case QVariant::ByteArray:
+    default:
+        lua_pushstring(_lua, data.toString().toLocal8Bit().constData());
+        break;
+    }
 }
 
 QVariant Lua_Engine::to_variant(int n)

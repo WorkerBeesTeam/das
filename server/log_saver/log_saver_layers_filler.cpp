@@ -11,7 +11,6 @@
 #include "log_saver_layers_filler.h"
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 Q_LOGGING_CATEGORY(LogLayerFiller, "logSaver.layerFiller")
@@ -117,8 +116,8 @@ struct Item_Status
                     || value.type() == QVariant::ByteArray)
                 {
                     _text = value.toString();
-                    if (_text.size() > static_cast<int>(Log_Saver::Config::get()._layer_text_max_count))
-                        _text.resize(Log_Saver::Config::get()._layer_text_max_count);
+                    if (_text.size() > static_cast<int>(Config::get()._layer_text_max_count))
+                        _text.resize(Config::get()._layer_text_max_count);
                     _text_it = _text_count.find(_text);
                     if (_text_it == _text_count.end())
                         _text_count.emplace(_text, 1);
@@ -443,5 +442,4 @@ int Layers_Filler::process_data(Layers_Filler::Data_Type &data, const QString &n
 }
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das

@@ -8,7 +8,6 @@
 #include "log_saver_cache.h"
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 template<typename T>
@@ -28,24 +27,26 @@ public:
     }
 
     template<template<typename...> class Container>
-    void add(uint32_t scheme_id, const Container<T>& data, chrono::seconds time_in_cache)
+    void add(uint32_t scheme_id, const Container<T>& data)
     {
         for (const T& item: data)
         {
             if (item.scheme_id() == 0 || item.scheme_id() != scheme_id)
                 cout << "Attempt to add non scheme item " << item.scheme_id() << " s " << scheme_id << endl;
+
             if constexpr (is_same<T, Log_Value_Item>::value)
                 if (!item.need_to_save())
                     continue;
 
             _data.push(item);
-//            _data.back().set_scheme_id(scheme_id);
         }
+    }
 
-        if constexpr (Cache_Type<T>::Is_Comparable::value)
-            _cache.add_data(scheme_id, data, time_in_cache);
-        else
-            Q_UNUSED(time_in_cache);
+    template<template<typename...> class Container>
+    void add_cache(uint32_t scheme_id, const Container<T>& data, chrono::seconds time_in_cache)
+    {
+        static_assert(Cache_Type<T>::Is_Comparable::value, "Only comparable type have cache");
+        _cache.add_data(scheme_id, data, time_in_cache);
     }
 
     bool empty(bool cache_force = false) const override
@@ -153,7 +154,6 @@ private:
 };
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das
 
 #endif // DAS_SERVER_LOG_SAVER_SAVER_H

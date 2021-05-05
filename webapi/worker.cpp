@@ -16,6 +16,7 @@
 //--------
 #include <plus/das/jwt_helper.h>
 
+#include "rest/auth_middleware.h"
 #include "rest/rest.h"
 #include "rest/rest_chart_value.h"
 
@@ -122,13 +123,13 @@ void Worker::init_dbus_interface(QSettings* s)
 
 void Worker::init_jwt_helper(QSettings* s)
 {
-    std::tuple<QByteArray> t = Helpz::SettingsHelper(
+    auto [secret_key] = Helpz::SettingsHelper(
             s, "WebApi",
-            Helpz::Param<QByteArray>{"SecretKey", QByteArray()}
+            Helpz::Param<std::string>{"SecretKey", std::string()}
     )();
 
-    QByteArray secret_key = std::get<0>(t);
-    jwt_helper_ = std::make_shared<JWT_Helper>(std::string{secret_key.constData(), static_cast<std::size_t>(secret_key.size())});
+    Rest::Auth_Middleware::set_jwt_secret_key(secret_key);
+    jwt_helper_ = std::make_shared<JWT_Helper>(secret_key);
 }
 
 void Worker::init_websocket_manager(QSettings* s)
@@ -173,10 +174,11 @@ void Worker::init_restful(QSettings* s)
         Helpz::Param{"Thread_Count", 3},
         Helpz::Param<std::string>{"Address", "localhost"},
         Helpz::Param<std::string>{"Port", "8123"},
-        Helpz::Param<std::string>{"BasePath", ""}
+        Helpz::Param<std::string>{"BasePath", ""},
+        Helpz::Param<std::chrono::seconds>{"TokenTimeoutSec", std::chrono::seconds{3600}}
     ).obj<Rest::Config>();
 
-    restful_ = new Rest::Restful{dbus_, jwt_helper_, rest_config};
+    restful_ = new Rest::Restful{dbus_, rest_config};
 }
 
 void Worker::init_stream_server(QSettings *s)

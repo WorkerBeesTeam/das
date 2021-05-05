@@ -27,7 +27,7 @@ class Log_Sync final : public Log_Sync_Base
 {
 public:
     using Log_Sync_Base::Log_Sync_Base;
-    bool process(const Scheme_Info& scheme, QIODevice& data_dev) override
+    bool process(const Scheme_Info& scheme, QIODevice& data_dev, bool skip_cache = false) override
     {
         QVector<T> data;
         Helpz::parse_out(Helpz::Net::Protocol::DATASTREAM_VERSION, data_dev, data);
@@ -47,7 +47,7 @@ public:
             (Dbus_Object::instance()->*func)(scheme, dbus_data);
         }, Qt::QueuedConnection);
 
-        return Log_Saver::instance()->add(scheme.id(), data);
+        return Log_Saver::instance()->add(scheme.id(), data, skip_cache);
     }
 };
 
@@ -71,14 +71,14 @@ set<uint8_t> Log_Synchronizer::get_type_set() const
     return log_type_set;
 }
 
-bool Log_Synchronizer::process(Log_Type_Wrapper type_id, QIODevice *data_dev, const Scheme_Info& scheme)
+bool Log_Synchronizer::process(Log_Type_Wrapper type_id, QIODevice *data_dev, const Scheme_Info& scheme, bool skip_cache)
 {
     auto it = _sync.find(type_id.value());
     if (it != _sync.cend())
     {
         try
         {
-            return it->second->process(scheme, *data_dev);
+            return it->second->process(scheme, *data_dev, skip_cache);
         }
         catch (const exception& e)
         {

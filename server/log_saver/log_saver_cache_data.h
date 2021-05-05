@@ -6,10 +6,9 @@
 
 #include <QVector>
 
-#include "log_saver_helper.h"
+#include <plus/das/log_saver_helper.h>
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 template<typename T>
@@ -133,7 +132,6 @@ private:
 };
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das
 
 #endif // DAS_SERVER_LOG_SAVER_CACHE_DATA_H

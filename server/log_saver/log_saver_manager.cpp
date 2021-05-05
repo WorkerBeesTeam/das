@@ -6,7 +6,6 @@
 #include "log_saver_manager.h"
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 using namespace Helpz::DB;
@@ -214,5 +213,4 @@ Manager *instance()
 }
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das

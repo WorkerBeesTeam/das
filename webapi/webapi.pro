@@ -18,22 +18,30 @@ LIBS += -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzNetwork -lHe
 LIBS += -L/usr/local/lib -lserved
 LIBS += -lfmt
 
+# for captcha
+LIBS += -lpng
+
 SOURCES += main.cpp \
     dbus_object.cpp \
+    rest/captcha_generator.cpp \
     rest/csrf_middleware.cpp \
     rest/auth_middleware.cpp \
     rest/filter.cpp \
+    rest/ip_blocker.cpp \
     rest/multipart_form_data_parser.cpp \
     rest/rest.cpp \
+    rest/rest_auth.cpp \
     rest/rest_chart.cpp \
     rest/rest_chart_data_controller.cpp \
     rest/rest_chart_param.cpp \
     rest/rest_chart_value.cpp \
     rest/rest_config.cpp \
     rest/rest_helper.cpp \
+    rest/rest_log.cpp \
     rest/rest_scheme.cpp \
     rest/rest_scheme_group.cpp \
     rest/rest_scheme_structure.cpp \
+    rest/rest_user.cpp \
     rest/scheme_copier.cpp \
     worker.cpp \
     websocket.cpp \
@@ -48,21 +56,26 @@ SOURCES += main.cpp \
 
 HEADERS += \
     dbus_object.h \
+    rest/captcha_generator.h \
     rest/csrf_middleware.h \
     rest/auth_middleware.h \
     rest/filter.h \
+    rest/ip_blocker.h \
     rest/json_helper.h \
     rest/multipart_form_data_parser.h \
     rest/rest.h \
+    rest/rest_auth.h \
     rest/rest_chart.h \
     rest/rest_chart_data_controller.h \
     rest/rest_chart_param.h \
     rest/rest_chart_value.h \
     rest/rest_config.h \
     rest/rest_helper.h \
+    rest/rest_log.h \
     rest/rest_scheme.h \
     rest/rest_scheme_group.h \
     rest/rest_scheme_structure.h \
+    rest/rest_user.h \
     rest/scheme_copier.h \
     worker.h \
     websocket.h \

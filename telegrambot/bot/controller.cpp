@@ -533,8 +533,12 @@ void Controller::list(uint32_t user_id, TgBot::Message::Ptr message) const
 
 void Controller::report(TgBot::Message::Ptr message) const
 {
-    TgBot::InputFile::Ptr file = TgBot::InputFile::fromFile(getReportFilepathForUser(message->from), REPORT_MIME);
-    bot_->getApi().sendDocument(message->chat->id, file);
+    try {
+        TgBot::InputFile::Ptr file = TgBot::InputFile::fromFile(getReportFilepathForUser(message->from), REPORT_MIME);
+        bot_->getApi().sendDocument(message->chat->id, file);
+    } catch (const std::exception& e) {
+        bot_->getApi().sendMessage(message->chat->id, std::string("Ошибка при чтении файла: ") + e.what());
+    }
 }
 
 void Controller::inform_onoff(uint32_t user_id, TgBot::Chat::Ptr chat, TgBot::Message::Ptr msg_to_update)
@@ -834,7 +838,7 @@ map<uint32_t, string> Controller::list_schemes_names(uint32_t user_id, uint32_t 
         sql = " AND s.title COLLATE UTF8_GENERAL_CI LIKE ? ESCAPE '@'";
         values.push_back('%' + QString::fromStdString(search_text)
                          .replace('@', "@@").replace('_', "@_").replace('@', "@@") + '%');
-        values.push_back(values.front());
+        values.push_back(values.back());
     }
 
     sql = QString(" FROM das_scheme s "

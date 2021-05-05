@@ -34,7 +34,7 @@ Worker::Worker(QObject *parent) :
     structure_sync_(nullptr),
     scheme_thread_(nullptr), prj_(nullptr),
     checker_th_(nullptr),
-    log_timer_thread_(nullptr),
+    log_save_thread_(nullptr),
     restart_user_id_(0),
     dbus_(nullptr)
 {
@@ -47,7 +47,7 @@ Worker::Worker(QObject *parent) :
     init_dbus(s.get());
     init_database(s.get());
     init_scheme(s.get()); // инициализация структуры проекта
-    init_log_timer(); // сохранение статуса устройства по таймеру
+    init_log_save(s.get()); // сохранение статуса устройства по таймеру
     init_checker(s.get()); // запуск потока опроса устройств
     init_network_client(s.get()); // подключение к серверу
 
@@ -81,7 +81,7 @@ Worker::~Worker()
     blockSignals(true);
     QObject::disconnect(this, 0, 0, 0);
 
-    stop_thread(&log_timer_thread_, 30000);
+    stop_thread(&log_save_thread_, 30000);
 
     net_thread_.reset();
     stop_thread(&checker_th_);
@@ -366,12 +366,29 @@ void Worker::init_network_client(QSettings* s)
     net_thread_.reset(new Helpz::DTLS::Client_Thread{std::move(conf)});
 }
 
-void Worker::init_log_timer()
+void Worker::init_log_save(QSettings* s)
 {
     qRegisterMetaType<QVector<Device_Item_Value>>("QVector<Device_Item_Value>");
 
-    log_timer_thread_ = new Log_Value_Save_Timer_Thread(this);
-    log_timer_thread_->start();
+    Log_Save_Config& conf = Log_Save_Config::instance();
+    conf = Helpz::SettingsHelper{
+        s, "Log_Save_Timeouts",
+            Z::Param<std::chrono::milliseconds>{"dev_item_value", conf._dev_item_value},
+            Z::Param<std::chrono::milliseconds>{"dev_item_value_force", conf._dev_item_value_force},
+
+            Z::Param<std::chrono::milliseconds>{"log_value", conf._log_value},
+            Z::Param<std::chrono::milliseconds>{"log_value_force", conf._log_value_force},
+
+            Z::Param<std::chrono::milliseconds>{"log_event", conf._log_event},
+            Z::Param<int>{"log_event_force_size", conf._log_event_force_size},
+
+            Z::Param<std::chrono::milliseconds>{"log_param", conf._log_param},
+            Z::Param<std::chrono::milliseconds>{"log_status", conf._log_status},
+            Z::Param<std::chrono::milliseconds>{"log_mode", conf._log_mode},
+    }.obj<Log_Save_Config>();
+
+    log_save_thread_ = new Log_Save_Thread(this);
+    log_save_thread_->start();
 }
 
 void Worker::restart_service_object(uint32_t user_id)
@@ -436,9 +453,9 @@ void Worker::logMessage(QtMsgType type, const Helpz::LogContext &ctx, const QStr
 
 void Worker::add_event_message(Log_Event_Item event)
 {
-    if (log_timer_thread_)
+    if (log_save_thread_)
     {
-        QMetaObject::invokeMethod(log_timer_thread_->ptr(), "add_log_event_item", Qt::QueuedConnection, Q_ARG(Log_Event_Item, event));
+        QMetaObject::invokeMethod(log_save_thread_->ptr(), "add_log_event_item", Qt::QueuedConnection, Q_ARG(Log_Event_Item, event));
     }
 }
 
@@ -610,32 +627,6 @@ QVariant db_get_dig_status_id(Helpz::DB::Base* db, const QString& table_name, ui
     return {};
 }
 
-void Worker::update_plugin_param_names(const QVector<Plugin_Type>& plugins)
-{
-    QByteArray data;
-    QDataStream ds(&data, QIODevice::ReadWrite);
-    ds << plugins << uint32_t(0) << uint32_t(0);
-    ds.device()->seek(0);
-    structure_sync_->process_modify_message(0, Ver::ST_PLUGIN_TYPE, ds.device(),
-                                            DB::Schemed_Model::default_scheme_id(), nullptr);
-
-    for (Device* dev: prj()->devices())
-    {
-        for (const Plugin_Type& plugin: plugins)
-        {
-            if (plugin.id() == dev->plugin_id())
-            {
-                dev->set_param_name_list(plugin.param_names_device());
-                for (Device_Item *item: dev->items())
-                {
-                    item->set_param_name_list(plugin.param_names_device_item());
-                }
-                break;
-            }
-        }
-    }
-}
-
 void Worker::connection_state_changed(Device_Item *item, bool value)
 {
     Log_Value_Item log_value_item{QDateTime::currentDateTimeUtc().toMSecsSinceEpoch(), 0,
@@ -647,7 +638,7 @@ void Worker::connection_state_changed(Device_Item *item, bool value)
         log_value_item.set_value(item->value());
     }
 
-    QMetaObject::invokeMethod(log_timer_thread_->ptr(), "add_log_value_item", Qt::QueuedConnection,
+    QMetaObject::invokeMethod(log_save_thread_->ptr(), "add_log_value_item", Qt::QueuedConnection,
                               Q_ARG(Log_Value_Item, log_value_item));
 }
 

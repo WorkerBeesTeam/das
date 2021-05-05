@@ -149,7 +149,16 @@ double HTU21Plugin::get_sensor_value(int fd, int sensor_id, bool &is_error_out)
     return 0.;
 #else
     is_error_out = false;
-    return 0.5;
+
+    struct Item { double _val, _plus, _min, _max; };
+    static Item val[2] = { { 0.209, 0.001, 0.209, 0.494 }, { 0.048, 0.001, 0.048, 0.848 } };
+
+    Item& v = val[sensor_id == HTU21D_TEMP ? 0 : 1];
+    v._val += v._plus;
+    if (v._val >= v._max || v._val <= v._min)
+        v._plus = -v._plus;
+
+    return v._val;
 #endif
 }
 

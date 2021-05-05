@@ -22,6 +22,8 @@ Q_DECLARE_LOGGING_CATEGORY(UartLog)
 class Uart_Thread : public QThread
 {
 public:
+    ~Uart_Thread();
+
     bool joinable() const { return isRunning(); }
     bool join() { return wait(); }
 
@@ -35,6 +37,7 @@ private:
     void reconnect(QSerialPort& port);
 
     void read_item(QSerialPort& port, Device_Item* item);
+    Device::Data_Item read_item_impl(QSerialPort& port, Device_Item* item);
     void write_item(QSerialPort& port, const Write_Cache_Item& item);
 
     bool break_, is_port_name_in_config_, ok_open_;

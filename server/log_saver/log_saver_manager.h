@@ -6,7 +6,6 @@
 #include "log_saver/log_saver_controller.h"
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 class Manager : public Controller
@@ -39,7 +38,6 @@ private:
 Manager* instance();
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das
 
 #endif // DAS_SERVER_LOG_MANAGER_H

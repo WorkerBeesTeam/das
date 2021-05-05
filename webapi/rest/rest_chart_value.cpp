@@ -104,8 +104,8 @@ void Chart_Value::fill_additional_fields(picojson::object &obj, const QSqlQuery 
 
 void Chart_Value::parse_params(const served::request &req)
 {
-    _time_range = get_time_range(req.query["ts_from"], req.query["ts_to"]);
-    parse_data_in(req.query["data"]);
+    _time_range = Log::parse_time_range(req);
+    _data_in_list = Log::parse_data_in(req.query["data"]);
 
     _scheme_where = get_scheme_where(req);
     _where = get_where();
@@ -130,14 +130,6 @@ QString Chart_Value::get_where() const
     return "WHERE " + _scheme_where + " AND " + get_data_in_where() + " AND " + get_time_range_where();
 }
 
-Chart_Value::Time_Range Chart_Value::get_time_range(const std::string &from_str, const std::string &to_str) const
-{
-    Time_Range time_range{ std::stoll(from_str), std::stoll(to_str) };
-    if (time_range._from == 0 || time_range._to == 0 || time_range._from > time_range._to)
-        throw served::request_error(served::status_4XX::BAD_REQUEST, "Invalid date range");
-    return time_range;
-}
-
 QString Chart_Value::get_time_range_where() const
 {
     const QString field_name = get_field_name(FT_TIME);
@@ -154,25 +146,9 @@ QString Chart_Value::get_scheme_where(const served::request& req) const
     return sql;
 }
 
-void Chart_Value::parse_data_in(const std::string &param)
-{
-    std::vector<std::string> data_string_list;
-    boost::split(data_string_list, param, [](char c) { return c == ','; });
-
-    for (const std::string& item: data_string_list)
-    {
-        const uint32_t item_id = std::stoul(item);
-        if (item_id)
-            _data_in_list.push_back(QString::number(item_id));
-    }
-
-    if (_data_in_list.isEmpty())
-        throw served::request_error(served::status_4XX::BAD_REQUEST, "Invalid data items");
-}
-
 QString Chart_Value::get_data_in_where() const
 {
-    return get_field_name(FT_ITEM_ID) + " IN (" + _data_in_list.join(',') + ')';
+    return get_field_name(FT_ITEM_ID) + " IN (" + QString::fromStdString(boost::join(_data_in_list, ",")) + ')';
 }
 
 void Chart_Value::parse_limits(const std::string &offset_str, const std::string &limit_str)
@@ -228,8 +204,9 @@ QString Chart_Value::get_full_sql() const
 QString Chart_Value::get_bounds_sql() const
 {
     QStringList one_point_sql_list;
-    for (const QString& item_id: _data_in_list)
+    for (const std::string& item_id_s: _data_in_list)
     {
+        const QString item_id = QString::fromStdString(item_id_s);
         one_point_sql_list.push_back(get_one_point_sql(_time_range._from, item_id, true));
         if (_range_in_past)
             one_point_sql_list.push_back(get_one_point_sql(_time_range._to, item_id, false));

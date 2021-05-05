@@ -28,6 +28,8 @@ HEADERS +=\
     das/structure_synchronizer_base.h \
     das/database_delete_info.h \
     das/jwt_helper.h \
+    das/log_saver_def.h \
+    das/log_saver_helper.h \
     das/status_helper.h
 
 DESTDIR = $${OUT_PWD}/../..

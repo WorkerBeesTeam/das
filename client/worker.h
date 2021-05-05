@@ -20,11 +20,11 @@ typedef QGuiApplication App_Type;
 #include <plus/das/scheme_info.h>
 
 #include "checker_manager.h"
-#include "Network/client_protocol_latest.h"
+#include "Network/net_proto_iface.h"
 #include "Scripts/scripted_scheme.h"
 
 #include "worker_structure_synchronizer.h"
-#include "log_value_save_timer.h"
+#include "log_save_controller.h"
 
 namespace Das {
 
@@ -32,7 +32,7 @@ namespace Client {
     class Dbus_Object;
 }
 
-class Worker final : public QObject
+class Worker final : public QObject, public Net_Protocol_Interface
 {
     Q_OBJECT
 public:
@@ -49,7 +49,7 @@ public:
 
     Worker_Structure_Synchronizer* structure_sync();
 
-    std::shared_ptr<Ver::Client::Protocol> net_protocol();
+    std::shared_ptr<Ver::Client::Protocol> net_protocol() override;
 
     void close_net_client();
 
@@ -65,7 +65,7 @@ private:
     void init_scheme(QSettings* s);
     void init_checker(QSettings* s);
     void init_network_client(QSettings* s);
-    void init_log_timer();
+    void init_log_save(QSettings *s);
 signals:
     void serviceRestart();
 
@@ -93,8 +93,6 @@ public slots:
 
     void set_mode(uint32_t user_id, uint32_t mode_id, uint32_t group_id);
     void set_scheme_name(uint32_t user_id, const QString& name);
-
-    void update_plugin_param_names(const QVector<Plugin_Type>& plugins);
 public slots:
     void connection_state_changed(Device_Item *item, bool value);
 private:
@@ -112,8 +110,8 @@ private:
     using Checker_Thread = Helpz::SettingsThreadHelper<Checker::Manager, Worker*/*, QStringList*/>;
     Checker_Thread::Type* checker_th_;
 
-    using Log_Value_Save_Timer_Thread = Helpz::ParamThread<Log_Value_Save_Timer, Worker*>;
-    Log_Value_Save_Timer_Thread* log_timer_thread_;
+    using Log_Save_Thread = Helpz::ParamThread<Log_Save_Controller, Worker*>;
+    Log_Save_Thread* log_save_thread_;
     friend class Scripted_Scheme;
 
     uint32_t restart_user_id_;

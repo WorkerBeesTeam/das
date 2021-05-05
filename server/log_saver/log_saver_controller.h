@@ -11,7 +11,6 @@
 #include "log_saver.h"
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 class Controller
@@ -24,7 +23,7 @@ public:
     void join();
 
     template<typename T>
-    bool add(uint32_t scheme_id, const QVector<T>& data)
+    bool add(uint32_t scheme_id, const QVector<T>& data, bool skip_cache = false)
     {
         if (_break_flag)
             return false;
@@ -36,8 +35,17 @@ public:
             {
                 {
                     lock_guard lock(_mutex);
-                    static_pointer_cast<Saver<T>>(it->second)->add(scheme_id, data,
-                                                                   chrono::seconds{Config::get()._time_in_cache_sec});
+                    auto saver = static_pointer_cast<Saver<T>>(it->second);
+
+                    saver->add(scheme_id, data);
+
+                    if constexpr (Cache_Type<T>::Is_Comparable::value)
+                    {
+                        if (!skip_cache)
+                            saver->add_cache(scheme_id, data, chrono::seconds{Config::get()._time_in_cache_sec});
+                    }
+                    else
+                        Q_UNUSED(skip_cache);
                 }
 
                 _cond.notify_one();
@@ -96,7 +104,6 @@ private:
 };
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das
 
 #endif // DAS_SERVER_LOG_SAVER_CONTROLLER_H

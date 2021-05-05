@@ -32,10 +32,11 @@ namespace DB {
 class Thread_Manager;
 } // namespace DB
 
-namespace Server {
 namespace Log_Saver {
 class Manager;
 } // namespace Log_Saver
+
+namespace Server {
 
 //class Informer;
 class Dbus_Object;

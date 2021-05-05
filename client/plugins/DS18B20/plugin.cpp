@@ -137,8 +137,10 @@ bool DS18B20_Plugin::init(uint16_t pin)
 
     if (_one_wire)
         delete _one_wire;
-#endif
     return false;
+#else
+    return true;
+#endif
 }
 
 void DS18B20_Plugin::search_rom()
@@ -157,7 +159,7 @@ void DS18B20_Plugin::search_rom()
         error_text = QString::fromLocal8Bit(e.what());
     }
 #else
-    n = 0;
+    n = 100;
 #endif
 
     if (n)
@@ -239,7 +241,15 @@ double DS18B20_Plugin::get_temperature(uint32_t num, bool &is_ok)
     return 0;
 #else
     is_ok = true;
-    return num + 36.6;
+
+    struct Item { double _val = -10., _plus = 0.1, _min = -10., _max = 40; };
+    static Item val[100];
+    Item& v = val[num];
+    v._val += v._plus;
+    if (v._val >= v._max || v._val <= v._min)
+        v._plus = -v._plus;
+
+    return v._val;
 #endif
 }
 

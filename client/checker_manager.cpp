@@ -27,7 +27,7 @@ Manager::Manager(Worker *worker, QObject *parent) :
     scheme_(worker->prj())
 {
     plugin_type_mng_ = scheme_->plugin_type_mng_;
-    load_plugins(worker);
+    load_plugins();
 
     connect(scheme_, &Scheme::control_state_changed, this, &Manager::write_data, Qt::QueuedConnection);
 
@@ -262,10 +262,8 @@ void Manager::write_items(Device* dev, std::vector<Write_Cache_Item>& items)
     }
 }
 
-void Manager::load_plugins(Worker *worker)
+void Manager::load_plugins()
 {
-    QVector<Plugin_Type> plugins_update_vect;
-
     QDir pluginsDir(qApp->applicationDirPath());
     pluginsDir.cd("plugins");
 
@@ -279,8 +277,7 @@ void Manager::load_plugins(Worker *worker)
 
         try
         {
-            bool need_update_param = false;
-            Plugin_Type* pl_type = load_plugin(pluginsDir.absoluteFilePath(file_name), loader, need_update_param);
+            Plugin_Type* pl_type = load_plugin(pluginsDir.absoluteFilePath(file_name), loader);
 
             init_checker(pl_type->checker, scheme_);
 
@@ -289,9 +286,6 @@ void Manager::load_plugins(Worker *worker)
             pl_type->checker->configure(settings.get());
 
             loaded_map.emplace(pl_type->name(), file_name);
-
-            if (need_update_param)
-                plugins_update_vect.push_back(*pl_type);
         }
         catch (const std::exception& e)
         {
@@ -308,11 +302,6 @@ void Manager::load_plugins(Worker *worker)
         for (const auto& it: loaded_map)
             dbg << "\n  - " << it.first << " (" << it.second << ')';
     }
-
-    if (plugins_update_vect.size())
-    {
-        worker->update_plugin_param_names(plugins_update_vect);
-    }
 }
 
 QStringList qJsonArray_to_qStringList(const QJsonArray& arr)
@@ -323,7 +312,7 @@ QStringList qJsonArray_to_qStringList(const QJsonArray& arr)
     return names;
 }
 
-DB::Plugin_Type *Manager::load_plugin(const QString &file_path, std::shared_ptr<QPluginLoader>& loader, bool& need_update_param)
+DB::Plugin_Type *Manager::load_plugin(const QString &file_path, std::shared_ptr<QPluginLoader>& loader)
 {
     loader = std::make_shared<QPluginLoader>(file_path);
     if (!loader->load() && !loader->isLoaded())
@@ -354,17 +343,19 @@ DB::Plugin_Type *Manager::load_plugin(const QString &file_path, std::shared_ptr<
         QStringList dev_names = qJsonArray_to_qStringList(param["device"].toArray());
         if (pl_type->param_names_device() != dev_names)
         {
-            qCDebug(Log) << "Plugin" << pl_type->name() << "dev_names" << pl_type->param_names_device() << dev_names;
-            pl_type->set_param_names_device(dev_names);
-            need_update_param = true;
+            qCCritical(Log) << "Plugin" << pl_type->name() << "diffrent dev_names in scheme."
+                            << "\nScheme:" << pl_type->param_names_device()
+                            << "\nPlugin:" << dev_names;
+//            pl_type->set_param_names_device(dev_names);
         }
 
         QStringList dev_item_names = qJsonArray_to_qStringList(param["device_item"].toArray());
         if (pl_type->param_names_device_item() != dev_item_names)
         {
-            qCDebug(Log) << "Plugin" << pl_type->name() << "dev_item_names" << pl_type->param_names_device_item() << dev_item_names;
-            pl_type->set_param_names_device_item(dev_item_names);
-            need_update_param = true;
+            qCCritical(Log) << "Plugin" << pl_type->name() << "diffrent dev_item_names in scheme."
+                            << "\nScheme:" << pl_type->param_names_device_item()
+                            << "\nPlugin:" << dev_item_names;
+//            pl_type->set_param_names_device_item(dev_item_names);
         }
     }
 

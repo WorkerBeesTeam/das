@@ -139,7 +139,8 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
 
     case Cmd::LOG_DATA_REQUEST:
     case Cmd::LOG_PACK:
-        if (Helpz::apply_parse(data_dev, DATASTREAM_VERSION, &Log_Synchronizer::process, &_log_sync, &data_dev, *this))
+        if (Helpz::apply_parse(data_dev, DATASTREAM_VERSION,
+                               &Log_Synchronizer::process, &_log_sync, &data_dev, *this, cmd == Cmd::LOG_DATA_REQUEST))
         {
             send_answer(cmd, msg_id);
             if (cmd == Cmd::LOG_DATA_REQUEST)

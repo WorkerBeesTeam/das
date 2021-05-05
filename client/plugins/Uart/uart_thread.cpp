@@ -5,6 +5,12 @@ namespace Das {
 
 Q_LOGGING_CATEGORY(UartLog, "uart")
 
+Uart_Thread::~Uart_Thread()
+{
+    stop();
+    wait(5);
+}
+
 void Uart_Thread::start()
 {
     Uart::Config& conf = Uart::Config::instance();
@@ -47,8 +53,10 @@ bool Uart_Thread::check(Device *dev)
 
 void Uart_Thread::stop()
 {
-    std::lock_guard lock(mutex_);
-    break_ = true;
+    {
+        std::lock_guard lock(mutex_);
+        break_ = true;
+    }
     cond_.notify_one();
 }
 
@@ -143,6 +151,7 @@ void Uart_Thread::run()
             lock.unlock();
     }
 
+    port.close();
     _lua.stop();
 }
 
@@ -190,6 +199,21 @@ void parse_value(QDataStream& ds, Device::Data_Item& data)
 
 void Uart_Thread::read_item(QSerialPort &port, Device_Item *item)
 {
+    Device::Data_Item data_item;
+
+    for (int i = 0; !break_ && i < Uart::Config::instance()._repeat_count && !data_item.raw_data_.isValid(); ++i)
+    {
+        data_item = read_item_impl(port, item);
+    }
+
+    device_items_values_[item->device()].emplace(item, std::move(data_item));
+}
+
+Device::Data_Item Uart_Thread::read_item_impl(QSerialPort &port, Device_Item *item)
+{
+    const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
+    Device::Data_Item data_item{0, timestamp_msecs, {}};
+
     if (!port.isOpen())
     {
         reconnect(port);
@@ -197,44 +221,50 @@ void Uart_Thread::read_item(QSerialPort &port, Device_Item *item)
         if (!port.isOpen())
         {
             device_items_disconected_[item->device()].push_back(item);
-            return;
+            return data_item;
         }
     }
 
-    QByteArray data = item->param("data").toByteArray();
-    if (data.startsWith("0x"))
-        data = QByteArray::fromHex(data.remove(0, 2));
+    QByteArray send_data = item->param("data").toByteArray();
+    if (send_data.startsWith("0x"))
+        send_data = QByteArray::fromHex(send_data.remove(0, 2));
 
-    if (data.isEmpty())
+    if (send_data.isEmpty())
     {
         device_items_disconected_[item->device()].push_back(item);
-        return;
+        return data_item;
     }
 
     port.readAll();
-    port.write(data);
+    port.write(send_data);
 
-    if (port.waitForBytesWritten(Uart::Config::instance()._write_timeout)
-        && port.waitForReadyRead(Uart::Config::instance()._read_timeout))
-    {
-        data = port.readAll();
-    }
+    port.waitForBytesWritten(Uart::Config::instance()._write_timeout);
+    while (port.waitForReadyRead(Uart::Config::instance()._min_read_timeout))
+        ;
 
-    if (port.error() != QSerialPort::NoError)
+    QByteArray recv_data = port.readAll();
+
+    if (recv_data.isEmpty() && port.error() != QSerialPort::NoError)
     {
-        port.close();
+        if (ok_open_ && port.error() != QSerialPort::TimeoutError)
+        {
+            qCWarning(UartLog) << item->toString() << port.errorString();
+            ok_open_ = false;
+        }
         device_items_disconected_[item->device()].push_back(item);
-        return;
+        return data_item;
     }
-
-    const qint64 timestamp_msecs = DB::Log_Base_Item::current_timestamp();
-    Device::Data_Item data_item{0, timestamp_msecs, {}};
 
     if (_lua)
     {
         try
         {
-            data_item.raw_data_ = _lua(data);
+            std::string func_name = item->device()->param("lua_function").toString().toStdString();
+            if (func_name.empty())
+                func_name = "process";
+
+            const QVariant lua_arg = item->param("lua_arg");
+            data_item.raw_data_ = _lua(send_data, recv_data, func_name, lua_arg);
         }
         catch(const std::exception& e)
         {
@@ -251,10 +281,10 @@ void Uart_Thread::read_item(QSerialPort &port, Device_Item *item)
             QDataStream::ByteOrder bo = is_little_endian.isValid() && is_little_endian.toBool() ?
                         QDataStream::LittleEndian : QDataStream::BigEndian;
 
-            QDataStream ds(data);
+            QDataStream ds(recv_data);
             ds.setByteOrder(bo);
 
-            switch (data.size()) {
+            switch (recv_data.size()) {
             case 1: parse_value<uint8_t>(ds, data_item); break;
             case 2: parse_value<uint16_t>(ds, data_item); break;
             case 4: parse_value<uint32_t>(ds, data_item); break;
@@ -266,10 +296,10 @@ void Uart_Thread::read_item(QSerialPort &port, Device_Item *item)
             }
         }
         else
-            data_item.raw_data_ = data;
+            data_item.raw_data_ = recv_data;
     }
 
-    device_items_values_[item->device()].emplace(item, std::move(data_item));
+    return data_item;
 }
 
 void Uart_Thread::write_item(QSerialPort &port, const Write_Cache_Item &item)

@@ -26,7 +26,7 @@ class Log_Sync_Base
 {
 public:
     virtual ~Log_Sync_Base() = default;
-    virtual bool process(const Scheme_Info& scheme, QIODevice& data_dev) = 0;
+    virtual bool process(const Scheme_Info& scheme, QIODevice& data_dev, bool skip_cache) = 0;
 };
 
 class Log_Synchronizer
@@ -35,7 +35,7 @@ public:
     Log_Synchronizer();
 
     std::set<uint8_t> get_type_set() const;
-    bool process(Log_Type_Wrapper type_id, QIODevice* data_dev, const Scheme_Info &scheme);
+    bool process(Log_Type_Wrapper type_id, QIODevice* data_dev, const Scheme_Info &scheme, bool skip_cache = false);
 
 private:
     std::map<uint8_t, std::shared_ptr<Log_Sync_Base>> _sync;

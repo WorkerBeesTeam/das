@@ -18,6 +18,7 @@ TEMPLATE = app
 
 SOURCES += main.cpp \
     Scripts/scripted_scheme.cpp \
+    log_save_controller.cpp \
     worker.cpp \
     Scripts/tools/pidcontroller.cpp \
     Scripts/tools/automationhelper.cpp \
@@ -32,14 +33,16 @@ SOURCES += main.cpp \
     structure_synchronizer.cpp \
     worker_structure_synchronizer.cpp \
     Database/db_log_helper.cpp \
-    log_value_save_timer.cpp \
     id_timer.cpp \
     Network/client_protocol_latest.cpp \
     dbus_object.cpp \
     checker_manager.cpp
 
 HEADERS  += \
+    Network/net_proto_iface.h \
     Scripts/scripted_scheme.h \
+    log_save_controller.h \
+    pack_sender.h \
     worker.h \
     Scripts/tools/pidcontroller.h \
     Scripts/tools/automationhelper.h \
@@ -54,7 +57,6 @@ HEADERS  += \
     structure_synchronizer.h \
     worker_structure_synchronizer.h \
     Database/db_log_helper.h \
-    log_value_save_timer.h \
     id_timer.h \
     Network/client_protocol_latest.h \
     dbus_object.h \

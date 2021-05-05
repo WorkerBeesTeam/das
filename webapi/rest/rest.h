@@ -27,13 +27,13 @@ Q_DECLARE_LOGGING_CATEGORY(Rest_Log)
 class Restful
 {
 public:
-    Restful(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_helper, const Config& config);
+    Restful(DBus::Interface* dbus_iface, const Config& config);
     ~Restful();
 
     void stop();
     void join();
 private:
-    void run(DBus::Interface* dbus_iface, std::shared_ptr<JWT_Helper> jwt_helper, const Config& config);
+    void run(DBus::Interface* dbus_iface, const Config& config);
 
     served::net::server* server_;
     std::thread thread_;

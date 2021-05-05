@@ -124,7 +124,8 @@ void Structure_Synchronizer::check_statuses()
 }
 
 template<typename T>
-void Structure_Synchronizer::check_values_or_statuses(Cmd::Command_Type cmd, void(Log_Saver::Manager::*set_cache)(QVector<T> &&, uint32_t))
+void Structure_Synchronizer::check_values_or_statuses(Cmd::Command_Type cmd,
+                                                      void(Log_Saver::Manager::*set_cache)(QVector<T> &&, uint32_t))
 {
     uint32_t scheme_id = protocol_->id();
     protocol_->send(cmd)

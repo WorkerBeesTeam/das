@@ -1,7 +1,6 @@
 #include "log_saver_controller.h"
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 using namespace std;
@@ -130,5 +129,4 @@ void Controller::add_saver()
 }
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das

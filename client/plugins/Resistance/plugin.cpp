@@ -149,7 +149,8 @@ void ResistancePlugin::run()
             }
             else
             {
-                value_sum /= sum_for;
+                if (sum_for != 0)
+                    value_sum /= sum_for;
                 if (conf_.devide_by_ != 0)
                     value_sum /= conf_.devide_by_;
 

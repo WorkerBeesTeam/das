@@ -7,7 +7,6 @@
 #include "log_saver_base.h"
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 using namespace std;
@@ -57,5 +56,4 @@ QVariantList Saver_Base::load_dump_file(size_t type_code)
 }
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das

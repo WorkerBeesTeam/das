@@ -179,7 +179,7 @@ void Protocol::process_message(uint8_t msg_id, uint8_t cmd, QIODevice &data_dev)
     case Cmd::DEVICE_ITEM_VALUES:
     {
         QVector<Device_Item_Value> value_vect;
-        QMetaObject::invokeMethod(worker()->log_timer_thread_->ptr(), "get_unsaved_values", Qt::BlockingQueuedConnection,
+        QMetaObject::invokeMethod(worker()->log_save_thread_->ptr(), "get_unsaved_values", Qt::BlockingQueuedConnection,
                                   Q_RETURN_ARG(QVector<Device_Item_Value>, value_vect));
         qDebug(NetClientLog) << "DEVICE_ITEM_VALUES" << value_vect.size() << "msg" << msg_id;
         send_answer(Cmd::DEVICE_ITEM_VALUES, msg_id) << value_vect;

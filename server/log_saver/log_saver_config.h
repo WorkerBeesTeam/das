@@ -1,10 +1,9 @@
 #ifndef LOG_SAVER_CONFIG_H
 #define LOG_SAVER_CONFIG_H
 
-#include "log_saver_def.h"
+#include <plus/das/log_saver_def.h>
 
 namespace Das {
-namespace Server {
 namespace Log_Saver {
 
 struct Config
@@ -23,7 +22,6 @@ struct Config
 };
 
 } // namespace Log_Saver
-} // namespace Server
 } // namespace Das
 
 #endif // LOG_SAVER_CONFIG_H
