@@ -30,6 +30,7 @@
 #include "rest_chart_data_controller.h"
 #include "rest_scheme_structure.h"
 #include "rest_log.h"
+#include "rest_mnemoscheme.h"
 #include "rest_scheme.h"
 
 namespace Das {
@@ -53,6 +54,7 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
     chart_ = std::make_shared<Chart>(mux, scheme_path);
     chart_data_ = std::make_shared<Chart_Data_Controller>(mux, scheme_path);
     _log = std::make_shared<Rest::Log>(mux, scheme_path);
+    _mnemoscheme = std::make_shared<Mnemoscheme>(mux, scheme_path);
 
     mux.handle(scheme_path + "/dig_status").get([this](served::response& res, const served::request& req) { get_dig_status(res, req); });
     mux.handle(scheme_path + "/dig_status_type").get([this](served::response& res, const served::request& req) { get_dig_status_type(res, req); });
