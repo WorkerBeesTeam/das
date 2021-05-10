@@ -220,7 +220,7 @@ void Scheme::get_device_item_value(served::response &res, const served::request 
     for (const Device_Item_Value& value: values)
     {
         picojson::object obj = obj_to_pico(value, names);
-        obj.emplace("id", static_cast<int64_t>(value.item_id()));
+        obj["id"].set(static_cast<int64_t>(value.item_id())); // Rewrite id field
         obj.emplace("ts", static_cast<int64_t>(value.timestamp_msecs()));
         obj.emplace("user_id", static_cast<int64_t>(value.user_id()));
         obj.emplace("raw", pico_from_qvariant(value.raw_value()));
