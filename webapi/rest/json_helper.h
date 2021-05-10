@@ -210,6 +210,33 @@ std::string gen_json_list(const QString& suffix = QString(), const QVariantList&
     return picojson::value(gen_json_array<T>(suffix, values)).serialize();
 }
 
+inline picojson::object gen_json_object2(const QSqlQuery& query, const QStringList& names)
+{
+    picojson::object obj;
+    const QSqlRecord rec = query.record();
+    for (int i = 0; i < rec.count() && i < names.size(); ++i)
+        obj.emplace(names.at(i).toStdString(), pico_from_qvariant(query.value(i)));
+    return obj;
+}
+
+inline picojson::array gen_json_array2(const Helpz::DB::Table& table,
+                                      const QString& suffix = QString(), const QVariantList& values = QVariantList())
+{
+    Helpz::DB::Base& db = Helpz::DB::Base::get_thread_local_instance();
+
+    picojson::array json_array;
+    auto q = db.select(table, suffix, values);
+    while (q.next())
+        json_array.emplace_back(gen_json_object2(q, table.field_names()));
+    return json_array;
+}
+
+inline std::string gen_json_list2(const Helpz::DB::Table& table,
+                                  const QString& suffix = QString(), const QVariantList& values = QVariantList())
+{
+    return picojson::value(gen_json_array2(table, suffix, values)).serialize();
+}
+
 } // namespace Rest
 } // namespace Das
 

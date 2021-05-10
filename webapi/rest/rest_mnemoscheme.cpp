@@ -1,12 +1,21 @@
+
+#include <QCryptographicHash>
+
 #include <Helpz/zfile.h>
 
+#include <Das/db/mnemoscheme.h>
+
 #include "auth_middleware.h"
+#include "json_helper.h"
 #include "rest_helper.h"
+#include "rest_config.h"
 #include "rest_scheme.h"
 #include "rest_mnemoscheme.h"
 
 namespace Das {
 namespace Rest {
+
+using namespace Helpz::DB;
 
 Mnemoscheme::Mnemoscheme(served::multiplexer &mux, const std::string &scheme_path)
 {
@@ -21,25 +30,14 @@ void Mnemoscheme::get_list(served::response &res, const served::request &req)
 {
     Auth_Middleware::check_permission("view_mnemoscheme");
 
-    picojson::array json;
-
     const Scheme_Info scheme = Scheme::get_info(req);
-    if ((scheme.extending_scheme_ids().empty() && scheme.id() == 1)
-      || !scheme.extending_scheme_ids().empty() && *scheme.extending_scheme_ids().begin() == 1)
-    {
-        picojson::object obj;
-        obj.emplace("id", static_cast<int64_t>(1));
-        obj.emplace("title", "Пользовательская");
-        json.emplace_back(std::move(obj));
 
-        picojson::object obj2;
-        obj2.emplace("id", static_cast<int64_t>(1));
-        obj2.emplace("title", "Техническая");
-        json.emplace_back(picojson::value{std::move(obj2)});
-    }
+    Table table = db_table<DB::Mnemoscheme>();
+    table.field_names().removeAt(DB::Mnemoscheme::COL_scheme_id);
+    table.field_names().removeAt(DB::Mnemoscheme::COL_hash);
 
+    res << gen_json_list2(table, "WHERE " + scheme.ids_to_sql());
     res.set_header("Content-Type", "application/json");
-    res << picojson::value{std::move(json)}.serialize();
 }
 
 void Mnemoscheme::get_item(served::response &res, const served::request &req)
@@ -48,15 +46,28 @@ void Mnemoscheme::get_item(served::response &res, const served::request &req)
     Auth_Middleware::check_permission("view_mnemoscheme");
 
     const Scheme_Info scheme = Scheme::get_info(req);
-    if ((scheme.extending_scheme_ids().empty() && scheme.id() == 1)
-     || (!scheme.extending_scheme_ids().empty() && *scheme.extending_scheme_ids().begin() == 1))
-    {
-        const std::string data = Helpz::File::read_all("/opt/mnemoscheme.svg");
-        res.set_header("Content-Type", "image/svg; charset=UTF-8");
-        res.set_body(data);
-    }
-    else
-        throw served::request_error(served::status_4XX::BAD_REQUEST, "Unknown element id");
+
+    Base& db = Base::get_thread_local_instance();
+
+    QSqlQuery q = db.select(db_table<DB::Mnemoscheme>(), "WHERE " + scheme.ids_to_sql() + " AND id=?", {id});
+    if (!q.isActive() || !q.next())
+//        throw served::request_error(served::status_4XX::BAD_REQUEST, "Unknown element id"); // TODO: if debug mode false.
+        throw served::request_error(served::status_5XX::INTERNAL_SERVER_ERROR, db.last_error().toStdString());
+
+    const DB::Mnemoscheme item = db_build<DB::Mnemoscheme>(q);
+
+    const std::string file_path = Rest::Config::instance()._blob_dir_path + "/mnemoscheme/" + std::to_string(item.id()) + ".svg";
+    const std::string data = Helpz::File::read_all(file_path);
+    if (data.empty())
+        throw served::request_error(served::status_4XX::NOT_FOUND, "Not found.");
+
+    QCryptographicHash hash_func(QCryptographicHash::Sha1);
+    hash_func.addData(data.data(), data.size());
+    if (QByteArray::fromHex(item.hash()) != hash_func.result())
+        throw served::request_error(served::status_4XX::NOT_FOUND, "Not found.");
+
+    res.set_header("Content-Type", "image/svg; charset=UTF-8");
+    res.set_body(data);
 }
 
 } // namespace Rest

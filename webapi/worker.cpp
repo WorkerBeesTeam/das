@@ -169,16 +169,18 @@ void Worker::init_restful(QSettings* s)
         Helpz::Param<uint32_t>{"DayRatioSec", Rest::Chart_Value::config()._day_ratio_sec}
     ).obj<Rest::Chart_Value_Config>();
 
-    Rest::Config rest_config = Helpz::SettingsHelper(
+    Rest::Config& conf = Rest::Config::instance();
+    conf = Helpz::SettingsHelper(
         s, "Rest",
-        Helpz::Param{"Thread_Count", 3},
-        Helpz::Param<std::string>{"Address", "localhost"},
-        Helpz::Param<std::string>{"Port", "8123"},
-        Helpz::Param<std::string>{"BasePath", ""},
-        Helpz::Param<std::chrono::seconds>{"TokenTimeoutSec", std::chrono::seconds{3600}}
+        Helpz::Param{"Thread_Count", conf.thread_count_},
+        Helpz::Param<std::string>{"Address", conf.address_},
+        Helpz::Param<std::string>{"Port", conf.port_},
+        Helpz::Param<std::string>{"BasePath", conf.base_path_},
+        Helpz::Param<std::string>{"BlobDirPath", conf._blob_dir_path},
+        Helpz::Param<std::chrono::seconds>{"TokenTimeoutSec", conf._token_timeout}
     ).obj<Rest::Config>();
 
-    restful_ = new Rest::Restful{dbus_, rest_config};
+    restful_ = new Rest::Restful{dbus_, conf};
 }
 
 void Worker::init_stream_server(QSettings *s)

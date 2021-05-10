@@ -9,9 +9,19 @@ namespace Rest {
 
 struct Config
 {
-    int thread_count_;
-    std::string address_, port_, base_path_;
-    std::chrono::seconds _token_timeout;
+    static Config& instance()
+    {
+        static Config config;
+        return config;
+    }
+
+    int thread_count_ = 3;
+    std::string address_ = "localhost",
+                port_ = "8123",
+                base_path_,
+                _blob_dir_path = "/opt/das/blob";
+
+    std::chrono::seconds _token_timeout = std::chrono::seconds{3600};
 };
 
 } // namespace Rest

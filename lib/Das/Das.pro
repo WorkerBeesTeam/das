@@ -23,6 +23,7 @@ SOURCES += \
     db/dig_status_type.cpp \
     db/dig_type.cpp \
     db/help.cpp \
+    db/mnemoscheme.cpp \
     db/scheme.cpp \
     db/scheme_group.cpp \
     db/schemed_model.cpp \
@@ -76,6 +77,7 @@ HEADERS +=\
     db/dig_status_type.h \
     db/dig_type.h \
     db/help.h \
+    db/mnemoscheme.h \
     db/scheme.h \
     db/scheme_group.h \
     db/schemed_model.h \
