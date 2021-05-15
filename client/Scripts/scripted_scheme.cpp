@@ -751,6 +751,16 @@ void Scripted_Scheme::write_to_item_file(const QString& file_name)
     }
 }
 
+QString Scripted_Scheme::get_status_text(uint32_t id, const QStringList &args)
+{
+    const DIG_Status_Type& info = status_mng_.type(id);
+
+    QString message = info.text();
+    for (const QString& arg: args)
+        message = message.arg(arg);
+    return message;
+}
+
 void Scripted_Scheme::group_initialized(Device_item_Group* group)
 {
     QString group_type_name = group_type_mng_.name(group->type_id()),

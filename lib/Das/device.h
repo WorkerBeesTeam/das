@@ -35,7 +35,7 @@ public:
     uint32_t plugin_id() const;
     void set_plugin_id(uint32_t plugin_id);
 
-    uint32_t check_interval() const;
+    Q_INVOKABLE uint32_t check_interval() const;
     void set_check_interval(uint32_t check_interval);
 
     QString checker_name() const;

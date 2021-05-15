@@ -193,7 +193,7 @@ void DS18B20_Plugin::process_item(uint32_t rom, Device_Item *item)
     double value = get_temperature(rom, is_ok);
     if (is_ok)
     {
-        value = std::floor(value * 10) / 10;
+        value = std::floor(value * 10.) / 10.;
 
         std::map<Device_Item*, Device::Data_Item> data;
         data.emplace(item, Device::Data_Item{0, DB::Log_Base_Item::current_timestamp(), value});

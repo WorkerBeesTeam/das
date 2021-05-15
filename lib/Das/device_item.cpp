@@ -167,6 +167,12 @@ QVariant Device_Item::raw_value() const
     return data_.raw_value();
 }
 
+QVariant Device_Item::get_raw_value() const
+{
+    std::lock_guard lock(mutex_);
+    return data_.raw_value();
+}
+
 bool Device_Item::write(const QVariant& display_value, uint32_t mode_id, uint32_t user_id)
 {
     if (!group_)
