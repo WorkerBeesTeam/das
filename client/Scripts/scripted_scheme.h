@@ -83,6 +83,8 @@ signals:
 
     void set_custom_check_interval(Device* dev, uint32_t interval);
 public slots:
+    // If variant pass to JS via engine->newVariant it can't work with this. For example: QVariant(QVariantMap)
+    // That function can call for fix it. Example: var obj = api.mng.from_variant(raw);
     QVariant from_variant(const QVariant& raw) const { return raw; }
 
     bool stop(uint32_t user_id = 0);

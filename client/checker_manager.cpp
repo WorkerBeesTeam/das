@@ -117,6 +117,8 @@ void Manager::set_custom_check_interval(Device *dev, uint32_t interval)
     }
     else if (it != _custom_check_interval.end())
         _custom_check_interval.erase(it);
+
+    check_devices(); // Переинициализация таймера на следующий опрос.
 }
 
 uint32_t Manager::get_device_check_interval(Device *dev) const

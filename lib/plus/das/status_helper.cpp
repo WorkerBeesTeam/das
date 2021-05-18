@@ -118,7 +118,7 @@ GROUP BY u.id)sql";
     {
         auto it = user_name_map.find(id);
 
-        QString msg = " пользователем **";
+        QString msg = " 👤 **";
         msg += it == user_name_map.cend() ? "Unknown" : it->second;
         msg += "**";
         return msg;
@@ -126,17 +126,12 @@ GROUP BY u.id)sql";
 
     if (is_up)
     {
-        message = "Состояние \"`" + message + "`\" снято";
+        message = "Снято cостояние \"`" + message + "`\"!";
         if (item.user_id())
             message += get_user_name_msg(item.user_id());
-        message += '!';
     }
     else if (item.user_id())
-    {
-        message += " (Установленно";
         message += get_user_name_msg(item.user_id());
-        message += ')';
-    }
 
     for (Status_Helper::Section& sct: group_names)
     {
