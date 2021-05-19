@@ -39,6 +39,7 @@ void Uart_Plugin::configure(QSettings *settings)
                 Param<QSerialPort::Parity>{"Parity", config._parity},
                 Param<QSerialPort::StopBits>{"StopBits", config._stop_bits},
                 Param<QSerialPort::FlowControl>{"FlowControl", config._flow_control},
+                Param<uint32_t>{"MaxBufferSize", config._max_buffer_size},
                 Param<int>{"MinReadTimeout", config._min_read_timeout},
                 Param<int>{"WriteTimeout", config._write_timeout},
                 Param<int>{"RepeatCount", config._repeat_count},

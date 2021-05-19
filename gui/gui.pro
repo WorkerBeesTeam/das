@@ -71,7 +71,7 @@ OTHER_FILES += main.qml
 RESOURCES += \
     main.qrc
 
-LIBS += -lDas -lHelpzDBMeta
+LIBS += -lHelpzBase -lHelpzDBMeta -lDas
 
 contains(ANDROID_TARGET_ARCH,x86) {
     ANDROID_EXTRA_LIBS = \

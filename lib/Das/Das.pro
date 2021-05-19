@@ -129,7 +129,7 @@ VER_MAJ = 1
 VER_MIN = 5
 include(../../common.pri)
 
-LIBS += -lHelpzDBMeta
+LIBS += -lHelpzBase -lHelpzDBMeta
 #LIBS += -lHelpzService -lHelpzDB -lHelpzNetwork
 
 unix {

@@ -19,6 +19,7 @@ struct Config
         QSerialPort::Parity parity = QSerialPort::NoParity,
         QSerialPort::StopBits stop_bits = QSerialPort::OneStop,
         QSerialPort::FlowControl flow_control = QSerialPort::NoFlowControl,
+        uint32_t max_buffer_size = 1024,
         int min_read_timeout = 21, int write_timeout = 3000,
         int repeat_count = 5,
         const std::string& lua_script_file = {}, bool lua_use_libs = false);
@@ -40,6 +41,7 @@ struct Config
     QSerialPort::StopBits    _stop_bits;      ///< Стоп бит. По умолчанию 1
     QSerialPort::FlowControl _flow_control;   ///< Управление потоком. По умолчанию нет
 
+    uint32_t _max_buffer_size; // set 0 to unlimit
     int _min_read_timeout;
     int _write_timeout;
 
