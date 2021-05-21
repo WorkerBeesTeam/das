@@ -283,11 +283,11 @@ void Log::log_getter(served::response &res, const served::request &req, const st
 Log_Query_Param Log::parse_params(const served::request &req)
 {
     uint32_t limit = 1000;
-    const std::string limit_str = req.params["limit"];
+    const std::string limit_str = req.query["limit"];
     if (!limit_str.empty())
         limit = std::stoul(limit_str);
 
-    const std::string case_sensitive_str = req.params["case_sensitive"];
+    const std::string case_sensitive_str = req.query["case_sensitive"];
 
     Log_Query_Param params
     {
@@ -296,9 +296,9 @@ Log_Query_Param Log::parse_params(const served::request &req)
         Log::parse_time_range(req),
 
         !(!case_sensitive_str.empty() && (case_sensitive_str == "0" || case_sensitive_str == "false")),
-        req.params["filter"],
+        req.query["filter"],
 
-        req.params["dig_id"], req.params["dig_param_id"], req.params["item_id"]
+        req.query["dig_id"], req.query["dig_param_id"], req.query["item_id"]
     };
 
     return params;
