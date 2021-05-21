@@ -210,6 +210,7 @@ std::string gen_json_list(const QString& suffix = QString(), const QVariantList&
     return picojson::value(gen_json_array<T>(suffix, values)).serialize();
 }
 
+/* Don't using ..2 becose in is not normalizing type. Example: smallint -> string, raw_value -> string
 inline picojson::object gen_json_object2(const QSqlQuery& query, const QStringList& names)
 {
     picojson::object obj;
@@ -235,7 +236,7 @@ inline std::string gen_json_list2(const Helpz::DB::Table& table,
                                   const QString& suffix = QString(), const QVariantList& values = QVariantList())
 {
     return picojson::value(gen_json_array2(table, suffix, values)).serialize();
-}
+}*/
 
 } // namespace Rest
 } // namespace Das

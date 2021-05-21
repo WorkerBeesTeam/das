@@ -2,6 +2,8 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/join.hpp>
 
+#include <fmt/core.h>
+
 #include <served/status.hpp>
 #include <served/request_error.hpp>
 
@@ -233,21 +235,12 @@ void Log::log_getter(served::response &res, const served::request &req, const st
         const std::vector<std::string> filtred_fields = get_filtred_fields<T>();
         for (const std::string& field: filtred_fields)
         {
-            if (!filter_str.empty()) filter_str += " OR ";
-
-            if (!config._case_sensitive) filter_str += "LOWER(";
-
-            filter_str += field;
-
-            if (!config._case_sensitive) filter_str += ')';
-
-            filter_str += " LIKE ";
-
-            if (!config._case_sensitive) filter_str += "LOWER(";
-
-            filter_str += '?';
-
-            if (!config._case_sensitive) filter_str += ')';
+            if (!filter_str.empty())
+                filter_str += " OR ";
+            if (config._case_sensitive)
+                filter_str += field + " LIKE ?";
+            else
+                filter_str += fmt::format("LOWER({}) LIKE LOWER(?)", field);
 
 //            filter_str += " ESCAPE '@'";
             values.push_back('%' + QString::fromStdString(config._filter) + '%' );
@@ -263,8 +256,6 @@ void Log::log_getter(served::response &res, const served::request &req, const st
     if (config._limit == 0 || config._limit > 1000)
         config._limit = 1000;
     sql += " LIMIT " + QString::number(config._limit);
-
-    table.field_names().removeAt(T::COL_scheme_id);
 
     Base& db = Base::get_thread_local_instance();
     QSqlQuery query = db.select(table, sql, values);
