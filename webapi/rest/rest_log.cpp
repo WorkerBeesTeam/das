@@ -144,7 +144,7 @@ Log::Log(served::multiplexer &mux, const std::string &scheme_path)
 /*static*/ Log_Time_Range Log::get_time_range(const std::string &from_str, const std::string &to_str)
 {
     Log_Time_Range time_range{ std::stoll(from_str), std::stoll(to_str) };
-    if (time_range._from == 0 || time_range._to == 0 || time_range._from > time_range._to)
+    if (/*time_range._from == 0 || */time_range._to == 0 || time_range._from > time_range._to)
         throw served::request_error(served::status_4XX::BAD_REQUEST, "Invalid date range");
     return time_range;
 }
