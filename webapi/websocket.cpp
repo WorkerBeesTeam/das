@@ -502,13 +502,9 @@ void WebSocket::sendDevice_ItemValues(const Scheme_Info &scheme, const QVector<L
 
 void WebSocket::send_dig_mode_pack(const Scheme_Info &scheme, const QVector<DIG_Mode> &pack)
 {
-    std::function<bool(QDataStream&, const DIG_Mode&)> func = [this, &scheme](QDataStream& ds, const DIG_Mode& item)
-    {
-        Q_UNUSED(ds);
-        sendModeChanged(scheme, item);
-        return false; // TODO: Фронт должен принимать массив
-    };
-    send_log_data(scheme, WS_DIG_MODE, pack, func);
+    for (const DIG_Mode& item: pack)
+        sendModeChanged(scheme, item); // deprecated
+    send_log_data(scheme, WS_LOG_MODE, pack);
 }
 
 void WebSocket::sendModeChanged(const Scheme_Info &scheme, const DIG_Mode &mode)
