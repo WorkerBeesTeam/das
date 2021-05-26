@@ -143,6 +143,12 @@ enum WebSockCmd : uint8_t {
     WS_STREAM_DATA,
     WS_STREAM_TEXT,
 
+    WS_LOG_EVENT,
+    WS_LOG_MODE,
+    WS_LOG_PARAM,
+    WS_LOG_STATUS,
+    WS_LOG_VALUE,
+
     WEB_SOCK_CMD_COUNT
 };
 #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
