@@ -534,13 +534,9 @@ void WebSocket::sendEventMessage(const Scheme_Info& scheme, const QVector<Log_Ev
 
 void WebSocket::send_dig_status_changed(const Scheme_Info &scheme, const QVector<DIG_Status> &pack)
 {
-    std::function<bool(QDataStream&, const DIG_Status&)> func = [this, &scheme](QDataStream& ds, const DIG_Status& item)
-    {
-        Q_UNUSED(ds);
-        send_dig_status(scheme, item);
-        return false; // TODO: Фронт должен принимать массив
-    };
-    send_log_data(scheme, WS_GROUP_STATUS_ADDED, pack, func);
+    for (const DIG_Status& item: pack)
+        send_dig_status(scheme, item); // deprecated
+    send_log_data(scheme, WS_LOG_STATUS, pack);
 }
 
 void WebSocket::send_dig_status(const Scheme_Info &scheme, const DIG_Status &status)
