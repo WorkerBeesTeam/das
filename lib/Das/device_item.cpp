@@ -42,6 +42,16 @@ Device_Item &Device_Item::operator =(Device_Item &&o)
     return *this;
 }
 
+QString Device_Item::get_name() const
+{
+    return device_ ? device_->type_mng()->name(type_id()) : QString{};
+}
+
+QString Device_Item::get_title() const
+{
+    return device_ ? device_->type_mng()->title(type_id()) : QString{};
+}
+
 Device_Item &Device_Item::operator =(const Device_Item &o)
 {
     DB::Device_Item::operator =(o);
