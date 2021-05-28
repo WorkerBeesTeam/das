@@ -425,6 +425,9 @@ bool Modbus_Plugin_Base::check(Device* dev)
 void Modbus_Plugin_Base::stop()
 {
     b_break = true;
+
+    for (auto&& it: _dev_map)
+        it.first->disconnectDevice();
 }
 
 void Modbus_Plugin_Base::write(Device *dev, std::vector<Write_Cache_Item>& items)
