@@ -887,7 +887,7 @@ QModbusClient *Modbus_Plugin_Base::modbus_by_dev(Device *dev)
         if (std::find(it->second.cbegin(), it->second.cend(), dev) != it->second.cend())
             return it->first.get();
 
-    Config config = dev_config(dev, true);
+    Config config = dev_config(dev, /*simple=*/true);
 
     auto it = _dev_map.begin();
     for (; it != _dev_map.end(); ++it)
@@ -895,7 +895,7 @@ QModbusClient *Modbus_Plugin_Base::modbus_by_dev(Device *dev)
         if (std::find_if(it->second.cbegin(), it->second.cend(), [this, &config](Device* d)
         {
             Config d_config = dev_config(d, true);
-            if (config._tcp._address.isEmpty())
+            if (!config._tcp._address.isEmpty())
                 return config._tcp._address == d_config._tcp._address
                     && config._tcp._port == d_config._tcp._port;
             else
