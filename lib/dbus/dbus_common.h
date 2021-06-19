@@ -24,6 +24,13 @@ struct Scheme_Status
     std::set<DIG_Status> status_set_;
 };
 
+struct Scheme_Time_Info
+{
+    int32_t _tz_offset; // Seconds
+    int64_t _utc_time; // Milliseconds
+    std::string _tz_name;
+};
+
 namespace DBus {
 
 void register_dbus_types();
@@ -32,5 +39,6 @@ void register_dbus_types();
 } // namespace Das
 
 Q_DECLARE_METATYPE(Das::Scheme_Status)
+Q_DECLARE_METATYPE(Das::Scheme_Time_Info)
 
 #endif // DAS_SERVER_DBUS_COMMON_H

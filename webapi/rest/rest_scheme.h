@@ -27,6 +27,7 @@ public:
     static Scheme_Info get_info(const served::request& req);
     static Scheme_Info get_info(uint32_t scheme_id);
 private:
+    void get_time_info(served::response& res, const served::request& req);
     void get_dig_status(served::response& res, const served::request& req);
     void get_dig_status_type(served::response& res, const served::request& req);
     void get_device_item_value(served::response& res, const served::request& req);

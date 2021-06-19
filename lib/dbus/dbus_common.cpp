@@ -263,6 +263,24 @@ const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Scheme_Status &it
     return arg;
 }
 
+QDBusArgument &operator<<(QDBusArgument &arg, const Das::Scheme_Time_Info &item)
+{
+    arg.beginStructure();
+    arg << static_cast<qint64>(item._utc_time) << item._tz_offset << QString::fromStdString(item._tz_name);
+    arg.endStructure();
+    return arg;
+}
+
+const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Scheme_Time_Info &item)
+{
+    QString tz_name;
+    arg.beginStructure();
+    arg >> reinterpret_cast<qint64&>(item._utc_time) >> item._tz_offset >> tz_name;
+    arg.endStructure();
+    item._tz_name = tz_name.toStdString();
+    return arg;
+}
+
 namespace Das {
 
 Q_LOGGING_CATEGORY(DBus_log, "DBus")
@@ -296,6 +314,7 @@ void register_dbus_types()
     REGISTER_PARAM(QVector<DIG_Mode>);
     REGISTER_PARAM(QVector<Device_Item_Value>);
     REGISTER_PARAM(Scheme_Status);
+    REGISTER_PARAM(Scheme_Time_Info);
 }
 
 } // namespace DBus
