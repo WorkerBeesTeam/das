@@ -3,6 +3,7 @@
 #include <queue>
 #include <iterator>
 #include <type_traits>
+#include <optional>
 
 #include <QElapsedTimer>
 
@@ -48,8 +49,8 @@ struct Modbus_Pack
     Modbus_Pack(const Modbus_Pack<T>& o) = default;
     Modbus_Pack<T>& operator =(Modbus_Pack<T>&& o) = default;
     Modbus_Pack<T>& operator =(const Modbus_Pack<T>& o) = default;
-    Modbus_Pack(T&& item) :
-        reply_(nullptr)
+    Modbus_Pack(QModbusClient* modbus, T&& item) :
+        reply_(nullptr), _modbus(modbus)
     {
         init(Modbus_Pack_Item_Cast<T>::run(item), std::is_same<Write_Cache_Item, T>::value);
         items_.push_back(std::move(item));
@@ -85,17 +86,20 @@ struct Modbus_Pack
         return server_address_ > 0 && start_address_ >= 0 && register_type_ != QModbusDataUnit::Invalid;
     }
 
-    bool add_next(T&& item)
+    bool add_next(QModbusClient* modbus, T&& item)
     {
-        Device_Item* dev_item = Modbus_Pack_Item_Cast<T>::run(item);
-        if (register_type_ == dev_item->register_type() &&
-            server_address_ == Modbus_Plugin_Base::address(dev_item->device()))
+        if (modbus == _modbus)
         {
-            int unit = Modbus_Plugin_Base::unit(dev_item);
-            if (unit == (start_address_ + static_cast<int>(items_.size())))
+            Device_Item* dev_item = Modbus_Pack_Item_Cast<T>::run(item);
+            if (register_type_ == dev_item->register_type() &&
+                server_address_ == Modbus_Plugin_Base::address(dev_item->device()))
             {
-                items_.push_back(std::move(item));
-                return true;
+                int unit = Modbus_Plugin_Base::unit(dev_item);
+                if (unit == (start_address_ + static_cast<int>(items_.size())))
+                {
+                    items_.push_back(std::move(item));
+                    return true;
+                }
             }
         }
         return false;
@@ -103,9 +107,10 @@ struct Modbus_Pack
 
     bool assign(Modbus_Pack<T>& pack)
     {
-        if (register_type_ == pack.register_type_ &&
-            server_address_ == pack.server_address_ &&
-            (start_address_ + static_cast<int>(items_.size())) == pack.start_address_)
+        if (_modbus == pack._modbus
+            && register_type_ == pack.register_type_
+            && server_address_ == pack.server_address_
+            && (start_address_ + static_cast<int>(items_.size())) == pack.start_address_)
         {
             std::copy( std::make_move_iterator(pack.items_.begin()),
                        std::make_move_iterator(pack.items_.end()),
@@ -126,6 +131,7 @@ struct Modbus_Pack
     int start_address_;
     QModbusDataUnit::RegisterType register_type_;
     QModbusReply* reply_;
+    QModbusClient* _modbus;
 
     std::vector<T> items_;
 };
@@ -138,48 +144,40 @@ class Modbus_Pack_Builder
 {
 public:
     template<typename Input_Container>
-    Modbus_Pack_Builder(Input_Container& items)
+    Modbus_Pack_Builder(QModbusClient* modbus, Input_Container& items)
     {
         typename std::vector<Modbus_Pack<T>>::iterator it;
 
         for (typename Input_Container_Device_Item_Type<T, Input_Container>::type item: items)
-        {
-            insert(std::move(item));
-        }
+            insert(modbus, std::move(item));
     }
 
     std::vector<Modbus_Pack<T>> container_;
 private:
-    void insert(T&& item)
+    void insert(QModbusClient* modbus, T&& item)
     {
         typename std::vector<Modbus_Pack<T>>::iterator it = container_.begin();
         for (; it != container_.end(); ++it)
         {
             if (*it < Modbus_Pack_Item_Cast<T>::run(item))
-            {
                 continue;
-            }
-            else if (it->add_next(std::move(item)))
-            {
-                assign_next(it);
-                return;
-            }
             else
             {
-                create(it, std::move(item));
+                if (it->add_next(modbus, std::move(item)))
+                    assign_next(it);
+                else
+                    create(it, modbus, std::move(item));
                 return;
             }
         }
 
         if (it == container_.end())
-        {
-            create(it, std::move(item));
-        }
+            create(it, modbus, std::move(item));
     }
 
-    void create(typename std::vector<Modbus_Pack<T>>::iterator it, T&& item)
+    void create(typename std::vector<Modbus_Pack<T>>::iterator it, QModbusClient* modbus, T&& item)
     {
-        Modbus_Pack pack(std::move(item));
+        Modbus_Pack pack(modbus, std::move(item));
         if (pack.is_valid())
         {
             it = container_.insert(it, std::move(pack));
@@ -193,13 +191,9 @@ private:
         {
             typename std::vector<Modbus_Pack<T>>::iterator old_it = it;
             it++;
-            if (it != container_.end())
-            {
-                if (old_it->assign(*it))
-                {
-                    container_.erase(it);
-                }
-            }
+            if (it != container_.end()
+                && old_it->assign(*it))
+                container_.erase(it);
         }
     }
 };
@@ -232,6 +226,18 @@ public:
         o.new_values_.clear();
     }
 
+    Modbus_Pack_Read_Manager& operator=(Modbus_Pack_Read_Manager&& o)
+    {
+        is_connected_ = std::move(o.is_connected_);
+        position_ = std::move(o.position_);
+        packs_ = std::move(o.packs_);
+        new_values_ = std::move(o.new_values_);
+
+        o.packs_.clear();
+        o.new_values_.clear();
+        return *this;
+    }
+
     ~Modbus_Pack_Read_Manager()
     {
         if (!is_connected_)
@@ -248,6 +254,7 @@ public:
             QMetaObject::invokeMethod(packs_.front().items_.front()->device(), "set_device_items_values",
                                       QArgument<std::map<Device_Item*, Device::Data_Item>>("std::map<Device_Item*,Device::Data_Item>", new_values_), Q_ARG(bool, true));
         }
+
         while (packs_.size())
         {
             if (packs_.front().reply_)
@@ -276,51 +283,47 @@ struct Modbus_Queue
         {
             int position  = read_.front().position_;
             if (position > -1 && read_.front().packs_.at(position).reply_)
-            {
                 return true;
-            }
         }
 
         return write_.size() && write_.front().reply_;
     }
 
-    void clear()
+    void clear_all()
     {
-        while (write_.size())
-        {
-            if (write_.front().reply_)
-                QObject::disconnect(write_.front().reply_, 0, 0, 0);
-            write_.pop_front();
-        }
-
-        while (read_.size())
-        {
-            read_.pop_front();
-        }
+        for (auto&& it: write_)
+            if (it.reply_)
+                QObject::disconnect(it.reply_, 0, 0, 0);
+        write_.clear();
+        read_.clear();
     }
 
-    void clear_by_address(int address)
+    void clear(QModbusClient* modbus, std::optional<int> address = std::optional<int>{})
     {
-        for (std::size_t i = 0; i < write_.size(); ++i)
+        for (auto it = write_.begin(); it != write_.end();)
         {
-            if (write_.front().server_address_ == address)
+            if (it->_modbus == modbus
+             && (!address.has_value() || it->server_address_ == *address))
             {
-                if (write_.front().reply_)
-                    QObject::disconnect(write_.front().reply_, 0, 0, 0);
-                write_.erase(write_.begin() + i);
-                --i;
+                if (it->reply_)
+                    QObject::disconnect(it->reply_, 0, 0, 0);
+                it = write_.erase(it);
             }
+            else
+                ++it;
         }
 
-        std::deque<Modbus_Pack_Read_Manager> read;
-        for (auto& it : read_)
+        for (std::deque<Modbus_Pack_Read_Manager>::iterator it = read_.begin(); it != read_.end();)
         {
-            if (it.packs_.front().server_address_ != address)
+            const Modbus_Pack<Device_Item*>& pack = it->packs_.front();
+            if (pack._modbus == modbus
+             && (!address.has_value() || pack.server_address_ == *address))
             {
-                read.push_back(std::move(it));
+                it = read_.erase(it);
             }
+            else
+                ++it;
         }
-        read_ = std::move(read);
     }
 };
 
@@ -341,7 +344,7 @@ Modbus_Plugin_Base::~Modbus_Plugin_Base()
 {
     stop();
 
-    queue_->clear();
+    queue_->clear_all();
     delete queue_;
     queue_ = nullptr;
 }
@@ -405,10 +408,10 @@ void Modbus_Plugin_Base::configure(QSettings *settings)
 
     auto [auto_port, line_use_timeout] = Helpz::SettingsHelper(settings, "Modbus",
             Param<int>{"AutoTTY", NoAuto},
-            Param<int>{"LineUseTimeout", _line_use_timeout.count()}
+            Param<std::chrono::milliseconds>{"LineUseTimeout", _line_use_timeout}
     )();
     _auto_port = auto_port;
-    _line_use_timeout = std::chrono::milliseconds{line_use_timeout};
+    _line_use_timeout = line_use_timeout;
 }
 
 bool Modbus_Plugin_Base::check(Device* dev)
@@ -435,11 +438,10 @@ void Modbus_Plugin_Base::write(Device *dev, std::vector<Write_Cache_Item>& items
     if (!items.size() || b_break || !checkConnect(dev))
         return;
 
-    Modbus_Pack_Builder<Write_Cache_Item> pack_builder(items);
+    QModbusClient* modbus = modbus_by_dev(dev);
+    Modbus_Pack_Builder<Write_Cache_Item> pack_builder(modbus, items);
     for (Modbus_Pack<Write_Cache_Item>& pack: pack_builder.container_)
-    {
         queue_->write_.push_back(std::move(pack));
-    }
     process_queue();
 }
 
@@ -531,7 +533,7 @@ void Modbus_Plugin_Base::write_finished_slot()
 
 void Modbus_Plugin_Base::clear_queue()
 {
-    queue_->clear();
+    queue_->clear_all();
 }
 
 void Modbus_Plugin_Base::print_cached(QModbusClient *modbus, int server_address, QModbusDataUnit::RegisterType register_type,
@@ -614,14 +616,17 @@ void Modbus_Plugin_Base::read(Device *dev, const QVector<Device_Item*>& dev_item
     if (dev_items.isEmpty())
         return;
 
+    QModbusClient* modbus = modbus_by_dev(dev);
+
     for (auto& it : queue_->read_)
-        if (it.packs_.front().server_address_ == Modbus_Plugin_Base::address(dev))
+        if (modbus == it.packs_.front()._modbus
+         && it.packs_.front().server_address_ == Modbus_Plugin_Base::address(dev))
             return;
 
 //    qint64 elapsed = tt.restart();
 //    qWarning().nospace() << ">>>> read " << (elapsed < 100 ? (elapsed < 10 ? "  " : " ") : "") <<  elapsed << " \tsize " << dev_items.size() << ' ' << dev_items.front()->device()->toString();
 
-    Modbus_Pack_Builder<Device_Item*> pack_builder(dev_items);
+    Modbus_Pack_Builder<Device_Item*> pack_builder(modbus, dev_items);
     Modbus_Pack_Read_Manager mng(std::move(pack_builder.container_));
     queue_->read_.push_back(std::move(mng));
     process_queue();
@@ -689,7 +694,7 @@ void Modbus_Plugin_Base::process_queue()
         }
     }
     else if (b_break && queue_)
-        queue_->clear();
+        queue_->clear_all();
 }
 
 QVector<quint16> Modbus_Plugin_Base::cache_items_to_values(const std::vector<Write_Cache_Item>& items) const
@@ -781,7 +786,7 @@ void Modbus_Plugin_Base::write_finished(QModbusClient *modbus, QModbusReply* rep
                                    tr("Mobus exception: 0x%1").arg(reply->rawResult().exceptionCode(), -1, 16) :
                                    tr("code: 0x%1").arg(reply->error(), -1, 16))
                           .arg(pack.register_type_).arg(pack.start_address_) << cache_items_to_values(pack.items_);
-            queue_->clear_by_address(reply->serverAddress());
+            queue_->clear(modbus, reply->serverAddress());
         }
     }
     else
@@ -842,7 +847,7 @@ void Modbus_Plugin_Base::read_finished(QModbusClient *modbus, QModbusReply* repl
                          .arg(reply->error() == QModbusDevice::ProtocolError ?
                                 tr("Mobus exception: 0x%1").arg(reply->rawResult().exceptionCode(), -1, 16) :
                                   tr("code: 0x%1").arg(reply->error(), -1, 16)));
-            queue_->clear_by_address(pack.server_address_);
+            queue_->clear(modbus, pack.server_address_);
         }
         else
         {
@@ -963,7 +968,7 @@ std::shared_ptr<QModbusClient> Modbus_Plugin_Base::init_modbus(Device *dev)
 
     connect(modbus.get(), &QModbusClient::errorOccurred, [this, modbus](QModbusDevice::Error e)
     {
-        queue_->clear();
+        queue_->clear(modbus.get());
         //qCCritical(ModbusLog).noquote() << "Occurred:" << e << errorString();
         if (e == QModbusDevice::ConnectionError)
             modbus->disconnectDevice();
