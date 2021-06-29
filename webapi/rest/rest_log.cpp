@@ -154,19 +154,22 @@ Log::Log(served::multiplexer &mux, const std::string &scheme_path)
     return get_time_range(req.query["ts_from"], req.query["ts_to"]);
 }
 
-/*static*/ std::vector<std::string> Log::parse_data_in(const std::string &param)
+/*static*/ std::vector<std::string> Log::parse_data_in(const std::string &param, bool is_empty_ok)
 {
     std::vector<std::string> data_string_list, res;
     boost::split(data_string_list, param, [](char c) { return c == ','; });
 
     for (const std::string& item: data_string_list)
     {
-        const uint32_t item_id = std::stoul(item);
-        if (item_id)
-            res.push_back(std::to_string(item_id));
+        if (!item.empty())
+        {
+            const uint32_t item_id = std::stoul(item);
+            if (item_id)
+                res.push_back(std::to_string(item_id));
+        }
     }
 
-    if (res.empty())
+    if (!is_empty_ok && res.empty())
         throw served::request_error(served::status_4XX::BAD_REQUEST, "Invalid data items");
     return res;
 }
@@ -182,24 +185,27 @@ void Log::add_getter_handler(served::multiplexer &mux, const std::string &base_p
 
 inline std::string parse_and_join(const std::string& ids)
 {
-    const std::vector<std::string> data = Log::parse_data_in(ids);
+    const std::vector<std::string> data = Log::parse_data_in(ids, /*is_empty_ok=*/true);
     return boost::join(data, ",");
 }
 
 template<typename T>
-std::pair<std::string, std::string> parse_ids_filter(const Log_Query_Param& config)
+std::pair<std::string, std::string> parse_ids_filter(const served::request &req)
 {
-    return { "group_id", parse_and_join(config._dig_id) };
+    return { "group_id", parse_and_join(req.query["dig_id"]) };
 }
 
-template<> std::pair<std::string, std::string> parse_ids_filter<DB::Log_Event_Item>(const Log_Query_Param&) { return {}; }
-template<> std::pair<std::string, std::string> parse_ids_filter<DB::Log_Param_Item>(const Log_Query_Param& config)
+template<> std::pair<std::string, std::string> parse_ids_filter<DB::Log_Event_Item>(const served::request &req)
 {
-    return { "group_param_id", parse_and_join(config._dig_param_id) };
+    return { "type_id", parse_and_join(req.query["type_id"]) };
 }
-template<> std::pair<std::string, std::string> parse_ids_filter<DB::Log_Value_Item>(const Log_Query_Param& config)
+template<> std::pair<std::string, std::string> parse_ids_filter<DB::Log_Param_Item>(const served::request &req)
 {
-    return { "item_id", parse_and_join(config._item_id) };
+    return { "group_param_id", parse_and_join(req.query["dig_param_id"]) };
+}
+template<> std::pair<std::string, std::string> parse_ids_filter<DB::Log_Value_Item>(const served::request &req)
+{
+    return { "item_id", parse_and_join(req.query["item_id"]) };
 }
 
 
@@ -225,7 +231,7 @@ void Log::log_getter(served::response &res, const served::request &req, const st
                 static_cast<qlonglong>(config._time_range._from),
                 static_cast<qlonglong>(config._time_range._to)};
 
-    auto [id_field_name, ids] = parse_ids_filter<T>(config);
+    auto [id_field_name, ids] = parse_ids_filter<T>(req);
     if (!id_field_name.empty() && !ids.empty())
         sql += " AND " + QString::fromStdString(id_field_name) + " IN (" + QString::fromStdString(ids) + ')';
 
@@ -287,9 +293,7 @@ Log_Query_Param Log::parse_params(const served::request &req)
         Log::parse_time_range(req),
 
         !(!case_sensitive_str.empty() && (case_sensitive_str == "0" || case_sensitive_str == "false")),
-        req.query["filter"],
-
-        req.query["dig_id"], req.query["dig_param_id"], req.query["item_id"]
+        req.query["filter"]
     };
 
     return params;

@@ -21,8 +21,6 @@ struct Log_Query_Param
 
     bool _case_sensitive;
     std::string _filter;
-
-    std::string _dig_id, _dig_param_id, _item_id;
 };
 
 class Log
@@ -33,7 +31,7 @@ public:
     static Log_Time_Range get_time_range(const std::string &from_str, const std::string &to_str);
     static Log_Time_Range parse_time_range(const served::request &req);
 
-    static std::vector<std::string> parse_data_in(const std::string &param);
+    static std::vector<std::string> parse_data_in(const std::string &param, bool is_empty_ok = false);
 
 private:
     template<typename T>
