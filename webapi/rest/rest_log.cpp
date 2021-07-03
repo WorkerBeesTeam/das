@@ -190,22 +190,29 @@ inline std::string parse_and_join(const std::string& ids)
 }
 
 template<typename T>
-std::pair<std::string, std::string> parse_ids_filter(const served::request &req)
+std::vector<std::pair<std::string, std::string>> parse_ids_filter(const served::request &req)
 {
-    return { "group_id", parse_and_join(req.query["dig_id"]) };
+    return {{ "group_id", parse_and_join(req.query["dig_id"]) }};
 }
 
-template<> std::pair<std::string, std::string> parse_ids_filter<DB::Log_Event_Item>(const served::request &req)
+template<> std::vector<std::pair<std::string, std::string>> parse_ids_filter<DB::Log_Event_Item>(const served::request &req)
 {
-    return { "type_id", parse_and_join(req.query["type_id"]) };
+    return {{ "type_id", parse_and_join(req.query["type_id"]) }};
 }
-template<> std::pair<std::string, std::string> parse_ids_filter<DB::Log_Param_Item>(const served::request &req)
+template<> std::vector<std::pair<std::string, std::string>> parse_ids_filter<DB::Log_Param_Item>(const served::request &req)
 {
-    return { "group_param_id", parse_and_join(req.query["dig_param_id"]) };
+    return {{ "group_param_id", parse_and_join(req.query["dig_param_id"]) }};
 }
-template<> std::pair<std::string, std::string> parse_ids_filter<DB::Log_Value_Item>(const served::request &req)
+template<> std::vector<std::pair<std::string, std::string>> parse_ids_filter<DB::Log_Value_Item>(const served::request &req)
 {
-    return { "item_id", parse_and_join(req.query["item_id"]) };
+    return {{ "item_id", parse_and_join(req.query["item_id"]) }};
+}
+template<> std::vector<std::pair<std::string, std::string>> parse_ids_filter<DB::Log_Status_Item>(const served::request &req)
+{
+    return {
+        { "group_id", parse_and_join(req.query["dig_id"]) },
+        { "status_id", parse_and_join(req.query["status_id"]) }
+    };
 }
 
 
@@ -231,9 +238,12 @@ void Log::log_getter(served::response &res, const served::request &req, const st
                 static_cast<qlonglong>(config._time_range._from),
                 static_cast<qlonglong>(config._time_range._to)};
 
-    auto [id_field_name, ids] = parse_ids_filter<T>(req);
-    if (!id_field_name.empty() && !ids.empty())
-        sql += " AND " + QString::fromStdString(id_field_name) + " IN (" + QString::fromStdString(ids) + ')';
+    std::vector<std::pair<std::string, std::string>> id_filters = parse_ids_filter<T>(req);
+    for (auto&& it: id_filters)
+    {
+        if (!it.second.empty())
+            sql += " AND " + QString::fromStdString(it.first) + " IN (" + QString::fromStdString(it.second) + ')';
+    }
 
     if (!config._filter.empty())
     {
