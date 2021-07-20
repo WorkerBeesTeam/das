@@ -84,7 +84,7 @@ public slots:
 
     void set_mode(uint32_t mode_id, uint32_t user_id = 0, qint64 timestamp_msec = DB::Log_Base_Item::current_timestamp());
 
-    const std::set<DIG_Status>& statuses() const;
+	std::set<DIG_Status> statuses() const;
 
     bool check_status(uint32_t status_id) const;
     void add_status(uint32_t status_id, const QStringList& args = QStringList(), uint32_t user_id = 0);
