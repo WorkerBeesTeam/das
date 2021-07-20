@@ -102,7 +102,6 @@ private slots:
     void connection_state_changed(bool value);
 private:
 
-
     DIG_Mode mode_;
 
     Section* sct_;
@@ -119,5 +118,7 @@ QDataStream &operator<<(QDataStream& ds, Device_item_Group* group);
 typedef std::shared_ptr<Device_item_Group> Device_item_GroupPtr;
 
 } // namespace Das
+
+Q_DECLARE_METATYPE(std::set<DIG_Status>)
 
 #endif // DAS_DEVICE_ITEM_GROUP_H

@@ -66,4 +66,8 @@ using DIG_Status = DB::DIG_Status;
 
 } // namespace Das
 
+using DIG_Status = Das::DIG_Status;
+Q_DECLARE_METATYPE(DIG_Status)
+Q_DECLARE_METATYPE(DIG_Status*)
+
 #endif // DAS_DIG_STATUS_H

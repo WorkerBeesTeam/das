@@ -16,14 +16,12 @@
 #include "dbus_common.h"
 
 using DIG_Param_Value = Das::DIG_Param_Value;
-using DIG_Status = Das::DIG_Status;
 using DIG_Mode = Das::DIG_Mode;
 using Scheme_Status = Das::Scheme_Status;
 using Device_Item_Value = Das::Device_Item_Value;
 
 Q_DECLARE_METATYPE(QTimeZone)
 Q_DECLARE_METATYPE(DIG_Param_Value)
-Q_DECLARE_METATYPE(DIG_Status)
 Q_DECLARE_METATYPE(DIG_Mode)
 Q_DECLARE_METATYPE(QVector<Log_Value_Item>)
 Q_DECLARE_METATYPE(QVector<Log_Event_Item>)
