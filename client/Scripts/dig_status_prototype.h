@@ -43,6 +43,7 @@ public:
 	Q_INVOKABLE bool is_removed() const;
 
 public slots:
+	QString toString() const;
 
 private:
 	DIG_Status* self() const;

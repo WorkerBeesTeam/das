@@ -1,3 +1,6 @@
+#define PICOJSON_USE_INT64
+#include <picojson/picojson.h>
+
 #include <QtScript/QScriptEngine>
 
 #include "dig_status_prototype.h"
@@ -33,5 +36,16 @@ uint8_t DIG_Status_Prototype::direction() const { return self()->direction(); }
 void DIG_Status_Prototype::set_direction(uint8_t value) { self()->set_direction(value); }
 
 bool DIG_Status_Prototype::is_removed() const { return self()->is_removed(); }
+
+QString DIG_Status_Prototype::toString() const
+{
+	picojson::object obj;
+	obj.emplace("ts",			static_cast<int64_t>(ts()));
+	obj.emplace("user_id",		static_cast<int64_t>(user_id()));
+	obj.emplace("dig_id",		static_cast<int64_t>(dig_id()));
+	obj.emplace("status_id",	static_cast<int64_t>(status_id()));
+	obj.emplace("is_removed", is_removed());
+	return QString::fromStdString(picojson::value(std::move(obj)).serialize());
+}
 
 } // namespace Das
