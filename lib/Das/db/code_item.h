@@ -1,5 +1,5 @@
-#ifndef DAS_CODE_ITEM_H
-#define DAS_CODE_ITEM_H
+#ifndef DAS_DB_CODE_ITEM_H
+#define DAS_DB_CODE_ITEM_H
 
 #include <Helpz/db_meta.h>
 #include "base_type.h"
@@ -30,4 +30,4 @@ using Code_Item = DB::Code_Item;
 
 } // namespace Das
 
-#endif // DAS_CODE_ITEM_H
+#endif // DAS_DB_CODE_ITEM_H

@@ -38,6 +38,7 @@ SOURCES += main.cpp \
     rest/rest_config.cpp \
     rest/rest_helper.cpp \
     rest/rest_log.cpp \
+    rest/rest_mnemoscheme.cpp \
     rest/rest_scheme.cpp \
     rest/rest_scheme_group.cpp \
     rest/rest_scheme_structure.cpp \
@@ -72,6 +73,7 @@ HEADERS += \
     rest/rest_config.h \
     rest/rest_helper.h \
     rest/rest_log.h \
+    rest/rest_mnemoscheme.h \
     rest/rest_scheme.h \
     rest/rest_scheme_group.h \
     rest/rest_scheme_structure.h \

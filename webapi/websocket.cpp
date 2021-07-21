@@ -502,13 +502,9 @@ void WebSocket::sendDevice_ItemValues(const Scheme_Info &scheme, const QVector<L
 
 void WebSocket::send_dig_mode_pack(const Scheme_Info &scheme, const QVector<DIG_Mode> &pack)
 {
-    std::function<bool(QDataStream&, const DIG_Mode&)> func = [this, &scheme](QDataStream& ds, const DIG_Mode& item)
-    {
-        Q_UNUSED(ds);
-        sendModeChanged(scheme, item);
-        return false; // TODO: Фронт должен принимать массив
-    };
-    send_log_data(scheme, WS_DIG_MODE, pack, func);
+    for (const DIG_Mode& item: pack)
+        sendModeChanged(scheme, item); // deprecated
+    send_log_data(scheme, WS_LOG_MODE, pack);
 }
 
 void WebSocket::sendModeChanged(const Scheme_Info &scheme, const DIG_Mode &mode)
@@ -538,13 +534,9 @@ void WebSocket::sendEventMessage(const Scheme_Info& scheme, const QVector<Log_Ev
 
 void WebSocket::send_dig_status_changed(const Scheme_Info &scheme, const QVector<DIG_Status> &pack)
 {
-    std::function<bool(QDataStream&, const DIG_Status&)> func = [this, &scheme](QDataStream& ds, const DIG_Status& item)
-    {
-        Q_UNUSED(ds);
-        send_dig_status(scheme, item);
-        return false; // TODO: Фронт должен принимать массив
-    };
-    send_log_data(scheme, WS_GROUP_STATUS_ADDED, pack, func);
+    for (const DIG_Status& item: pack)
+        send_dig_status(scheme, item); // deprecated
+    send_log_data(scheme, WS_LOG_STATUS, pack);
 }
 
 void WebSocket::send_dig_status(const Scheme_Info &scheme, const DIG_Status &status)
@@ -573,23 +565,14 @@ void WebSocket::send_structure_changed(const Scheme_Info &scheme, const QByteArr
 
 void WebSocket::send_time_info(const Scheme_Info& scheme, const QTimeZone& tz, qint64 time_offset)
 {
-    QDateTime dt = QDateTime::currentDateTime();
+    QDateTime dt = QDateTime::currentDateTimeUtc();
     dt = dt.addMSecs(time_offset);
-
-    QString zone_name;
-    if (tz.isValid())
-    {
-//            zone_name = tz.displayName(QTimeZone::GenericTime);
-        zone_name = tz.id().constData();
-        dt = dt.toTimeZone(tz);
-    }
-
     qint64 time = dt.toMSecsSinceEpoch();
 
     QByteArray message;
     QDataStream ds(&message, QIODevice::WriteOnly);
     ds.setVersion(Helpz::Net::Protocol::DATASTREAM_VERSION);
-    ds << (quint8)WS_TIME_INFO << scheme.id() << time << zone_name;
+    ds << (quint8)WS_TIME_INFO << scheme.id() << time << QString::fromLocal8Bit(tz.id()) << tz.offsetFromUtc(dt);
     send(scheme, message);
 }
 

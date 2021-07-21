@@ -80,7 +80,13 @@ signals:
 //    void modbusWrite(int server, uchar registerType, int unit, quint16 state);
 
     void day_time_changed(/*Section* sct*/);
+
+    void set_custom_check_interval(Device* dev, uint32_t interval);
 public slots:
+    // If variant pass to JS via engine->newVariant it can't work with this. For example: QVariant(QVariantMap)
+    // That function can call for fix it. Example: var obj = api.mng.from_variant(raw);
+    QVariant from_variant(const QVariant& raw) const { return raw; }
+
     bool stop(uint32_t user_id = 0);
     bool can_restart(bool stop = false, uint32_t user_id = 0);
 
@@ -103,6 +109,8 @@ public slots:
 
     void write_to_item(uint32_t user_id, uint32_t item_id, const QVariant &raw_data);
     void write_to_item_file(const QString& file_name);
+
+    QString get_status_text(uint32_t id, const QStringList& args = {});
 private slots:
     void group_initialized(Device_item_Group* group);
 

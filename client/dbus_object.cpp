@@ -50,6 +50,13 @@ Scheme_Status Dbus_Object::get_scheme_status(uint32_t /*scheme_id*/) const
     return scheme_status;
 }
 
+Scheme_Time_Info Dbus_Object::get_time_info(uint32_t /*scheme_id*/) const
+{
+    auto dt = QDateTime::currentDateTime();
+    auto utc = dt.toUTC();
+    return { dt.timeZone().offsetFromUtc(utc), utc.toMSecsSinceEpoch(), dt.timeZone().id().constData() };
+}
+
 void Dbus_Object::set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString &name)
 {
     if (scheme_id == DB::Schemed_Model::default_scheme_id())

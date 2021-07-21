@@ -30,6 +30,7 @@
 #include "rest_chart_data_controller.h"
 #include "rest_scheme_structure.h"
 #include "rest_log.h"
+#include "rest_mnemoscheme.h"
 #include "rest_scheme.h"
 
 namespace Das {
@@ -53,7 +54,9 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
     chart_ = std::make_shared<Chart>(mux, scheme_path);
     chart_data_ = std::make_shared<Chart_Data_Controller>(mux, scheme_path);
     _log = std::make_shared<Rest::Log>(mux, scheme_path);
+    _mnemoscheme = std::make_shared<Mnemoscheme>(mux, scheme_path);
 
+    mux.handle(scheme_path + "/time_info").get([this](served::response& res, const served::request& req) { get_time_info(res, req); });
     mux.handle(scheme_path + "/dig_status").get([this](served::response& res, const served::request& req) { get_dig_status(res, req); });
     mux.handle(scheme_path + "/dig_status_type").get([this](served::response& res, const served::request& req) { get_dig_status_type(res, req); });
     mux.handle(scheme_path + "/device_item_value").get([this](served::response& res, const served::request& req) { get_device_item_value(res, req); });
@@ -127,6 +130,23 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
     }
 
     return {};
+}
+
+void Scheme::get_time_info(served::response &res, const served::request &req)
+{
+    const Scheme_Info scheme = get_info(req);
+
+    Scheme_Time_Info info;
+    QMetaObject::invokeMethod(dbus_iface_, "get_time_info", Qt::BlockingQueuedConnection,
+        Q_RETURN_ARG(Scheme_Time_Info, info),
+        Q_ARG(uint32_t, scheme.id()));
+    picojson::object json;
+    json.emplace("utc_time", info._utc_time);
+    json.emplace("tz_offset", picojson::value{static_cast<int64_t>(info._tz_offset)});
+    json.emplace("tz_name", info._tz_name);
+
+    res.set_header("Content-Type", "application/json");
+    res << picojson::value{std::move(json)}.serialize();
 }
 
 void Scheme::get_dig_status(served::response &res, const served::request &req)
@@ -218,7 +238,7 @@ void Scheme::get_device_item_value(served::response &res, const served::request 
     for (const Device_Item_Value& value: values)
     {
         picojson::object obj = obj_to_pico(value, names);
-        obj.emplace("id", static_cast<int64_t>(value.item_id()));
+        obj["id"].set(static_cast<int64_t>(value.item_id())); // Rewrite id field
         obj.emplace("ts", static_cast<int64_t>(value.timestamp_msecs()));
         obj.emplace("user_id", static_cast<int64_t>(value.user_id()));
         obj.emplace("raw", pico_from_qvariant(value.raw_value()));

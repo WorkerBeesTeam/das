@@ -55,9 +55,17 @@ void Device_Item_Value_Base::set_value_from_db(const QVariant& value)
         return QJsonDocument::fromVariant(var).toJson(QJsonDocument::Compact);
     else if (var.type() == QVariant::ByteArray)
     {
-//        const QByteArray data = var.toByteArray();
-//        if (data.startsWith("base64:"))
-//            return "base64:" + data.toBase64();
+        auto is_printable = [](const QString& text)
+        {
+            // TODO: learn about how to detect non-printable chars and
+            // if is detected, then convert to base64.
+            // https://github.com/BurninLeo/see-non-printable-characters/blob/main/view-chars.php
+            (void)text;
+            return true;
+        };
+        const QByteArray data = var.toByteArray();
+        if (!is_printable(data))
+            return "base64:" + data.toBase64();
     }
     return var;
 //    return var.toString();

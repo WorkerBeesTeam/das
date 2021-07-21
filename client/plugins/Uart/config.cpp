@@ -7,7 +7,7 @@ namespace Das {
 namespace Uart {
 
 Config::Config(const QString& port_name, int speed, QSerialPort::DataBits bits_num, QSerialPort::Parity parity,
-               QSerialPort::StopBits stop_bits, QSerialPort::FlowControl flow_control,
+               QSerialPort::StopBits stop_bits, QSerialPort::FlowControl flow_control, uint32_t max_buffer_size,
                int min_read_timeout, int write_timeout, int repeat_count,
                const std::string &lua_script_file, bool lua_use_libs) :
     _name(port_name),
@@ -16,6 +16,7 @@ Config::Config(const QString& port_name, int speed, QSerialPort::DataBits bits_n
     _parity(parity),
     _stop_bits(stop_bits),
     _flow_control(flow_control),
+    _max_buffer_size(max_buffer_size),
     _min_read_timeout(min_read_timeout), _write_timeout(write_timeout),
     _repeat_count(repeat_count),
     _lua_script_file(lua_script_file),

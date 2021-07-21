@@ -144,10 +144,7 @@ void Device_item_Group::set_mode(uint32_t mode_id, uint32_t user_id, qint64 time
     emit mode_changed(user_id, mode_id, id());
 }
 
-const std::set<DIG_Status> &Device_item_Group::statuses() const
-{
-    return statuses_;
-}
+std::set<DIG_Status> Device_item_Group::statuses() const { return statuses_; }
 
 bool Device_item_Group::check_status(uint32_t status_id) const
 {

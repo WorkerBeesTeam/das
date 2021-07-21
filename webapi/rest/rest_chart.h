@@ -11,7 +11,8 @@ class Chart
 public:
     Chart(served::multiplexer& mux, const std::string& scheme_path);
 private:
-    void remove(served::response& res, const served::request& req);
+	void remove(served::response& res, const served::request& req);
+	void get_list(served::response& res, const served::request& req);
     void upsert(served::response& res, const served::request& req);
 };
 

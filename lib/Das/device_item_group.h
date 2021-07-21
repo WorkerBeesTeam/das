@@ -84,7 +84,7 @@ public slots:
 
     void set_mode(uint32_t mode_id, uint32_t user_id = 0, qint64 timestamp_msec = DB::Log_Base_Item::current_timestamp());
 
-    const std::set<DIG_Status>& statuses() const;
+	std::set<DIG_Status> statuses() const;
 
     bool check_status(uint32_t status_id) const;
     void add_status(uint32_t status_id, const QStringList& args = QStringList(), uint32_t user_id = 0);
@@ -102,7 +102,6 @@ private slots:
     void connection_state_changed(bool value);
 private:
 
-
     DIG_Mode mode_;
 
     Section* sct_;
@@ -119,5 +118,7 @@ QDataStream &operator<<(QDataStream& ds, Device_item_Group* group);
 typedef std::shared_ptr<Device_item_Group> Device_item_GroupPtr;
 
 } // namespace Das
+
+Q_DECLARE_METATYPE(std::set<DIG_Status>)
 
 #endif // DAS_DEVICE_ITEM_GROUP_H

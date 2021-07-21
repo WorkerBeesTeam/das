@@ -165,6 +165,11 @@ Scheme_Status Interface::get_scheme_status(uint32_t scheme_id) const
     return call_iface<Scheme_Status>("get_scheme_status", Scheme_Status{CS_SERVER_DOWN, {}}, scheme_id);
 }
 
+Scheme_Time_Info Interface::get_time_info(uint32_t scheme_id) const
+{
+    return call_iface<Scheme_Time_Info>("get_time_info", Scheme_Time_Info{0, 0}, scheme_id);
+}
+
 void Interface::set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString &name)
 {
     call_iface<void>("set_scheme_name", nullptr, scheme_id, user_id, name);

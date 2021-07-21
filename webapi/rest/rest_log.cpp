@@ -2,6 +2,8 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/join.hpp>
 
+#include <fmt/core.h>
+
 #include <served/status.hpp>
 #include <served/request_error.hpp>
 
@@ -142,7 +144,7 @@ Log::Log(served::multiplexer &mux, const std::string &scheme_path)
 /*static*/ Log_Time_Range Log::get_time_range(const std::string &from_str, const std::string &to_str)
 {
     Log_Time_Range time_range{ std::stoll(from_str), std::stoll(to_str) };
-    if (time_range._from == 0 || time_range._to == 0 || time_range._from > time_range._to)
+    if (/*time_range._from == 0 || */time_range._to == 0 || time_range._from > time_range._to)
         throw served::request_error(served::status_4XX::BAD_REQUEST, "Invalid date range");
     return time_range;
 }
@@ -152,19 +154,22 @@ Log::Log(served::multiplexer &mux, const std::string &scheme_path)
     return get_time_range(req.query["ts_from"], req.query["ts_to"]);
 }
 
-/*static*/ std::vector<std::string> Log::parse_data_in(const std::string &param)
+/*static*/ std::vector<std::string> Log::parse_data_in(const std::string &param, bool is_empty_ok)
 {
     std::vector<std::string> data_string_list, res;
     boost::split(data_string_list, param, [](char c) { return c == ','; });
 
     for (const std::string& item: data_string_list)
     {
-        const uint32_t item_id = std::stoul(item);
-        if (item_id)
-            res.push_back(std::to_string(item_id));
+        if (!item.empty())
+        {
+            const uint32_t item_id = std::stoul(item);
+            if (item_id)
+                res.push_back(std::to_string(item_id));
+        }
     }
 
-    if (res.empty())
+    if (!is_empty_ok && res.empty())
         throw served::request_error(served::status_4XX::BAD_REQUEST, "Invalid data items");
     return res;
 }
@@ -180,24 +185,34 @@ void Log::add_getter_handler(served::multiplexer &mux, const std::string &base_p
 
 inline std::string parse_and_join(const std::string& ids)
 {
-    const std::vector<std::string> data = Log::parse_data_in(ids);
+    const std::vector<std::string> data = Log::parse_data_in(ids, /*is_empty_ok=*/true);
     return boost::join(data, ",");
 }
 
 template<typename T>
-std::pair<std::string, std::string> parse_ids_filter(const Log_Query_Param& config)
+std::vector<std::pair<std::string, std::string>> parse_ids_filter(const served::request &req)
 {
-    return { "group_id", parse_and_join(config._dig_id) };
+    return {{ "group_id", parse_and_join(req.query["dig_id"]) }};
 }
 
-template<> std::pair<std::string, std::string> parse_ids_filter<DB::Log_Event_Item>(const Log_Query_Param&) { return {}; }
-template<> std::pair<std::string, std::string> parse_ids_filter<DB::Log_Param_Item>(const Log_Query_Param& config)
+template<> std::vector<std::pair<std::string, std::string>> parse_ids_filter<DB::Log_Event_Item>(const served::request &req)
 {
-    return { "group_param_id", parse_and_join(config._dig_param_id) };
+    return {{ "type_id", parse_and_join(req.query["type_id"]) }};
 }
-template<> std::pair<std::string, std::string> parse_ids_filter<DB::Log_Value_Item>(const Log_Query_Param& config)
+template<> std::vector<std::pair<std::string, std::string>> parse_ids_filter<DB::Log_Param_Item>(const served::request &req)
 {
-    return { "item_id", parse_and_join(config._item_id) };
+    return {{ "group_param_id", parse_and_join(req.query["dig_param_id"]) }};
+}
+template<> std::vector<std::pair<std::string, std::string>> parse_ids_filter<DB::Log_Value_Item>(const served::request &req)
+{
+    return {{ "item_id", parse_and_join(req.query["item_id"]) }};
+}
+template<> std::vector<std::pair<std::string, std::string>> parse_ids_filter<DB::Log_Status_Item>(const served::request &req)
+{
+    return {
+        { "group_id", parse_and_join(req.query["dig_id"]) },
+        { "status_id", parse_and_join(req.query["status_id"]) }
+    };
 }
 
 
@@ -223,9 +238,12 @@ void Log::log_getter(served::response &res, const served::request &req, const st
                 static_cast<qlonglong>(config._time_range._from),
                 static_cast<qlonglong>(config._time_range._to)};
 
-    auto [id_field_name, ids] = parse_ids_filter<T>(config);
-    if (!id_field_name.empty() && !ids.empty())
-        sql += " AND " + QString::fromStdString(id_field_name) + " IN (" + QString::fromStdString(ids) + ')';
+    std::vector<std::pair<std::string, std::string>> id_filters = parse_ids_filter<T>(req);
+    for (auto&& it: id_filters)
+    {
+        if (!it.second.empty())
+            sql += " AND " + QString::fromStdString(it.first) + " IN (" + QString::fromStdString(it.second) + ')';
+    }
 
     if (!config._filter.empty())
     {
@@ -233,21 +251,12 @@ void Log::log_getter(served::response &res, const served::request &req, const st
         const std::vector<std::string> filtred_fields = get_filtred_fields<T>();
         for (const std::string& field: filtred_fields)
         {
-            if (!filter_str.empty()) filter_str += " OR ";
-
-            if (!config._case_sensitive) filter_str += "LOWER(";
-
-            filter_str += field;
-
-            if (!config._case_sensitive) filter_str += ')';
-
-            filter_str += " LIKE ";
-
-            if (!config._case_sensitive) filter_str += "LOWER(";
-
-            filter_str += '?';
-
-            if (!config._case_sensitive) filter_str += ')';
+            if (!filter_str.empty())
+                filter_str += " OR ";
+            if (config._case_sensitive)
+                filter_str += field + " LIKE ?";
+            else
+                filter_str += fmt::format("LOWER({}) LIKE LOWER(?)", field);
 
 //            filter_str += " ESCAPE '@'";
             values.push_back('%' + QString::fromStdString(config._filter) + '%' );
@@ -263,8 +272,6 @@ void Log::log_getter(served::response &res, const served::request &req, const st
     if (config._limit == 0 || config._limit > 1000)
         config._limit = 1000;
     sql += " LIMIT " + QString::number(config._limit);
-
-    table.field_names().removeAt(T::COL_scheme_id);
 
     Base& db = Base::get_thread_local_instance();
     QSqlQuery query = db.select(table, sql, values);
@@ -283,11 +290,11 @@ void Log::log_getter(served::response &res, const served::request &req, const st
 Log_Query_Param Log::parse_params(const served::request &req)
 {
     uint32_t limit = 1000;
-    const std::string limit_str = req.params["limit"];
+    const std::string limit_str = req.query["limit"];
     if (!limit_str.empty())
         limit = std::stoul(limit_str);
 
-    const std::string case_sensitive_str = req.params["case_sensitive"];
+    const std::string case_sensitive_str = req.query["case_sensitive"];
 
     Log_Query_Param params
     {
@@ -296,9 +303,7 @@ Log_Query_Param Log::parse_params(const served::request &req)
         Log::parse_time_range(req),
 
         !(!case_sensitive_str.empty() && (case_sensitive_str == "0" || case_sensitive_str == "false")),
-        req.params["filter"],
-
-        req.params["dig_id"], req.params["dig_param_id"], req.params["item_id"]
+        req.query["filter"]
     };
 
     return params;

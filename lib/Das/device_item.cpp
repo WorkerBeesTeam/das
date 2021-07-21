@@ -42,6 +42,16 @@ Device_Item &Device_Item::operator =(Device_Item &&o)
     return *this;
 }
 
+QString Device_Item::get_name() const
+{
+    return device_ ? device_->type_mng()->name(type_id()) : QString{};
+}
+
+QString Device_Item::get_title() const
+{
+    return device_ ? device_->type_mng()->title(type_id()) : QString{};
+}
+
 Device_Item &Device_Item::operator =(const Device_Item &o)
 {
     DB::Device_Item::operator =(o);
@@ -162,6 +172,12 @@ bool Device_Item::set_data(const QVariant &raw, const QVariant &val, uint32_t us
 }
 
 QVariant Device_Item::raw_value() const
+{
+    std::lock_guard lock(mutex_);
+    return data_.raw_value();
+}
+
+QVariant Device_Item::get_raw_value() const
 {
     std::lock_guard lock(mutex_);
     return data_.raw_value();

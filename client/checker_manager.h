@@ -42,6 +42,8 @@ public slots:
     void stop();
     void start();
     std::future<QByteArray> start_stream(uint32_t user_id, Device_Item* item, const QString &url);
+
+    void set_custom_check_interval(Device* dev, uint32_t interval);
 private slots:
     void check_devices();
     void write_data(Device_Item* item, const QVariant& raw_data, uint32_t user_id = 0);
@@ -54,6 +56,8 @@ private:
 
     bool is_server_connected() const override;
 
+    uint32_t get_device_check_interval(Device* dev) const;
+
     bool b_break, first_check_;
 
     QTimer check_timer_, write_timer_;
@@ -62,6 +66,7 @@ private:
     Scripted_Scheme* scheme_;
     std::map<Device*, std::vector<Write_Cache_Item>> write_cache_;
 
+    std::map<Device*, uint32_t> _custom_check_interval;
 
     std::shared_ptr<DB::Plugin_Type_Manager> plugin_type_mng_;
 

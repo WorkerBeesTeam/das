@@ -99,7 +99,7 @@ std::string Captcha_Generator::create(std::string &value)
 
 std::string Captcha_Generator::gen_value(std::size_t size)
 {
-    const char alphabet[] = "1234AaBbCcDdEeFfGgHhiJKkLMmNnOoPpQqRrSsTtUuVvWwXxYyZz56789";
+    const char alphabet[] = "1234AaBbCcDdEeFfGgHhJKkLMmNnPpQqRrSsTtUuVvWwXxYyZz56789";
     std::srand(static_cast<uint32_t>(std::chrono::system_clock::now().time_since_epoch().count()));
 
     std::string value;

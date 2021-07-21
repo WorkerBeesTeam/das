@@ -31,6 +31,9 @@ Manager::Manager(Worker *worker, QObject *parent) :
 
     connect(scheme_, &Scheme::control_state_changed, this, &Manager::write_data, Qt::QueuedConnection);
 
+    connect(scheme_, &Scripted_Scheme::set_custom_check_interval,
+            this, &Manager::set_custom_check_interval, Qt::QueuedConnection);
+
     connect(scheme_, &Scripted_Scheme::checker_stop, this, &Manager::stop, Qt::QueuedConnection);
     connect(scheme_, &Scripted_Scheme::checker_start, this, &Manager::start, Qt::QueuedConnection);
 
@@ -102,6 +105,30 @@ std::future<QByteArray> Manager::start_stream(uint32_t user_id, Device_Item *ite
     return {};
 }
 
+void Manager::set_custom_check_interval(Device *dev, uint32_t interval)
+{
+    auto it = _custom_check_interval.find(dev);
+    if (interval != dev->check_interval())
+    {
+        if (it != _custom_check_interval.end())
+            it->second = interval;
+        else
+            _custom_check_interval.emplace(dev, interval);
+    }
+    else if (it != _custom_check_interval.end())
+        _custom_check_interval.erase(it);
+
+    check_devices(); // Переинициализация таймера на следующий опрос.
+}
+
+uint32_t Manager::get_device_check_interval(Device *dev) const
+{
+    auto it = _custom_check_interval.find(dev);
+    if (it != _custom_check_interval.cend())
+        return it->second;
+    return dev->check_interval();
+}
+
 void Manager::check_devices()
 {
     b_break = false;   
@@ -109,12 +136,13 @@ void Manager::check_devices()
     qint64 next_shot, min_shot = QDateTime::currentMSecsSinceEpoch() + 60000, now_ms;
     for (Device* dev: scheme_->devices())
     {
-        if (dev->check_interval() <= 0)
+        const uint32_t check_interval = get_device_check_interval(dev);
+        if (check_interval <= 0)
             continue;
 
         Check_Info& check_info = last_check_time_map_[dev->id()];
         now_ms = QDateTime::currentMSecsSinceEpoch();
-        next_shot = check_info.time_ + dev->check_interval();
+        next_shot = check_info.time_ + check_interval;
 
         if (next_shot <= now_ms)
         {
@@ -177,7 +205,7 @@ void Manager::check_devices()
             }
 
             now_ms = check_info.time_;
-            next_shot = now_ms + dev->check_interval();
+            next_shot = now_ms + check_interval;
         }
         min_shot = std::min(min_shot, next_shot);
     }

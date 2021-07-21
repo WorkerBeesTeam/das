@@ -180,7 +180,7 @@ void Helper::fill_section(Scheme* scheme, std::map<uint32_t, Device_item_Group*>
     QVector<Section> sections = db_build_list<Section>(*this, get_default_where_suffix());
     QVector<DB::Device_Item_Group> item_groups =
             db_build_list<DB::Device_Item_Group>(*this, get_default_where_suffix() + " ORDER BY section_id ASC");
-    del(db_table_name<DIG_Status>(), get_default_suffix());
+    QVector<DIG_Status> dig_statuses = db_build_list<DIG_Status>(*this, get_default_where_suffix());
     QVector<DIG_Mode> dig_modes = db_build_list<DIG_Mode>(*this, get_default_where_suffix());
     QVector<DIG_Param> dig_params = db_build_list<DIG_Param>(*this,
                                                              "LEFT JOIN das_dig_param_type gpt ON gpt.id = hgp.param_id " +
@@ -208,6 +208,17 @@ void Helper::fill_section(Scheme* scheme, std::map<uint32_t, Device_item_Group*>
             DB::Device_Item_Group item_group = item_groups.takeAt(i);
             group = sct->add_group(std::move(item_group), 0);
             groups->emplace(group->id(), group);
+
+            for (int j = 0; j < dig_statuses.size(); )
+            {
+                if (dig_statuses.at(j).group_id() == group->id())
+                {
+                    const DIG_Status status = dig_statuses.takeAt(j);
+                    group->add_status(status.status_id(), status.args(), status.user_id());
+                }
+                else
+                    ++j;
+            }
 
             for (int j = 0; j < dig_modes.size(); )
             {

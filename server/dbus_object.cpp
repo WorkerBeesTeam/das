@@ -104,6 +104,23 @@ Scheme_Status Dbus_Object::get_scheme_status(uint32_t scheme_id) const
     return scheme_status;
 }
 
+Scheme_Time_Info Dbus_Object::get_time_info(uint32_t scheme_id) const
+{
+    std::shared_ptr<Helpz::DTLS::Server_Node> node = find_client(scheme_id);
+    if (node)
+    {
+        std::shared_ptr<Protocol_Base> p = std::static_pointer_cast<Protocol_Base>(node->protocol());
+        if (p)
+        {
+            Protocol_Base::TimeInfo ti = p->time();
+            auto dt = QDateTime::currentDateTimeUtc();
+            dt.addMSecs(ti.offset);
+            return { ti.zone.offsetFromUtc(dt), dt.toMSecsSinceEpoch(), ti.zone.id().constData() };
+        }
+    }
+    return { 0, 0 };
+}
+
 void Dbus_Object::set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString &name)
 {
     std::shared_ptr<Helpz::DTLS::Server_Node> node = find_client(scheme_id);

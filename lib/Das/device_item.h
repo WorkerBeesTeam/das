@@ -25,7 +25,8 @@ class DAS_LIBRARY_SHARED_EXPORT Device_Item : public QObject, public DB::Device_
 {
     Q_OBJECT
     Q_PROPERTY(uint32_t id READ id WRITE set_id)
-    Q_PROPERTY(QString name READ display_name WRITE set_name)
+    Q_PROPERTY(QString name READ get_name)
+    Q_PROPERTY(QString title READ display_name)
     Q_PROPERTY(uint32_t type READ type_id WRITE set_type_id)
     Q_PROPERTY(uint32_t parent_id READ parent_id)
     Q_PROPERTY(uint32_t device_id READ device_id)
@@ -34,8 +35,8 @@ class DAS_LIBRARY_SHARED_EXPORT Device_Item : public QObject, public DB::Device_
     Q_PROPERTY(QVariant value READ value WRITE set_raw_value)
     Q_PROPERTY(uint8_t register_type READ register_type)
     Q_PROPERTY(Device* device READ device)
-    Q_PROPERTY(Device_Item* parent READ parent WRITE set_parent)
-    Q_PROPERTY(Device_item_Group* group READ group WRITE set_group)
+    Q_PROPERTY(Device_Item* parent READ parent)
+    Q_PROPERTY(Device_item_Group* group READ group)
     Q_PROPERTY(bool is_connected READ is_connected)
     Q_PROPERTY(qint64 value_time READ value_time)
     Q_PROPERTY(uint32_t value_user_id READ value_user_id)
@@ -47,7 +48,9 @@ public:
     Device_Item& operator =(Device_Item&& o);
     Device_Item& operator =(const Device_Item& o);
 
-    QString display_name() const;
+    Q_INVOKABLE QString get_name() const;
+    Q_INVOKABLE QString get_title() const;
+    Q_INVOKABLE QString display_name() const;
     Q_INVOKABLE QString default_name() const;
 
     Device_Item* parent() const;
@@ -71,6 +74,7 @@ public:
 
 //    bool setData(const Prt::ItemValue& raw, const Prt::ItemValue& val);
     QVariant raw_value() const;
+    Q_INVOKABLE QVariant get_raw_value() const;
 
     static bool is_control(uint register_type);
 

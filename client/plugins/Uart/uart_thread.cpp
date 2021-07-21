@@ -187,6 +187,7 @@ void Uart_Thread::reconnect(QSerialPort &port)
 
     ok_open_ = true;
     set_config(port);
+    port.setReadBufferSize(Uart::Config::instance()._max_buffer_size);
 }
 
 template<typename T>
@@ -235,22 +236,31 @@ Device::Data_Item Uart_Thread::read_item_impl(QSerialPort &port, Device_Item *it
         return data_item;
     }
 
-    port.readAll();
+    port.clear();
     port.write(send_data);
+    port.flush();
 
     port.waitForBytesWritten(Uart::Config::instance()._write_timeout);
     while (port.waitForReadyRead(Uart::Config::instance()._min_read_timeout))
         ;
 
-    QByteArray recv_data = port.readAll();
+    QByteArray recv_data = Uart::Config::instance()._max_buffer_size ?
+                port.read(Uart::Config::instance()._max_buffer_size) : port.readAll();
+
+    port.clear();
 
     if (recv_data.isEmpty() && port.error() != QSerialPort::NoError)
     {
         if (ok_open_ && port.error() != QSerialPort::TimeoutError)
         {
-            qCWarning(UartLog) << item->toString() << port.errorString();
+            qCWarning(UartLog) << item->toString() << port.errorString() << port.error();
             ok_open_ = false;
         }
+
+        if (port.error() == QSerialPort::ResourceError
+         || port.error() == QSerialPort::ReadError)
+            port.close();
+
         device_items_disconected_[item->device()].push_back(item);
         return data_item;
     }
@@ -265,6 +275,8 @@ Device::Data_Item Uart_Thread::read_item_impl(QSerialPort &port, Device_Item *it
 
             const QVariant lua_arg = item->param("lua_arg");
             data_item.raw_data_ = _lua(send_data, recv_data, func_name, lua_arg);
+//            qDebug() << "func_name" << send_data.toHex().constData()
+//                     << recv_data.toHex().constData() << data_item.raw_data_.toString();
         }
         catch(const std::exception& e)
         {

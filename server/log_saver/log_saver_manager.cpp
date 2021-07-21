@@ -81,7 +81,7 @@ QVector<Device_Item_Value> Manager::get_devitem_values(uint32_t scheme_id)
     QVector<Device_Item_Value> cached_values = get_devitem_task.get();
     for (const Device_Item_Value& value: cached_values)
     {
-        for (Device_Item_Value& orig: cached_values)
+        for (Device_Item_Value& orig: device_item_values)
             if (orig.item_id() == value.item_id())
             {
                 orig = value;

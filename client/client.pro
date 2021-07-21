@@ -17,6 +17,8 @@ CONFIG (debug, debug|release) {
 TEMPLATE = app
 
 SOURCES += main.cpp \
+    Scripts/dig_status_class.cpp \
+    Scripts/dig_status_prototype.cpp \
     Scripts/scripted_scheme.cpp \
     log_save_controller.cpp \
     worker.cpp \
@@ -40,6 +42,8 @@ SOURCES += main.cpp \
 
 HEADERS  += \
     Network/net_proto_iface.h \
+    Scripts/dig_status_class.h \
+    Scripts/dig_status_prototype.h \
     Scripts/scripted_scheme.h \
     log_save_controller.h \
     pack_sender.h \

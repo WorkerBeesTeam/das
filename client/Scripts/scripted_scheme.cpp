@@ -22,6 +22,7 @@
 
 #include "scripted_scheme.h"
 #include "paramgroupclass.h"
+#include "dig_status_class.h"
 
 #include "tools/automationhelper.h"
 #include "tools/pidhelper.h"
@@ -40,6 +41,27 @@ namespace Das {
 Q_LOGGING_CATEGORY(ScriptLog, "script")
 Q_LOGGING_CATEGORY(ScriptEngineLog, "script.engine")
 Q_LOGGING_CATEGORY(ScriptDetailLog, "script.detail", QtInfoMsg)
+
+template <class Container>
+void ScriptValueToSequenceSet(const QScriptValue &value, Container &cont)
+{
+	quint32 len = value.property(QLatin1String("length")).toUInt32();
+	for (quint32 i = 0; i < len; ++i)
+	{
+		QScriptValue item = value.property(i);
+		cont.insert(qscriptvalue_cast<typename Container::value_type>(item));
+	}
+}
+
+template<typename T>
+int ScriptRegisterSequenceSetMetaType(
+	QScriptEngine *engine,
+	const QScriptValue &prototype = QScriptValue(),
+	T * /* dummy */ = 0)
+{
+	return qScriptRegisterMetaType<T>(engine, qScriptValueFromSequence,
+									  ScriptValueToSequenceSet, prototype);
+}
 
 template<class T>
 QScriptValue sharedPtrToScriptValue(QScriptEngine *eng, const T &obj) {
@@ -265,6 +287,12 @@ void Scripted_Scheme::register_types()
     //    qScriptRegisterSequenceMetaType<Device_Item::ValueList>(eng);
 
     //    qScriptRegisterSequenceMetaType<Device_Item::ValueList>(eng);
+
+	auto dig_status_class = new DIG_Status_Class(script_engine_);
+	script_engine_->globalObject().setProperty("DIG_Status", dig_status_class->constructor());
+
+	qRegisterMetaType<std::set<DIG_Status>>("std::set<DIG_Status>");
+	ScriptRegisterSequenceSetMetaType<std::set<DIG_Status>>(script_engine_);
 
     auto paramClass = new ParamGroupClass(script_engine_);
     script_engine_->globalObject().setProperty("Params", paramClass->constructor());
@@ -749,6 +777,16 @@ void Scripted_Scheme::write_to_item_file(const QString& file_name)
     {
         qCWarning(SchemeLog).nospace() << last_file_item_and_user_id_.second << "| item for write file not found. item_id: " << last_file_item_and_user_id_.first;
     }
+}
+
+QString Scripted_Scheme::get_status_text(uint32_t id, const QStringList &args)
+{
+    const DIG_Status_Type& info = status_mng_.type(id);
+
+    QString message = info.text();
+    for (const QString& arg: args)
+        message = message.arg(arg);
+    return message;
 }
 
 void Scripted_Scheme::group_initialized(Device_item_Group* group)

@@ -87,6 +87,7 @@ public slots:
     uint8_t get_scheme_connection_state(const std::set<uint32_t> &scheme_group_set, uint32_t scheme_id);
     uint8_t get_scheme_connection_state2(uint32_t scheme_id);
     Scheme_Status get_scheme_status(uint32_t scheme_id) const;
+    Scheme_Time_Info get_time_info(uint32_t scheme_id) const;
     void set_scheme_name(uint32_t scheme_id, uint32_t user_id, const QString& name);
     QVector<Device_Item_Value> get_device_item_values(uint32_t scheme_id) const;
     void send_message_to_scheme(uint32_t scheme_id, uint8_t ws_cmd, uint32_t user_id, const QByteArray& data);

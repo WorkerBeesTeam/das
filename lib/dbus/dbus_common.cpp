@@ -16,14 +16,12 @@
 #include "dbus_common.h"
 
 using DIG_Param_Value = Das::DIG_Param_Value;
-using DIG_Status = Das::DIG_Status;
 using DIG_Mode = Das::DIG_Mode;
 using Scheme_Status = Das::Scheme_Status;
 using Device_Item_Value = Das::Device_Item_Value;
 
 Q_DECLARE_METATYPE(QTimeZone)
 Q_DECLARE_METATYPE(DIG_Param_Value)
-Q_DECLARE_METATYPE(DIG_Status)
 Q_DECLARE_METATYPE(DIG_Mode)
 Q_DECLARE_METATYPE(QVector<Log_Value_Item>)
 Q_DECLARE_METATYPE(QVector<Log_Event_Item>)
@@ -263,6 +261,24 @@ const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Scheme_Status &it
     return arg;
 }
 
+QDBusArgument &operator<<(QDBusArgument &arg, const Das::Scheme_Time_Info &item)
+{
+    arg.beginStructure();
+    arg << static_cast<qint64>(item._utc_time) << item._tz_offset << QString::fromStdString(item._tz_name);
+    arg.endStructure();
+    return arg;
+}
+
+const QDBusArgument &operator>>(const QDBusArgument &arg, Das::Scheme_Time_Info &item)
+{
+    QString tz_name;
+    arg.beginStructure();
+    arg >> reinterpret_cast<qint64&>(item._utc_time) >> item._tz_offset >> tz_name;
+    arg.endStructure();
+    item._tz_name = tz_name.toStdString();
+    return arg;
+}
+
 namespace Das {
 
 Q_LOGGING_CATEGORY(DBus_log, "DBus")
@@ -296,6 +312,7 @@ void register_dbus_types()
     REGISTER_PARAM(QVector<DIG_Mode>);
     REGISTER_PARAM(QVector<Device_Item_Value>);
     REGISTER_PARAM(Scheme_Status);
+    REGISTER_PARAM(Scheme_Time_Info);
 }
 
 } // namespace DBus
