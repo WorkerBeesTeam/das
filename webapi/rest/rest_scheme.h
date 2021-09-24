@@ -17,6 +17,7 @@ class Chart;
 class Chart_Data_Controller;
 class Scheme_Structure;
 class Log;
+class Help;
 class Mnemoscheme;
 
 class Scheme
@@ -47,6 +48,7 @@ private:
     std::shared_ptr<Chart> chart_;
     std::shared_ptr<Chart_Data_Controller> chart_data_;
     std::shared_ptr<Log> _log;
+    std::shared_ptr<Help> _help;
     std::shared_ptr<Mnemoscheme> _mnemoscheme;
 };
 

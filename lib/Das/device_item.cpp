@@ -183,12 +183,12 @@ QVariant Device_Item::get_raw_value() const
     return data_.raw_value();
 }
 
-bool Device_Item::write(const QVariant& display_value, uint32_t mode_id, uint32_t user_id)
+int Device_Item::write(const QVariant& display_value, uint32_t mode_id, uint32_t user_id)
 {
     if (!group_)
     {
         qWarning() << "Device_Item::write havnt group";
-        return false;
+        return WF_NO_GROUP;
     }
 
     static const QMetaMethod is_can_change_signal = QMetaMethod::fromSignal(&Device_Item::is_can_change);
@@ -196,59 +196,57 @@ bool Device_Item::write(const QVariant& display_value, uint32_t mode_id, uint32_
 
     const QVariant* raw_data = &display_value;
 
-    do
+    if (!is_control())
     {
-        if (!is_control() || !is_connected())
-            break;
-
-        if (mode_id && group_->mode_id() != mode_id) // Режим автоматизации
-            break;
-
-        if (isSignalConnected(is_can_change_signal) && !is_can_change(display_value, user_id)) // Проверка в скрипте
-            break;
-
-        QVariant tmp_raw_data;
-
-        if (isSignalConnected(display_to_raw_signal))
-        {
-            tmp_raw_data = display_to_raw(display_value);
-            raw_data = &tmp_raw_data;
-        }
-
-        if (register_type() == Device_Item_Type::RT_FILE && raw_data->type() != QVariant::String)
-        {
-            QString file_name;
-            QByteArray data = raw_data->toByteArray(), file_hash;
-            QDataStream ds(data);
-            ds >> file_name >> file_hash;
-
-            qCInfo(SchemeDetailLog) << "Write file to control: " << toString() << file_name << file_hash.toHex();
-            set_data(file_hash, file_name);
-            return true;
-        }
-        else if (data_.raw_value().type() != raw_data->type() || data_.raw_value() != *raw_data
-                 || register_type() == Device_Item_Type::RT_SIMPLE_BUTTON)
-        {
-            emit group_->control_state_changed(this, *raw_data, user_id);
-            return true;
-        }
-        else if (set_raw_value(*raw_data, false, user_id))
-            return true; // do not emit control_state_changed becose raw not changed and item_changed already emited
+        qCDebug(SchemeDetailLog) << toString() << "Write abort: Not control" << display_value;
+        return WF_NOT_CONTROL;
     }
-    while(false);
-
-    if (SchemeDetailLog().isDebugEnabled())
+    if (!is_connected())
     {
-        auto dbg = QMessageLogger(QT_MESSAGELOG_FILE, QT_MESSAGELOG_LINE, QT_MESSAGELOG_FUNC, SchemeDetailLog().categoryName()).debug();
-        dbg << "Device_Item::write";
-        if (!is_control()) dbg << "NOT CONTROL";
-        if (!is_connected()) dbg << "NOT CONNECTED";
-        if (mode_id != 0 && mode_id != group_->mode_id()) dbg << "MODE" << mode_id << "CURRENT" << group_->mode_id();
-        if (data_.raw_value().type() == raw_data->type() && data_.raw_value() == *raw_data) dbg << "SAME VALUE:" << raw_value();
-        if (isSignalConnected(is_can_change_signal) && !is_can_change(display_value, user_id)) dbg << "is_can_change return false";
-        dbg << toString() << "new value:" << *raw_data << "data:" << display_value;
+        qCDebug(SchemeDetailLog) << toString() << "Write abort: Not connected" << display_value;
+        return WF_NOT_CONNECTED;
     }
-    return false;
+    if (mode_id && group_->mode_id() != mode_id) // Режим автоматизации
+    {
+        qCDebug(SchemeDetailLog) << toString() << "Write abort: dig mode" << group_->mode_id() << "want" << mode_id << display_value;
+        return WF_DIG_MODE;
+    }
+    if (isSignalConnected(is_can_change_signal) && !is_can_change(display_value, user_id)) // Проверка в скрипте
+    {
+        qCDebug(SchemeDetailLog) << toString() << "Write abort: Can't change" << display_value;
+        return WF_CANT_CHANGE;
+    }
+
+    QVariant tmp_raw_data;
+
+    if (isSignalConnected(display_to_raw_signal))
+    {
+        tmp_raw_data = display_to_raw(display_value);
+        raw_data = &tmp_raw_data;
+    }
+
+    if (register_type() == Device_Item_Type::RT_FILE && raw_data->type() != QVariant::String)
+    {
+        QString file_name;
+        QByteArray data = raw_data->toByteArray(), file_hash;
+        QDataStream ds(data);
+        ds >> file_name >> file_hash;
+
+        qCInfo(SchemeDetailLog) << toString() << "Write file to control: " << toString() << file_name << file_hash.toHex();
+        set_data(file_hash, file_name);
+        return WF_NOT_FAIL;
+    }
+    else if (data_.raw_value().type() != raw_data->type() || data_.raw_value() != *raw_data
+             || register_type() == Device_Item_Type::RT_SIMPLE_BUTTON)
+    {
+        emit group_->control_state_changed(this, *raw_data, user_id);
+        return WF_NOT_FAIL;
+    }
+    else if (set_raw_value(*raw_data, false, user_id)) // TODO: Check is bug?
+        return WF_NOT_FAIL; // do not emit control_state_changed becose raw not changed and item_changed already emited
+
+    qCDebug(SchemeDetailLog) << toString() << "Write abort: Not changed" << display_value;
+    return WF_NOT_CHANGED;
 }
 
 bool Device_Item::set_raw_value(const QVariant& raw_data, bool force, uint32_t user_id, bool silent, qint64 value_time)

@@ -11,15 +11,16 @@
 
 #include <Das/checker_interface.h>
 
+#include "modbus_log.h"
 #include "../plugin_global.h"
 #include "config.h"
 
 namespace Das {
 namespace Modbus {
 
-Q_DECLARE_LOGGING_CATEGORY(ModbusLog)
-
-struct Modbus_Queue;
+struct Pack_Queue;
+class Thread;
+class Controller;
 
 class DAS_PLUGIN_SHARED_EXPORT Modbus_Plugin_Base : public QObject, public Checker::Interface
 {
@@ -32,12 +33,6 @@ public:
     void clear_break_flag();
 
     const Config& base_config() const;
-
-    bool checkConnect(Device *dev);
-
-    static int32_t address(Device* dev, bool *ok = nullptr);
-    static int32_t unit(Device_Item* item, bool *ok = nullptr);
-    static int32_t count(Device_Item* item, int32_t unit);
 
     // CheckerInterface interface
 public:
@@ -52,20 +47,9 @@ public slots:
 
     void write_multivalue(Das::Device *dev, int server_address, int start_address, const QVariantList& data, bool is_coils, bool silent = true);
 private slots:
-    void read_finished_slot();
-    void write_finished_slot();
 
 protected:
-    void clear_queue();
     void print_cached(QModbusClient* modbus, int server_address, QModbusDataUnit::RegisterType register_type, QModbusDevice::Error value, const QString& text);
-    QModbusClient* check_connection(Device *dev);
-    void read(Device *dev, const QVector<Device_Item *>& dev_items);
-    void process_queue();
-    QVector<quint16> cache_items_to_values(const std::vector<Write_Cache_Item>& items) const;
-    void write_pack(QModbusClient* modbus, int server_address, QModbusDataUnit::RegisterType register_type, int start_address, const std::vector<Write_Cache_Item>& items, QModbusReply** reply);
-    void write_finished(QModbusClient *modbus, QModbusReply* reply);
-    void read_pack(QModbusClient* modbus, int server_address, QModbusDataUnit::RegisterType register_type, int start_address, const std::vector<Device_Item*>& items, QModbusReply** reply);
-    void read_finished(QModbusClient *modbus, QModbusReply* reply);
 
     struct Status_Holder {
         int _server_address;
@@ -84,27 +68,17 @@ protected:
     typedef std::map<Status_Holder, QModbusDevice::Error> StatusCacheMap;
     StatusCacheMap dev_status_cache_;
 private:
-    QModbusClient* modbus_by_dev(Device* dev);
-    std::shared_ptr<QModbusClient> init_modbus(Device* dev);
-
+    Controller* controller_by_device(Device* dev);
     Config dev_config(Device* dev, bool simple = false);
 
     Config base_config_;
-
-    Modbus_Queue* queue_;
 
     bool b_break;
 
     enum Auto_Port { NoAuto, UseFirstUSB, UseFirstTTY };
     int _auto_port = NoAuto;
-    std::chrono::milliseconds _line_use_timeout = std::chrono::milliseconds{50};
-    std::chrono::system_clock::time_point line_use_last_time_;
-    QTimer process_queue_timer_;
 
-    std::map<std::shared_ptr<QModbusClient>, std::vector<Device*>> _dev_map;
-
-    QModbusClient *_last_modbus;
-//    std::shared_ptr<QModbusClient> _modbus;
+    std::map<Thread*, std::vector<Device*>> _thread_map;
 };
 
 } // namespace Modbus

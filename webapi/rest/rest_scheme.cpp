@@ -13,7 +13,6 @@
 #include <Das/db/scheme.h>
 #include <Das/db/dig_status_type.h>
 #include <Das/db/disabled_status.h>
-#include <Das/db/help.h>
 //#include <Das/db/dig_status.h>
 //#include <Das/db/device_item_value.h>
 //#include <Das/db/chart.h>
@@ -30,6 +29,7 @@
 #include "rest_chart_data_controller.h"
 #include "rest_scheme_structure.h"
 #include "rest_log.h"
+#include "rest_help.h"
 #include "rest_mnemoscheme.h"
 #include "rest_scheme.h"
 
@@ -54,6 +54,7 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
     chart_ = std::make_shared<Chart>(mux, scheme_path);
     chart_data_ = std::make_shared<Chart_Data_Controller>(mux, scheme_path);
     _log = std::make_shared<Rest::Log>(mux, scheme_path);
+    _help = std::make_shared<Rest::Help>(mux, scheme_path);
     _mnemoscheme = std::make_shared<Mnemoscheme>(mux, scheme_path);
 
     mux.handle(scheme_path + "/time_info").get([this](served::response& res, const served::request& req) { get_time_info(res, req); });
@@ -64,18 +65,6 @@ Scheme::Scheme(served::multiplexer& mux, DBus::Interface* dbus_iface) :
             .get([this](served::response& res, const served::request& req) { get_disabled_status(res, req); })
             .method(served::method::PATCH, [this](served::response& res, const served::request& req) { del_disabled_status(res, req); })
             .post([this](served::response& res, const served::request& req) { add_disabled_status(res, req); });
-
-    mux.handle(scheme_path + "/help").get([](served::response &res, const served::request &req)
-    {
-        Auth_Middleware::check_permission("view_help");
-
-        const Scheme_Info scheme = get_info(req);
-
-        const QString sql = "WHERE scheme_id IS NULL OR %1 ORDER BY parent_id";
-
-        res.set_header("Content-Type", "application/json");
-        res << gen_json_list<DB::Help>(sql.arg(scheme.ids_to_sql()));
-    });
 
     mux.handle(scheme_path + "/set_name/").post([this](served::response& res, const served::request& req) { set_name(res, req); });
     mux.handle(scheme_path + "/copy/").post([this](served::response& res, const served::request& req) { copy(res, req); });

@@ -101,7 +101,9 @@ void Auth_Middleware::check_token(const served::request &req)
 {
     std::string token = req.header("Authorization");
     if (token.size() <= 4)
-        throw served::request_error(served::status_4XX::BAD_REQUEST, "Token is too small");
+        throw served::request_error(served::status_4XX::BAD_REQUEST,
+                                    "Token is too small. Token: " + token
+                                    + " URI: " + req.url().URI());
 
     token.replace(0, 4, std::string());
 

@@ -140,5 +140,36 @@ Config::Config(const QString &address, int modbus_timeout, int modbus_number_of_
     device->setNumberOfRetries(config._modbus_number_of_retries);
 }
 
+/*static*/ int32_t Config::line_use_timeout(Device *dev, bool *ok)
+{
+    QVariant v = dev->param("line_use_timeout");
+    return v.isValid() ? v.toInt(ok) : -2;
+}
+
+/*static*/ int32_t Config::address(Device *dev, bool* ok)
+{
+    QVariant v = dev->param("address");
+    return v.isValid() ? v.toInt(ok) : -2;
+}
+
+/*static*/ int32_t Config::unit(Device_Item *item, bool* ok)
+{
+    QVariant v = item->param("unit");
+    return v.isValid() ? v.toInt(ok) : -2;
+}
+
+/*static*/ quint16 Config::count(Device_Item *item, int32_t unit)
+{
+    QVariant v = item->param("count");
+    if (v.isValid())
+    {
+        bool ok;
+        int32_t val = v.toInt(&ok);
+        if (ok && val > 0 && (val + unit) <= 125)
+            return val;
+    }
+    return 1;
+}
+
 } // namespace Modbus
 } // namespace Das

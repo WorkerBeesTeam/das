@@ -41,6 +41,17 @@ class DAS_LIBRARY_SHARED_EXPORT Device_Item : public QObject, public DB::Device_
     Q_PROPERTY(qint64 value_time READ value_time)
     Q_PROPERTY(uint32_t value_user_id READ value_user_id)
 public:
+    enum Write_Fail_Type {
+        WF_NOT_FAIL = 0,
+        WF_NO_GROUP,
+        WF_NOT_CONTROL,
+        WF_NOT_CONNECTED,
+        WF_DIG_MODE,
+        WF_CANT_CHANGE,
+        WF_NOT_CHANGED,
+    };
+    Q_ENUMS(Write_Abort_Type)
+
     Device_Item(uint32_t id = 0, const QString& name = {}, uint32_t type_id = 0, const QVariantList& extra_values = {},
                uint32_t parent_id = 0, uint32_t device_id = 0, uint32_t group_id = 0);
     Device_Item(Device_Item&& o);
@@ -95,7 +106,7 @@ public slots:
 
     bool is_control() const;
 
-    bool write(const QVariant& display_value, uint32_t mode_id = 0, uint32_t user_id = 0);
+    int write(const QVariant& display_value, uint32_t mode_id = 0, uint32_t user_id = 0);
     bool set_raw_value(const QVariant &raw_data, bool force = false, uint32_t user_id = 0, bool silent = false, qint64 value_time = DB::Log_Base_Item::current_timestamp());
     bool set_data(const DB::Device_Item_Value& data);
     bool set_data(const QVariant& raw, const QVariant& val, uint32_t user_id = 0, qint64 value_time = DB::Log_Base_Item::current_timestamp());

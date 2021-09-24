@@ -16,7 +16,7 @@ include(../common.pri)
 
 LIBS += -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpzNetwork -lHelpzDBMeta -lHelpzDB -lboost_system -lboost_thread
 LIBS += -L/usr/local/lib -lserved
-LIBS += -lfmt
+LIBS += -lfmt -lstdc++fs
 
 # for captcha
 LIBS += -lpng
@@ -36,6 +36,7 @@ SOURCES += main.cpp \
     rest/rest_chart_param.cpp \
     rest/rest_chart_value.cpp \
     rest/rest_config.cpp \
+    rest/rest_help.cpp \
     rest/rest_helper.cpp \
     rest/rest_log.cpp \
     rest/rest_mnemoscheme.cpp \
@@ -71,6 +72,7 @@ HEADERS += \
     rest/rest_chart_param.h \
     rest/rest_chart_value.h \
     rest/rest_config.h \
+    rest/rest_help.h \
     rest/rest_helper.h \
     rest/rest_log.h \
     rest/rest_mnemoscheme.h \

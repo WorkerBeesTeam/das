@@ -167,47 +167,78 @@ T obj_from_pico(const picojson::value& value)
 }
 
 template<typename T>
-picojson::object obj_to_pico(const T& item, const QStringList& names)
+picojson::object obj_to_pico(const T& item, const QStringList& names, const std::vector<uint> &field_ids = {})
 {
     picojson::object obj;
-    for (int i = 0; i < T::COL_COUNT; ++i)
-        obj.emplace(names.at(i).toStdString(), pico_from_qvariant(T::value_getter(item, i)));
+
+    if (field_ids.empty())
+    {
+        const int count = std::min<int>(T::COL_COUNT, names.size());
+        for (int i = 0; i < count; ++i)
+            obj.emplace(names.at(i).toStdString(), pico_from_qvariant(T::value_getter(item, i)));
+    }
+    else
+    {
+        const int count = std::min<int>(field_ids.size(), names.size());
+        auto it = field_ids.cbegin();
+        for (int i = 0; i < count; ++it, ++i)
+            obj.emplace(names.at(i).toStdString(), pico_from_qvariant(T::value_getter(item, *it)));
+    }
+
     return obj;
 }
 
 template<typename T>
-picojson::object gen_json_object(const QSqlQuery& query, const QStringList& names)
+picojson::object gen_json_object(const QSqlQuery& query, const QStringList& names, const std::vector<uint> &field_ids = {})
 {
-    if (query.record().count() < T::COL_COUNT)
-        return {};
-    const T item = Helpz::DB::db_build<T>(query);
-    return obj_to_pico(item, names);
+//    if (query.record().count() < T::COL_COUNT)
+//        return {};
+    const T item = Helpz::DB::db_build<T>(query, field_ids);
+    return obj_to_pico(item, names, field_ids);
 }
 
 template<typename T>
-picojson::object gen_json_object(const QSqlQuery& query)
+picojson::object gen_json_object(const QSqlQuery& query, const std::vector<uint> &field_ids = {})
 {
     const QStringList names = T::table_column_names();
-    return gen_json_object<T>(query, names);
+    if (!field_ids.empty())
+    {
+        QStringList n;
+        for (uint i: field_ids)
+            if (i < names.size())
+                n.push_back(names.at(i));
+        names = std::move(n);
+    }
+
+    return gen_json_object<T>(query, names, field_ids);
 }
 
 template<typename T>
-picojson::array gen_json_array(const QString& suffix = QString(), const QVariantList& values = QVariantList())
+picojson::array gen_json_array(const QString& suffix = QString(), const QVariantList& values = QVariantList(), const std::vector<uint> &field_ids = {})
 {
-    Helpz::DB::Base& db = Helpz::DB::Base::get_thread_local_instance();
     QStringList names = T::table_column_names();
+    if (!field_ids.empty())
+    {
+        QStringList n;
+        for (uint i: field_ids)
+            if (i < names.size())
+                n.push_back(names.at(i));
+        names = std::move(n);
+    }
+
     picojson::array json_array;
-    auto q = db.select(Helpz::DB::db_table<T>(), suffix, values);
+    Helpz::DB::Base& db = Helpz::DB::Base::get_thread_local_instance();
+    auto q = db.select(Helpz::DB::db_table<T>(), suffix, values, field_ids);
     while (q.next())
-        json_array.emplace_back(gen_json_object<T>(q, names));
+        json_array.emplace_back(gen_json_object<T>(q, names, field_ids));
 
     return json_array;
 }
 
 template<typename T>
-std::string gen_json_list(const QString& suffix = QString(), const QVariantList& values = QVariantList())
+std::string gen_json_list(const QString& suffix = QString(), const QVariantList& values = QVariantList(), const std::vector<uint> &field_ids = {})
 {
-    return picojson::value(gen_json_array<T>(suffix, values)).serialize();
+    return picojson::value(gen_json_array<T>(suffix, values, field_ids)).serialize();
 }
 
 // Don't using ..2 becose in is not normalizing type. Example: smallint -> string, raw_value -> string

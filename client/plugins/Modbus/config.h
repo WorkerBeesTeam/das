@@ -5,8 +5,11 @@
 
 #include <QSerialPort>
 
+#include <Das/device.h>
+
 QT_FORWARD_DECLARE_CLASS(QModbusRtuSerialMaster)
 QT_FORWARD_DECLARE_CLASS(QModbusTcpClient)
+QT_FORWARD_DECLARE_CLASS(QModbusClient)
 
 namespace Das {
 namespace Modbus {
@@ -77,6 +80,11 @@ struct Config {
          int frame_delay_microseconds = 0);
 
     static void set(const Config& config, QModbusClient* device);
+
+    static int32_t line_use_timeout(Device* dev, bool *ok = nullptr);
+    static int32_t address(Device* dev, bool *ok = nullptr);
+    static int32_t unit(Device_Item* item, bool *ok = nullptr);
+    static quint16 count(Device_Item* item, int32_t unit);
 
     Tcp_Config _tcp;
     Rtu_Config _rtu;

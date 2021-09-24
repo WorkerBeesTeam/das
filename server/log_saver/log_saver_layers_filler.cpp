@@ -264,14 +264,14 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name, qint64 
     qint64 start_ts = get_start_timestamp(time_count);
     if (start_ts == 0)
     {
-        qCWarning(LogLayerFiller) << "das_log_value is empty?";
+        qCWarning(LogLayerFiller) << name << "das_log_value is empty?";
         return 0; // TODO: ?
     }
 
     int selected = 0, inserted = 0, deleted = 0;
     qint64 insert_elapsed = 0, del_elapsed = 0, elapsed = t.restart();
     if (elapsed > 5)
-        qCDebug(LogLayerFiller) << "get_start_timestamp elapsed" << elapsed;
+        qCDebug(LogLayerFiller) << name << "get_start_timestamp elapsed" << elapsed;
     elapsed = 0;
 
     Base& db = Base::get_thread_local_instance();
@@ -293,11 +293,12 @@ qint64 Layers_Filler::fill_layer(qint64 time_count, const QString &name, qint64 
 
     while (end_ts <= final_ts)
     {
+        qCDebug(LogLayerFiller) << name << "layer fill from" << start_ts << "to" << end_ts << "begin";
         log_query.addBindValue(start_ts);
         log_query.addBindValue(end_ts);
         if (!log_query.exec())
         {
-            qCCritical(LogLayerFiller) << "Layer filler: Can't select data from das_log_value:" << db.last_error();
+            qCCritical(LogLayerFiller) << name << "Layer filler: Can't select data from das_log_value:" << db.last_error();
             return start_ts;
         }
 
