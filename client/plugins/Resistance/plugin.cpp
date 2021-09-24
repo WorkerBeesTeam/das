@@ -35,7 +35,7 @@ ResistancePlugin::~ResistancePlugin()
 void ResistancePlugin::configure(QSettings *settings)
 {
     using Helpz::Param;
-    conf_ = Helpz::SettingsHelper(
+    _conf = Helpz::SettingsHelper(
                 settings, "Resistance",
                 Param<bool>{"IsZeroDisconnected", true},
                 Param<int>{"SleepMs", 100},
@@ -50,8 +50,8 @@ void ResistancePlugin::configure(QSettings *settings)
     wiringPiSetup();
 #endif
 
-    break_ = false;
-    thread_ = std::thread(&ResistancePlugin::run, this);
+    _break = false;
+    _thread = std::thread(&ResistancePlugin::run, this);
 }
 
 bool ResistancePlugin::check(Device* dev)
@@ -70,16 +70,16 @@ bool ResistancePlugin::check(Device* dev)
         }
 
         {
-            std::lock_guard lock(mutex_);
-            if (data_.find(pin) == data_.cend())
+            std::lock_guard lock(_mutex);
+            if (_data.find(pin) == _data.cend())
             {
                 ok = false;
-                data_.emplace(pin, item);
+                _data.emplace(pin, item);
             }
         }
 
         if (!ok)
-            cond_.notify_one();
+            _cond.notify_one();
     }
 
     if (!device_items_disconected.empty())
@@ -94,13 +94,13 @@ bool ResistancePlugin::check(Device* dev)
 void ResistancePlugin::stop()
 {
     {
-        std::lock_guard lock(mutex_);
-        break_ = true;
+        std::lock_guard lock(_mutex);
+        _break = true;
     }
-    cond_.notify_one();
+    _cond.notify_one();
 
-    if (thread_.joinable())
-        thread_.join();
+    if (_thread.joinable())
+        _thread.join();
 }
 void ResistancePlugin::write(Device */*dev*/, std::vector<Write_Cache_Item>& /*items*/) {}
 
@@ -116,24 +116,24 @@ void ResistancePlugin::run()
     Device::Data_Item data_item{0, 0, {}};
     int value, value_sum, sum_for;
 
-    std::unique_lock lock(mutex_, std::defer_lock);
+    std::unique_lock lock(_mutex, std::defer_lock);
 
     while (true)
     {
         lock.lock();
-        cond_.wait(lock, [this, &devices_data_pack](){ return break_ || !data_.empty() || !devices_data_pack.empty(); });
+        _cond.wait(lock, [this, &devices_data_pack](){ return _break || !_data.empty() || !devices_data_pack.empty(); });
 
-        if (break_) break;
+        if (_break) break;
 
-        if (!data_.empty())
+        if (!_data.empty())
         {
-            std::pair<int, Device_Item*> item = *data_.begin();
+            std::pair<int, Device_Item*> item = *_data.begin();
             lock.unlock();
 
             Device_Data_Pack& device_data_pack = devices_data_pack[item.second->device()];
 
             value_sum = sum_for = 0;
-            for (int i = 0; i < conf_.sum_for_; ++i)
+            for (int i = 0; i < _conf.sum_for_; ++i)
             {
                 value = read_item(item.first);
                 if (value != 0)
@@ -143,7 +143,7 @@ void ResistancePlugin::run()
                 }
             }
 
-            if (conf_.is_zero_disconnected_ && sum_for == 0)
+            if (_conf.is_zero_disconnected_ && sum_for == 0)
             {
                 device_data_pack.disconnected_vect_.push_back(item.second);
             }
@@ -151,10 +151,10 @@ void ResistancePlugin::run()
             {
                 if (sum_for != 0)
                     value_sum /= sum_for;
-                if (conf_.devide_by_ != 0)
-                    value_sum /= conf_.devide_by_;
+                if (_conf.devide_by_ != 0)
+                    value_sum /= _conf.devide_by_;
 
-                if (conf_.is_zero_disconnected_ && value_sum == 0)
+                if (_conf.is_zero_disconnected_ && value_sum == 0)
                     device_data_pack.disconnected_vect_.push_back(item.second);
                 else
                 {
@@ -164,8 +164,8 @@ void ResistancePlugin::run()
                 }
             }
 
-            std::lock_guard erase_lock(mutex_);
-            data_.erase(data_.begin());
+            std::lock_guard erase_lock(_mutex);
+            _data.erase(_data.begin());
         }
         else
         {
@@ -192,19 +192,19 @@ int ResistancePlugin::read_item(int pin)
 {
     int count = 0;
 #ifdef NO_WIRINGPI
-    count = rand() % conf_.max_count_;
+    count = rand() % _conf.max_count_;
 #else
     pinMode(pin, OUTPUT);
     digitalWrite(pin, LOW);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(conf_.sleep_ms_));
+    std::this_thread::sleep_for(std::chrono::milliseconds(_conf.sleep_ms_));
 
     pinMode(pin, INPUT);
 
-    while (digitalRead(pin) == LOW && count < conf_.max_count_)
+    while (digitalRead(pin) == LOW && count < _conf.max_count_)
         ++count;
 
-    if (count == conf_.max_count_)
+    if (count == _conf.max_count_)
         count = 0;
 #endif
     return count;

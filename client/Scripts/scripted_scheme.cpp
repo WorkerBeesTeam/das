@@ -20,6 +20,7 @@
 
 #include <Das/device.h>
 
+#include "classes/bytearrayclass.h"
 #include "scripted_scheme.h"
 #include "paramgroupclass.h"
 #include "dig_status_class.h"
@@ -287,6 +288,9 @@ void Scripted_Scheme::register_types()
     //    qScriptRegisterSequenceMetaType<Device_Item::ValueList>(eng);
 
     //    qScriptRegisterSequenceMetaType<Device_Item::ValueList>(eng);
+
+    ByteArrayClass *baClass = new ByteArrayClass(script_engine_);
+    script_engine_->globalObject().setProperty("ByteArray", baClass->constructor());
 
 	auto dig_status_class = new DIG_Status_Class(script_engine_);
 	script_engine_->globalObject().setProperty("DIG_Status", dig_status_class->constructor());

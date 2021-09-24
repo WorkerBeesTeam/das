@@ -34,12 +34,43 @@ Q_LOGGING_CATEGORY(ModbusDetailLog, "modbus.detail", QtInfoMsg)
 
 template <typename T>
 struct Modbus_Pack_Item_Cast {
-    static inline Device_Item* run(T item) { return item; }
+    static Device_Item* run(T item) { return item; }
+
+    static void fill_items(std::vector<T>& items, int count, T&& item)
+    {
+        while (count-- > 0)
+            items.push_back(item);
+    }
 };
 
 template <>
 struct Modbus_Pack_Item_Cast<Write_Cache_Item> {
-    static inline Device_Item* run(const Write_Cache_Item& item) { return item.dev_item_; }
+    static Device_Item* run(const Write_Cache_Item& item) { return item.dev_item_; }
+
+    static void fill_items(std::vector<Write_Cache_Item>& items, int count, Write_Cache_Item&& item)
+    {
+        if (item.raw_data_.type() == QVariant::List)
+        {
+            const QList<QVariant> value_list = item.raw_data_.toList();
+            Write_Cache_Item data{item.user_id_, item.dev_item_, QVariant{}};
+
+            for (auto it = value_list.cbegin(); count-- > 0; ++it)
+            {
+                if (it != value_list.cend())
+                    it = value_list.cbegin();
+
+                if (it != value_list.cend())
+                    data.raw_data_ = *it;
+
+                items.push_back(data);
+            }
+        }
+        else
+        {
+            while (count-- > 0)
+                items.push_back(item);
+        }
+    }
 };
 
 template<typename T>
@@ -52,11 +83,12 @@ struct Modbus_Pack
     Modbus_Pack(QModbusClient* modbus, T&& item) :
         reply_(nullptr), _modbus(modbus)
     {
-        init(Modbus_Pack_Item_Cast<T>::run(item), std::is_same<Write_Cache_Item, T>::value);
-        items_.push_back(std::move(item));
+        Device_Item* dev_item = Modbus_Pack_Item_Cast<T>::run(item);
+        init(dev_item);
+        push_back_item(dev_item, std::move(item));
     }
 
-    void init(Device_Item* dev_item, bool is_write)
+    void init(Device_Item* dev_item)
     {
         bool ok;
         server_address_ = Modbus_Plugin_Base::address(dev_item->device(), &ok);
@@ -65,7 +97,10 @@ struct Modbus_Pack
             start_address_ = Modbus_Plugin_Base::unit(dev_item, &ok);
             if (ok && start_address_ >= 0)
             {
-                if (dev_item->register_type() > QModbusDataUnit::Invalid && dev_item->register_type() <= QModbusDataUnit::HoldingRegisters &&
+                bool is_write = std::is_same<Write_Cache_Item, T>::value;
+
+                if (dev_item->register_type() > QModbusDataUnit::Invalid
+                 && dev_item->register_type() <= QModbusDataUnit::HoldingRegisters &&
                         (!is_write || (dev_item->register_type() == QModbusDataUnit::Coils ||
                                        dev_item->register_type() == QModbusDataUnit::HoldingRegisters)))
                 {
@@ -91,16 +126,9 @@ struct Modbus_Pack
         if (modbus == _modbus)
         {
             Device_Item* dev_item = Modbus_Pack_Item_Cast<T>::run(item);
-            if (register_type_ == dev_item->register_type() &&
-                server_address_ == Modbus_Plugin_Base::address(dev_item->device()))
-            {
-                int unit = Modbus_Plugin_Base::unit(dev_item);
-                if (unit == (start_address_ + static_cast<int>(items_.size())))
-                {
-                    items_.push_back(std::move(item));
-                    return true;
-                }
-            }
+            if (register_type_ == dev_item->register_type()
+                && server_address_ == Modbus_Plugin_Base::address(dev_item->device()))
+                return push_back_item(dev_item, std::move(item));
         }
         return false;
     }
@@ -134,6 +162,20 @@ struct Modbus_Pack
     QModbusClient* _modbus;
 
     std::vector<T> items_;
+
+private:
+    bool push_back_item(Device_Item* dev_item, T&& item)
+    {
+        int unit = Modbus_Plugin_Base::unit(dev_item);
+        if (unit == (start_address_ + static_cast<int>(items_.size())))
+        {
+            int count = Modbus_Plugin_Base::count(dev_item, unit);
+
+            Modbus_Pack_Item_Cast<T>::fill_items(items_, count, std::move(item));
+            return true;
+        }
+        return false;
+    }
 };
 
 template<typename T, typename Container> struct Input_Container_Device_Item_Type { typedef T& type; };
@@ -260,6 +302,33 @@ public:
             if (packs_.front().reply_)
                 QObject::disconnect(packs_.front().reply_, 0, 0, 0);
             packs_.pop_back();
+        }
+    }
+
+    void add_item_value(Device_Item* dev_item, const QVariant& raw_data)
+    {
+        auto it = new_values_.find(dev_item);
+        if (it != new_values_.cend())
+        {
+            QVariant& data = it->second.raw_data_;
+            if (data.isValid())
+            {
+                if (data.type() == QVariant::List)
+                {
+                    QVariantList data_list = data.toList();
+                    data_list.push_back(raw_data);
+                    data = std::move(data_list);
+                }
+                else
+                {
+                    QVariantList data_list;
+                    data_list.push_back(std::move(data));
+                    data_list.push_back(raw_data);
+                    it->second.raw_data_ = std::move(data_list);
+                }
+            }
+            else
+                data = raw_data;
         }
     }
 
@@ -868,7 +937,7 @@ void Modbus_Plugin_Base::read_finished(QModbusClient *modbus, QModbusReply* repl
                     }
                 }
 
-                modbus_pack_read_manager.new_values_.at(pack.items_.at(i)).raw_data_ = raw_data;
+                modbus_pack_read_manager.add_item_value(pack.items_.at(i), raw_data);
     //                QMetaObject::invokeMethod(pack.items_.at(i), "set_raw_value", Qt::QueuedConnection, Q_ARG(const QVariant&, raw_data));
             }
 
@@ -1011,6 +1080,19 @@ Config Modbus_Plugin_Base::dev_config(Device *dev, bool simple)
 {
     QVariant v = item->param("unit");
     return v.isValid() ? v.toInt(ok) : -2;
+}
+
+/*static*/ int32_t Modbus_Plugin_Base::count(Device_Item *item, int32_t unit)
+{
+    QVariant v = item->param("count");
+    if (v.isValid())
+    {
+        bool ok;
+        int32_t val = v.toInt(&ok);
+        if (ok && val > 0 && (val + unit) < 255)
+            return val;
+    }
+    return 1;
 }
 
 } // namespace Modbus

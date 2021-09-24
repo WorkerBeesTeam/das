@@ -17,6 +17,8 @@ CONFIG (debug, debug|release) {
 TEMPLATE = app
 
 SOURCES += main.cpp \
+    Scripts/classes/bytearrayclass.cpp \
+    Scripts/classes/bytearrayprototype.cpp \
     Scripts/dig_status_class.cpp \
     Scripts/dig_status_prototype.cpp \
     Scripts/scripted_scheme.cpp \
@@ -42,6 +44,8 @@ SOURCES += main.cpp \
 
 HEADERS  += \
     Network/net_proto_iface.h \
+    Scripts/classes/bytearrayclass.h \
+    Scripts/classes/bytearrayprototype.h \
     Scripts/dig_status_class.h \
     Scripts/dig_status_prototype.h \
     Scripts/scripted_scheme.h \

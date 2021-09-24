@@ -37,6 +37,7 @@ public:
 
     static int32_t address(Device* dev, bool *ok = nullptr);
     static int32_t unit(Device_Item* item, bool *ok = nullptr);
+    static int32_t count(Device_Item* item, int32_t unit);
 
     // CheckerInterface interface
 public:

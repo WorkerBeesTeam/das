@@ -1,5 +1,5 @@
 TEMPLATE = subdirs
-SUBDIRS += Modbus Random OneWireTherm FileIO Uart Router Watchdog
+SUBDIRS += Modbus Random OneWireTherm FileIO Uart Router Watchdog Gatt
 
 !NO_V4L {
     SUBDIRS += Camera

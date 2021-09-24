@@ -2,6 +2,6 @@
     "type": "modbus",
     "param": {
         "device": ["address", "conn_str"],
-        "device_item": ["unit"]
+		"device_item": ["unit", "count"]
     }
 }

@@ -47,14 +47,14 @@ private:
     void run();
     int read_item(int pin);
 
-    Config conf_;
+    Config _conf;
 
-    std::thread thread_;
-    std::mutex mutex_;
-    bool break_;
-    std::condition_variable cond_;
+    std::thread _thread;
+    std::mutex _mutex;
+    bool _break;
+    std::condition_variable _cond;
 
-    std::map<int, Device_Item*> data_;
+    std::map<int, Device_Item*> _data;
 };
 
 } // namespace Resistance

@@ -432,7 +432,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
     // DELETE
     if (!DB::db_delete_rows<T>(db, delete_vect, scheme))
     {
-        qWarning() << "modify_table: Failed delete row in" << table.name() << scheme.ids_to_sql();
+        qWarning(Struct_Log) << "modify_table: Failed delete row in" << table.name() << scheme.ids_to_sql();
         return false;
     }
 
@@ -459,7 +459,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
         QSqlQuery q = db.select(table, get_db_list_suffix<T>(struct_type, id_vect, scheme));
         if (!q.isActive())
         {
-            qWarning() << "modify_table: Failed select from" << table.name() << scheme.ids_to_sql();
+            qWarning(Struct_Log) << "modify_table: Failed select from" << table.name() << scheme.ids_to_sql();
             return false;
         }
 
@@ -471,7 +471,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
             {
                 if (it == items.end())
                 {
-                    qWarning() << "That imposible. In modify_table item id not fount" << id_value << "table" << table.name();
+                    qWarning(Struct_Log) << "That imposible. In modify_table item id not fount" << id_value << "table" << table.name();
                 }
                 else if (id_value == Helper::get_pk(**it))
                 {
@@ -482,12 +482,15 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
                         client_value = T::value_getter(**it, pos);
                         if (sql_value != client_value)
                         {
+                            qCDebug(Struct_Detail_Log) << "Update:" << typeid(T).name() << table.name() << table.field_names().at(pos)
+                                     << "ID" << id_value << "local value" << sql_value << "new value" << client_value;
                             ui.changed_field_names_.push_back(table.field_names().at(pos));
                             ui.changed_fields_.push_back(client_value);
                         }
                         else if (sql_value.type() != client_value.type() && sql_value.toString() != client_value.toString())
                         {
-                            qDebug() << typeid(T).name() << table.name() << table.field_names().at(pos)
+                            qDebug(Struct_Log) << typeid(T).name() << table.name() << table.field_names().at(pos)
+                                     << "ID" << id_value
                                      << "is same value but diffrent types" << sql_value << client_value;
                         }
                     }
@@ -516,7 +519,7 @@ bool Structure_Synchronizer_Base::modify_table(uint8_t struct_type, Helpz::DB::B
                 upd_table.set_field_names(ui.changed_field_names_);
                 if (!db.update(upd_table, ui.changed_fields_, where).isActive())
                 {
-                    qWarning() << "modify_table: Failed update row in" << table.name() << scheme.ids_to_sql();
+                    qWarning(Struct_Log) << "modify_table: Failed update row in" << table.name() << scheme.ids_to_sql();
                     return false;
                 }
             }

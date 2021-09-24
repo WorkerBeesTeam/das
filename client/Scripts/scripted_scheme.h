@@ -86,6 +86,7 @@ public slots:
     // If variant pass to JS via engine->newVariant it can't work with this. For example: QVariant(QVariantMap)
     // That function can call for fix it. Example: var obj = api.mng.from_variant(raw);
     QVariant from_variant(const QVariant& raw) const { return raw; }
+    QByteArray hex_to_array(const QVariant& data) const { return QByteArray::fromHex(data.toByteArray()); }
 
     bool stop(uint32_t user_id = 0);
     bool can_restart(bool stop = false, uint32_t user_id = 0);
