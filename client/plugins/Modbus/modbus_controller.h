@@ -1,6 +1,7 @@
 #ifndef DAS_MODBUS_CONTROLLER_H
 #define DAS_MODBUS_CONTROLLER_H
 
+#include <memory>
 #include <vector>
 #include <mutex>
 
