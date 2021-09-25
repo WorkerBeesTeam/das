@@ -169,14 +169,20 @@ void Gatt_Plugin::read_data_item(const Data_Item &info)
 {
     std::map<Device_Item*, Device::Data_Item> values;
 
+    {
+        std::lock_guard lock(_mutex);
+        _notify_listner_ptr = std::make_shared<Gatt_Notification_Listner>(info._dev_address.toStdString());
+        if (_break)
+            return;
+    }
+
     std::unique_lock lock(_adapter_mutex);
 
     try {
-        _notify_listner_ptr = std::make_shared<Gatt_Notification_Listner>(info._dev_address.toStdString(), _conf._scan_timeout);
 
         Gatt_Notification_Listner& listner = *_notify_listner_ptr;
         listner.set_callback([&info, &values](const uuid_t& uuid, const std::vector<uint8_t>& data_value) -> bool {
-            auto it = std::find_if(info._items.cbegin(), info._items.cend(), [&uuid](const std::pair<Device_Item*, uuid_t>& item){
+            auto it = std::find_if(info._items.cbegin(), info._items.cend(), [&uuid](const std::pair<Device_Item*, uuid_t>& item) {
                 return Gatt_Common::uuid_equals(item.second, uuid);
             });
 
@@ -193,7 +199,7 @@ void Gatt_Plugin::read_data_item(const Data_Item &info)
             }
             return info._items.size() == values.size();
         });
-        listner.start(info._characteristics);
+        listner.start(info._characteristics, _conf._scan_timeout);
         listner.exec(_conf._read_timeout);
         _last_is_ok = true;
     } catch (const std::exception& e) {
@@ -204,7 +210,13 @@ void Gatt_Plugin::read_data_item(const Data_Item &info)
         }
     }
 
-    _notify_listner_ptr = nullptr;
+    {
+        std::lock_guard lock(_mutex);
+        _notify_listner_ptr = nullptr;
+
+        if (_break)
+            return;
+    }
 
     lock.unlock();
 

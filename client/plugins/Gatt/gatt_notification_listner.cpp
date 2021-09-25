@@ -1,6 +1,3 @@
-#include <mutex>
-#include <condition_variable>
-
 #include <stdexcept>
 #include <cstring>
 
@@ -8,10 +5,25 @@
 
 namespace Das {
 
-std::mutex _m;
-std::condition_variable _cond;
+Gatt_Notification_Listner::Gatt_Notification_Listner(const std::string &dev_addr)
+    : _dev_addr{dev_addr}
+{}
 
-Gatt_Notification_Listner::Gatt_Notification_Listner(const std::string &dev_addr, const std::chrono::seconds &scan_timeout) : _dev_addr{dev_addr}
+Gatt_Notification_Listner::~Gatt_Notification_Listner()
+{
+    stop();
+    if (_connection)
+        gattlib_disconnect(_connection);
+}
+
+void Gatt_Notification_Listner::set_callback(std::function<bool (const uuid_t &, const std::vector<uint8_t>)> cb) { _cb = cb; }
+
+void Gatt_Notification_Listner::start(const std::vector<std::string> &characteristics, const std::chrono::seconds &scan_timeout)
+{
+    start(Gatt_Common::strings_to_uuids(characteristics), scan_timeout);
+}
+
+void Gatt_Notification_Listner::start(const std::vector<uuid_t> &characteristics, const std::chrono::seconds &scan_timeout)
 {
     Gatt_Adapter adapter = Gatt_Common::open_adapter();
 
@@ -28,23 +40,7 @@ Gatt_Notification_Listner::Gatt_Notification_Listner(const std::string &dev_addr
     }
 
     gattlib_register_notification(_connection, &Gatt_Notification_Listner::notification_handler, this);
-}
 
-Gatt_Notification_Listner::~Gatt_Notification_Listner()
-{
-    stop();
-    gattlib_disconnect(_connection);
-}
-
-void Gatt_Notification_Listner::set_callback(std::function<bool (const uuid_t &, const std::vector<uint8_t>)> cb) { _cb = cb; }
-
-void Gatt_Notification_Listner::start(const std::vector<std::string> &characteristics)
-{
-    start(Gatt_Common::strings_to_uuids(characteristics));
-}
-
-void Gatt_Notification_Listner::start(const std::vector<uuid_t> &characteristics)
-{
     int err;
     for (const uuid_t& it: characteristics)
     {
@@ -60,20 +56,33 @@ void Gatt_Notification_Listner::start(const std::vector<uuid_t> &characteristics
 
 bool Gatt_Notification_Listner::exec(const std::chrono::seconds& timeout)
 {
-    std::unique_lock lock(_m);
+    std::unique_lock lock(_mutex);
     return _cond.wait_for(lock, timeout) == std::cv_status::no_timeout;
 }
 
 void Gatt_Notification_Listner::stop()
 {
-    for (const uuid_t& notify_uuid: _characteristics)
-        gattlib_notification_stop(_connection, &notify_uuid);
-    _characteristics.clear();
+    {
+        std::lock_guard lock(_mutex);
+
+        if (_adapter)
+        {
+            gattlib_adapter_scan_disable(_adapter);
+            _adapter = nullptr;
+        }
+
+        if (_connection)
+        {
+            for (const uuid_t& notify_uuid: _characteristics)
+                gattlib_notification_stop(_connection, &notify_uuid);
+        }
+        _characteristics.clear();
+    }
 
     _cond.notify_one();
 }
 
-void Gatt_Notification_Listner::notification_handler(const uuid_t *uuid, const uint8_t *data, size_t data_length, void *user_data)
+/*static*/ void Gatt_Notification_Listner::notification_handler(const uuid_t *uuid, const uint8_t *data, size_t data_length, void *user_data)
 {
     auto self = static_cast<Gatt_Notification_Listner*>(user_data);
     std::vector<uint8_t> d;
@@ -86,18 +95,29 @@ void Gatt_Notification_Listner::notification_handler(const uuid_t *uuid, const u
 bool Gatt_Notification_Listner::check_device_available(void *adapter, const std::chrono::seconds& scan_timeout)
 {
     std::string dev_addr = _dev_addr;
+
+    std::unique_lock lock(_mutex);
+    _adapter = adapter;
+    lock.unlock();
+
     int ret = gattlib_adapter_scan_enable(adapter, &Gatt_Notification_Listner::ble_discovered_device, scan_timeout.count(), &dev_addr);
-    if (ret)
-        return false;
 
-    if (dev_addr.empty()) // if finded
-        return true;
+    lock.lock();
+    adapter = _adapter;
+    _adapter = nullptr;
+    lock.unlock();
 
-    gattlib_adapter_scan_disable(adapter);
+    if (adapter && ret == GATTLIB_SUCCESS)
+    {
+        if (dev_addr.empty()) // if finded
+            return true;
+
+//        gattlib_adapter_scan_disable(adapter); // TODO: Check maybe is memory leak because call twise, second in ble_discovered_device
+    }
     return false;
 }
 
-void Gatt_Notification_Listner::ble_discovered_device(void *adapter, const char *addr, const char */*name*/, void *user_data)
+/*static*/ void Gatt_Notification_Listner::ble_discovered_device(void *adapter, const char *addr, const char */*name*/, void *user_data)
 {
     std::string* dev_addr = static_cast<std::string*>(user_data);
     if (addr && *dev_addr == addr)

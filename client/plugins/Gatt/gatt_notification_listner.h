@@ -3,6 +3,8 @@
 
 #include <functional>
 #include <chrono>
+#include <mutex>
+#include <condition_variable>
 
 #include "gatt_common.h"
 
@@ -10,14 +12,14 @@ namespace Das {
 
 class Gatt_Notification_Listner {
 public:
-    Gatt_Notification_Listner(const std::string& dev_addr, const std::chrono::seconds& scan_timeout = std::chrono::seconds{4});
+    Gatt_Notification_Listner(const std::string& dev_addr);
 
     ~Gatt_Notification_Listner();
 
     void set_callback(std::function<bool(const uuid_t&, const std::vector<uint8_t>)> cb);
 
-    void start(const std::vector<std::string>& characteristics);
-    void start(const std::vector<uuid_t>& characteristics);
+    void start(const std::vector<std::string>& characteristics, const std::chrono::seconds &scan_timeout);
+    void start(const std::vector<uuid_t>& characteristics, const std::chrono::seconds &scan_timeout);
 
     bool exec(const std::chrono::seconds &timeout = std::chrono::seconds{10});
 
@@ -31,9 +33,13 @@ private:
     static void ble_discovered_device(void *adapter, const char* addr, const char* name, void *user_data);
 
     std::string _dev_addr;
-    gatt_connection_t* _connection;
+    gatt_connection_t* _connection = nullptr;
     std::vector<uuid_t> _characteristics;
     std::function<bool(const uuid_t&, const std::vector<uint8_t>)> _cb;
+
+    std::mutex _mutex;
+    std::condition_variable _cond;
+    void* _adapter = nullptr;
 };
 
 } // namespace Das

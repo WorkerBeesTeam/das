@@ -225,18 +225,20 @@ bool Controller::check_connection()
     {
         const std::chrono::system_clock::duration elapsed_time = std::chrono::system_clock::now() - _line_use_last_time;
         if (elapsed_time > std::chrono::seconds(15))
-        {
             _modbus->disconnectDevice(); // TODO: timeout for processing states
-            return false;
-        }
+        return false;
     }
+    else
+    {
+        Config::set(_config, _modbus.get());
 
-    Config::set(_config, _modbus.get());
-
-    _line_use_last_time = std::chrono::system_clock::now();
-    return _modbus->connectDevice();
+        _line_use_last_time = std::chrono::system_clock::now();
+        if (_modbus->connectDevice())
+            return _modbus->state() == QModbusDevice::ConnectedState;
+        else
+            return false;
+    }
 }
-
 
 QVector<quint16> Controller::cache_items_to_values(const std::vector<Write_Cache_Item>& items) const
 {
@@ -347,7 +349,7 @@ void Controller::read_pack(int server_address, QModbusDataUnit::RegisterType reg
             connect(*reply, &QModbusReply::finished, this, &Controller::read_finished_slot, Qt::DirectConnection);
     }
     else
-        qCCritical(Log).noquote() << tr("Read error: ") + _modbus->errorString();
+        qCCritical(Log).noquote() << tr("Read error:") << _modbus->errorString();
 }
 
 void Controller::read_finished(QModbusReply* reply)
@@ -355,7 +357,7 @@ void Controller::read_finished(QModbusReply* reply)
     _line_use_last_time = std::chrono::system_clock::now();
     if (!reply)
     {
-        qCCritical(Log).noquote() << tr("Read finish error: ") + _modbus->errorString();
+        qCCritical(Log).noquote() << tr("Read finish error:") << _modbus->errorString();
         next();
         return;
     }
@@ -453,6 +455,7 @@ void Controller::deinit()
     _process_queue_timer = nullptr;
 
     _queue.clear_all();
+    _modbus->disconnectDevice();
     _modbus = nullptr;
 }
 
