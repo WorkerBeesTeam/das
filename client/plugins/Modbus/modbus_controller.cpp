@@ -49,7 +49,7 @@ bool Controller::read(Device* dev)
 
         // TODO: Concantinate same dev address items. But set values to each own device.
         if (exist_mng)
-            return false;
+            return true;
 
         _queue._read.emplace_back(std::move(pack_builder._container));
     }
