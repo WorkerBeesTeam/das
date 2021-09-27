@@ -44,7 +44,7 @@ bool Controller::read(Device* dev)
     {
         Pack_Builder<Device_Item*> pack_builder(dev_items);
 
-        std::lock_guard lock(_mutex);
+        std::lock_guard lock(_queue_mutex);
         Pack_Read_Manager* exist_mng = find_exist(address);
 
         // TODO: Concantinate same dev address items. But set values to each own device.
@@ -65,7 +65,7 @@ void Controller::write(std::vector<Write_Cache_Item> &items)
     Pack_Builder<Write_Cache_Item> pack_builder(items);
 
     {
-        std::lock_guard lock(_mutex);
+        std::lock_guard lock(_queue_mutex);
         for (Pack<Write_Cache_Item>& pack: pack_builder._container)
             _queue._write.push_back(std::move(pack));
     }
@@ -138,7 +138,10 @@ void Controller::write_multivalue(Device *dev, int server_address, int start_add
 
 void Controller::process_error(QModbusDevice::Error e)
 {
-    _queue.clear();
+    {
+        std::lock_guard lock(_queue_mutex);
+        _queue.clear();
+    }
     //qCCritical(Log).noquote() << "Occurred:" << e << errorString();
     if (e == QModbusDevice::ConnectionError)
         _modbus->disconnectDevice();
@@ -152,6 +155,7 @@ void Controller::check_state(QModbusDevice::State state)
 
 void Controller::next()
 {
+    std::unique_lock lock(_queue_mutex);
     if (_queue.is_active())
         return;
 
@@ -182,6 +186,7 @@ void Controller::next()
         if (!pack._reply)
         {
             _queue._write.pop_front();
+            lock.unlock();
             next();
         }
     }
@@ -192,6 +197,7 @@ void Controller::next()
         if (pack_read_manager._position >= static_cast<int>(pack_read_manager._packs.size()))
         {
             _queue._read.pop_front();
+            lock.unlock();
             next();
         }
         else
@@ -199,7 +205,10 @@ void Controller::next()
             Pack<Device_Item*>& pack = pack_read_manager._packs.at(pack_read_manager._position);
             read_pack(pack._server_address, pack._register_type, pack._start_address, pack._items, &pack._reply);
             if (!pack._reply)
+            {
+                lock.unlock();
                 next();
+            }
         }
     }
 }
@@ -303,28 +312,31 @@ void Controller::write_finished(QModbusReply* reply)
         return;
     }
 
-    if (_queue._write.empty())
-        qCCritical(Log).noquote() << tr("Write finished but queue is empty");
-    else
     {
-        Pack<Write_Cache_Item>& pack = _queue._write.front();
-        if (reply != pack._reply)
-            qCCritical(Log).noquote() << tr("Write finished but is not queue front") << reply << pack._reply;
-
-        pack._reply = nullptr;
-
-        _queue._write.pop_front();
-
-        if (reply->error() != QModbusDevice::NoError)
+        std::lock_guard lock(_queue_mutex);
+        if (_queue._write.empty())
+            qCCritical(Log).noquote() << tr("Write finished but queue is empty");
+        else
         {
-            qCWarning(Log).noquote() << tr("Write response error: %1 Device address: %2 (%3) Function: %4 Start unit: %5 Data:")
-                          .arg(reply->errorString())
-                          .arg(reply->serverAddress())
-                          .arg(reply->error() == QModbusDevice::ProtocolError ?
-                                   tr("Mobus exception: 0x%1").arg(reply->rawResult().exceptionCode(), -1, 16) :
-                                   tr("code: 0x%1").arg(reply->error(), -1, 16))
-                          .arg(pack._register_type).arg(pack._start_address) << cache_items_to_values(pack._items);
-            _queue.clear(reply->serverAddress());
+            Pack<Write_Cache_Item>& pack = _queue._write.front();
+            if (reply != pack._reply)
+                qCCritical(Log).noquote() << tr("Write finished but is not queue front") << reply << pack._reply;
+
+            pack._reply = nullptr;
+
+            _queue._write.pop_front();
+
+            if (reply->error() != QModbusDevice::NoError)
+            {
+                qCWarning(Log).noquote() << tr("Write response error: %1 Device address: %2 (%3) Function: %4 Start unit: %5 Data:")
+                              .arg(reply->errorString())
+                              .arg(reply->serverAddress())
+                              .arg(reply->error() == QModbusDevice::ProtocolError ?
+                                       tr("Mobus exception: 0x%1").arg(reply->rawResult().exceptionCode(), -1, 16) :
+                                       tr("code: 0x%1").arg(reply->error(), -1, 16))
+                              .arg(pack._register_type).arg(pack._start_address) << cache_items_to_values(pack._items);
+                _queue.clear(reply->serverAddress());
+            }
         }
     }
 
@@ -362,60 +374,63 @@ void Controller::read_finished(QModbusReply* reply)
         return;
     }
 
-    if (_queue._read.size())
     {
-        Pack_Read_Manager& pack_read_manager = _queue._read.front();
-        Pack<Device_Item*>& pack = pack_read_manager._packs.at(pack_read_manager._position);
-        if (reply != pack._reply)
+        std::lock_guard lock(_queue_mutex);
+        if (_queue._read.size())
         {
-            qCCritical(Log).noquote() << tr("Read finished but is not queue front") << reply << pack._reply;
-        }
-
-        pack._reply = nullptr;
-
-        if (reply->error() != QModbusDevice::NoError)
-        {
-            pack_read_manager._is_connected = false;
-            qCDebug(DetailLog) << pack._server_address << pack._register_type << reply->error()
-                               << tr("Read response error: %5 Device address: %1 (%6) registerType: %2 Start: %3 Value count: %4")
-                         .arg(pack._server_address).arg(pack._register_type).arg(pack._start_address).arg(pack._items.size())
-                         .arg(reply->errorString())
-                         .arg(reply->error() == QModbusDevice::ProtocolError ?
-                                tr("Mobus exception: 0x%1").arg(reply->rawResult().exceptionCode(), -1, 16) :
-                                  tr("code: 0x%1").arg(reply->error(), -1, 16));
-            _queue.clear(pack._server_address);
-        }
-        else
-        {
-            int value_pos = 0;
-
-            QVariant raw_data;
-            const QModbusDataUnit unit = reply->result();
-            for (uint i = 0; i < pack._items.size(); ++i)
+            Pack_Read_Manager& pack_read_manager = _queue._read.front();
+            Pack<Device_Item*>& pack = pack_read_manager._packs.at(pack_read_manager._position);
+            if (reply != pack._reply)
             {
-                Device_Item* item = pack._items.at(i);
-                quint16 count = Config::count(item, pack._start_address + value_pos);
-                QVariantList values;
+                qCCritical(Log).noquote() << tr("Read finished but is not queue front") << reply << pack._reply;
+            }
 
-                for (; count-- && value_pos < unit.valueCount(); ++value_pos)
+            pack._reply = nullptr;
+
+            if (reply->error() != QModbusDevice::NoError)
+            {
+                pack_read_manager._is_connected = false;
+                qCDebug(DetailLog) << pack._server_address << pack._register_type << reply->error()
+                                   << tr("Read response error: %5 Device address: %1 (%6) registerType: %2 Start: %3 Value count: %4")
+                             .arg(pack._server_address).arg(pack._register_type).arg(pack._start_address).arg(pack._items.size())
+                             .arg(reply->errorString())
+                             .arg(reply->error() == QModbusDevice::ProtocolError ?
+                                    tr("Mobus exception: 0x%1").arg(reply->rawResult().exceptionCode(), -1, 16) :
+                                      tr("code: 0x%1").arg(reply->error(), -1, 16));
+                _queue.clear(pack._server_address);
+            }
+            else
+            {
+                int value_pos = 0;
+
+                QVariant raw_data;
+                const QModbusDataUnit unit = reply->result();
+                for (uint i = 0; i < pack._items.size(); ++i)
                 {
-                    if (pack._register_type == QModbusDataUnit::Coils ||
-                            pack._register_type == QModbusDataUnit::DiscreteInputs)
-                        raw_data = static_cast<bool>(unit.value(value_pos));
-                    else
-                        raw_data = static_cast<qint32>(unit.value(value_pos));
-                    values.push_back(raw_data);
-                }
+                    Device_Item* item = pack._items.at(i);
+                    quint16 count = Config::count(item, pack._start_address + value_pos);
+                    QVariantList values;
 
-                if (values.size() > 1)
-                    pack_read_manager._new_values.at(item).raw_data_ = QVariant::fromValue(values);
-                else
-                    pack_read_manager._new_values.at(item).raw_data_ = raw_data;
+                    for (; count-- && value_pos < unit.valueCount(); ++value_pos)
+                    {
+                        if (pack._register_type == QModbusDataUnit::Coils ||
+                                pack._register_type == QModbusDataUnit::DiscreteInputs)
+                            raw_data = static_cast<bool>(unit.value(value_pos));
+                        else
+                            raw_data = static_cast<qint32>(unit.value(value_pos));
+                        values.push_back(raw_data);
+                    }
+
+                    if (values.size() > 1)
+                        pack_read_manager._new_values.at(item).raw_data_ = QVariant::fromValue(values);
+                    else
+                        pack_read_manager._new_values.at(item).raw_data_ = raw_data;
+                }
             }
         }
+        else
+            qCCritical(Log).noquote() << tr("Read finished but queue is empty");
     }
-    else
-        qCCritical(Log).noquote() << tr("Read finished but queue is empty");
 
     reply->deleteLater();
     next();
@@ -454,7 +469,10 @@ void Controller::deinit()
     delete _process_queue_timer;
     _process_queue_timer = nullptr;
 
-    _queue.clear_all();
+    {
+        std::lock_guard lock(_queue_mutex);
+        _queue.clear_all();
+    }
     _modbus->disconnectDevice();
     _modbus = nullptr;
 }

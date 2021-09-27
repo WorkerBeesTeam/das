@@ -65,7 +65,7 @@ private:
     QTimer* _process_queue_timer;
 
     Pack_Queue _queue;
-    std::mutex _mutex;
+    std::mutex _queue_mutex;
 
     friend class Thread;
 };
