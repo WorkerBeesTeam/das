@@ -413,9 +413,12 @@ void Controller::read_finished(QModbusReply* reply)
 
                     for (; count-- && value_pos < unit.valueCount(); ++value_pos)
                     {
-                        if (pack._register_type == QModbusDataUnit::Coils ||
-                                pack._register_type == QModbusDataUnit::DiscreteInputs)
-                            raw_data = static_cast<bool>(unit.value(value_pos));
+                        const quint16 v = unit.value(value_pos);
+
+                        if ((pack._register_type == QModbusDataUnit::Coils
+                             || pack._register_type == QModbusDataUnit::DiscreteInputs)
+                            && (v == 0 || v == 1))
+                            raw_data = static_cast<bool>(v);
                         else
                             raw_data = static_cast<qint32>(unit.value(value_pos));
                         values.push_back(raw_data);
