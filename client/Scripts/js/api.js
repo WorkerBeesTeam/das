@@ -143,7 +143,7 @@ api.init_as_group_manager = function(obj, group)
 
         func = obj['on_' + type_name + '_display_to_raw'];
         if (typeof func === 'function')
-            api.mng.connect_item_display_to_raw(item, obj, func); // args: data
+            api.mng.connect_item_display_to_raw(item, obj, func); // args: data, user_id
 
         func = obj['on_' + type_name + '_clarify_connection_state'];
         if (typeof func === 'function')

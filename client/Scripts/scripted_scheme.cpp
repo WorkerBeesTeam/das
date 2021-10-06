@@ -704,10 +704,10 @@ void Scripted_Scheme::connect_item_display_to_raw(Device_Item *item, const QScri
 {
     if (item && func.isFunction())
     {
-        connect(item, &Device_Item::display_to_raw, [this, obj, func](const QVariant& data) -> QVariant
+        connect(item, &Device_Item::display_to_raw, [this, obj, func](const QVariant& data, uint32_t user_id) -> QVariant
         {
             QScriptValue f = func;
-            QScriptValue res = f.call(obj, QScriptValueList{ value_from_variant(data) });
+            QScriptValue res = f.call(obj, QScriptValueList{ value_from_variant(data), user_id });
             return res.toVariant();
         });
     }

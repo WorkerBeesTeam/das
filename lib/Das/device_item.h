@@ -97,7 +97,7 @@ signals:
     bool is_can_change(const QVariant& display_value, uint32_t user_id = 0);
     bool clarify_connection_state(bool state);
     QVariant raw_to_display(const QVariant& val);
-    QVariant display_to_raw(const QVariant& val);
+    QVariant display_to_raw(const QVariant& val, uint32_t user_id = 0);
 public slots:
     QString toString(); // Use from QtScript
 

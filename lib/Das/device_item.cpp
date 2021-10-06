@@ -221,7 +221,7 @@ int Device_Item::write(const QVariant& display_value, uint32_t mode_id, uint32_t
 
     if (isSignalConnected(display_to_raw_signal))
     {
-        tmp_raw_data = display_to_raw(display_value);
+        tmp_raw_data = display_to_raw(display_value, user_id);
         raw_data = &tmp_raw_data;
     }
 
