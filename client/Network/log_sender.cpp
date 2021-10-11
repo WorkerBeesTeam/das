@@ -61,13 +61,22 @@ void prepare_pack<Log_Value_Item>(QVector<Log_Value_Item>& log_data)
 template<typename T>
 void Log_Sender::send_log_data(const Log_Type_Wrapper& log_type)
 {
-    Base& db = Base::get_thread_local_instance();
-    QVector<T> log_data = db_build_list<T>(db, DB::Helper::get_default_where_suffix() + " LIMIT " + QString::number(request_data_size_));
-    if (!log_data.empty())
-    {
-        prepare_pack(log_data);
-        send_log_data(log_type, std::make_shared<QVector<T>>(std::move(log_data)));
-    }
+    Worker* w = protocol_->worker();
+    std::size_t size = request_data_size_.load();
+    w->db_pending()->add([log_type, size, w](Helpz::DB::Base* db) {
+        QVector<T> log_data = db_build_list<T>(*db, DB::Helper::get_default_where_suffix() + " LIMIT " + QString::number(size));
+        if (!log_data.empty())
+        {
+            prepare_pack(log_data);
+
+            auto net = w->net_protocol();
+            if (net)
+            {
+                auto data = std::make_shared<QVector<T>>(std::move(log_data));
+                net->log_sender().send_log_data<T>(log_type, std::move(data));
+            }
+        }
+    });
 }
 
 template<typename T>
