@@ -244,7 +244,7 @@ void Worker::init_database(QSettings* s)
 
     Helpz::DB::Connection_Info::set_common(db_info);
 
-    db_pending_thread_.reset(new Helpz::DB::Thread(db_info, 2));
+    db_pending_thread_.reset(new Helpz::DB::Thread(db_info, 3));
     db_pending_thread_->add([this](Helpz::DB::Base* db)
     {
         std::set<uint32_t> scheme_groups;

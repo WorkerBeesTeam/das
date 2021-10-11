@@ -104,20 +104,7 @@ void Log_Sender::send_log_data(const Log_Type_Wrapper &log_type, std::shared_ptr
                 ++self.request_data_size_;
         }
 
-        w->db_pending()->add([log_type, log_data, w](Helpz::DB::Base* db) {
-            Log_Sender::remove_data(db, *log_data);
-
-            auto net = w->net_protocol();
-            if (net)
-            {
-                Log_Sender& self = net->log_sender();
-                {
-                    std::lock_guard lock(self._mutex);
-                    self._started[log_type] = false;
-                }
-                self.send_log_data<T>(log_type);
-            }
-        });
+        Log_Sender::remove_data(log_type, std::move(log_data), w);
     })
     .timeout([=]()
     {
@@ -140,6 +127,33 @@ void Log_Sender::send_log_data(const Log_Type_Wrapper &log_type, std::shared_ptr
 }
 
 template<typename T>
+void Log_Sender::remove_data(const Log_Type_Wrapper& log_type, std::shared_ptr<QVector<T>> log_data, Worker* w)
+{
+    w->db_pending()->add([=](Helpz::DB::Base* db) {
+        QVector<T>& data = *log_data;
+        if (data.isEmpty())
+        {
+            auto net = w->net_protocol();
+            if (net)
+            {
+                Log_Sender& self = net->log_sender();
+                {
+                    std::lock_guard lock(self._mutex);
+                    self._started[log_type] = false;
+                }
+                self.send_log_data<T>(log_type);
+            }
+        }
+        else
+        {
+            Log_Sender::remove_data(db, data.back());
+            data.pop_back();
+            Log_Sender::remove_data(log_type, std::move(log_data), w);
+        }
+    });
+}
+
+template<typename T>
 std::vector<uint32_t> get_compared_fields() { return {}; }
 
 #define DECL_GET_COMPARED_FIELDS(X, Y) \
@@ -155,7 +169,7 @@ template<> std::vector<uint32_t> get_compared_fields<Log_Status_Item>() {
 }
 
 template<typename T>
-void Log_Sender::remove_data(Base* db, const QVector<T>& data)
+void Log_Sender::remove_data(Base* db, const T& item)
 {
     const QStringList field_names = T::table_column_names();
     QString sql = db->del_query(db_table_name<T>(), DB::Helper::get_default_suffix() + " AND "
@@ -168,14 +182,11 @@ void Log_Sender::remove_data(Base* db, const QVector<T>& data)
     QSqlQuery q{db->database()};
     q.prepare(sql);
 
-    for (const T& item: data)
-    {
-        q.addBindValue(item.timestamp_msecs());
-        for (uint32_t field: fields)
-            q.addBindValue(T::value_getter(item, field));
-        if (!q.exec())
-            qWarning() << q.lastError().text();
-    }
+    q.addBindValue(item.timestamp_msecs());
+    for (uint32_t field: fields)
+        q.addBindValue(T::value_getter(item, field));
+    if (!q.exec())
+        qWarning() << q.lastError().text();
 }
 
 } // namespace Client
