@@ -1,3 +1,7 @@
 {
-    "type": "watchdog"
+    "type": "watchdog",
+    "param": {
+        "device": ["timeout"],
+        "device_item": []
+    }
 }

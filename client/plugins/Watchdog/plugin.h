@@ -5,6 +5,9 @@
 
 #include <memory>
 #include <set>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #include <Helpz/zfile.h>
 
@@ -44,10 +47,24 @@ private:
     QString get_uptime() const;
     QString reset_cause_str() const;
 
+    void run(const std::string& dev_file_name);
+
+    void process();
+    void close_device();
+
+    bool _is_first_call = true;
     bool _is_error = false, _stop_at_exit;
     int _max_interval;
     Helpz::File _file;
     QVariant _reset_cause;
+
+    bool _stop_flag = false;
+    std::mutex _mutex;
+    std::thread _thread;
+    std::condition_variable _cond;
+    std::chrono::milliseconds _user_timeout;
+    std::chrono::milliseconds _real_interval;
+    std::chrono::system_clock::time_point _last_check;
 };
 
 } // namespace Watchdog

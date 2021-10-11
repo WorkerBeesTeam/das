@@ -34,31 +34,43 @@ Plugin::Plugin() : QObject() {}
 Plugin::~Plugin()
 {
     stop();
+    if (_thread.joinable())
+        _thread.join();
 }
 
 void Plugin::configure(QSettings *settings)
 {
     // system("/sbin/modprobe bcm2835_wdt");
     using Helpz::Param;
-    auto [stop_at_exit, max_interval, dev_file_name] = Helpz::SettingsHelper{
+    auto [stop_at_exit, max_interval, real_interval, dev_file_name] = Helpz::SettingsHelper{
             settings, "Watchdog",
             Param{"StopAtExit", false},
             Param{"MaxIntervalSecs", 15},
+            Param{"RealIntervalSecs", 5},
             Param<std::string>{"DevicePath", "/dev/watchdog"}
     }();
 
+    _is_first_call = true;
     _stop_at_exit = stop_at_exit;
     _max_interval = max_interval;
+    _user_timeout = std::chrono::seconds(_max_interval);
+    _real_interval = std::chrono::seconds(real_interval);
     _reset_cause = get_reset_cause();
-
-    _file = Helpz::File{dev_file_name};
     print_reset_cause();
+
+    _last_check = std::chrono::system_clock::now();
+    _thread = std::thread(&Plugin::run, this, dev_file_name);
 }
 
 bool Plugin::check(Device* dev)
 {
     if (!dev || dev->items().empty())
         return false;
+
+    {
+        std::lock_guard lock(_mutex);
+        _last_check = std::chrono::system_clock::now();
+    }
 
     if (LogDetail().isDebugEnabled())
     {
@@ -69,19 +81,16 @@ bool Plugin::check(Device* dev)
         now = std::chrono::system_clock::now();
     }
 
-    if (!_file.is_opened())
+    if (_is_first_call)
     {
+        _is_first_call = false;
         Device_Item* dev_item = dev->items().front();
         send_reset_cause(dev_item);
-    }
 
-    if (!_file.name().empty())
-    {
-        if (!_file.is_opened())
-            open_device(std::round(dev->check_interval() * 2 / 1000));
-
-        if (_file.is_opened())
-            reset_timer();
+        std::lock_guard lock(_mutex);
+        _user_timeout = std::chrono::seconds(dev->param("timeout").toUInt());
+        if (_user_timeout < std::chrono::seconds(_max_interval))
+            _user_timeout = std::chrono::seconds(_max_interval);
     }
 
     return true;
@@ -89,19 +98,11 @@ bool Plugin::check(Device* dev)
 
 void Plugin::stop()
 {
-    if (_file)
     {
-        if (_stop_at_exit)
-        {
-            ::write(_file.descriptor(), "V", 1);
-
-            int flags = WDIOS_DISABLECARD;
-            ioctl(_file.descriptor(), WDIOC_SETOPTIONS, &flags);
-        }
-        else
-            qCDebug(Log) << "Is not disabled!";
-        _file.close();
+        std::lock_guard lock(_mutex);
+        _stop_flag = true;
     }
+    _cond.notify_one();
 }
 
 void Plugin::write(Device */*dev*/, std::vector<Write_Cache_Item>& /*items*/) {}
@@ -268,6 +269,59 @@ QString Plugin::reset_cause_str() const
     default: break;
     }
     return "Unknown";
+}
+
+void Plugin::run(const std::string& dev_file_name)
+{
+    std::unique_lock lock(_mutex, std::defer_lock);
+
+    _file = Helpz::File{dev_file_name};
+    process();
+
+    while (true)
+    {
+        lock.lock();
+        _cond.wait_for(lock, _real_interval);
+        if (_stop_flag)
+            break;
+
+        bool can_reset = (std::chrono::system_clock::now() - _last_check) < _user_timeout;
+        lock.unlock();
+
+        if (can_reset)
+            process();
+    }
+
+    close_device();
+}
+
+void Plugin::process()
+{
+    if (!_file.name().empty())
+    {
+        if (!_file.is_opened())
+            open_device(_max_interval);
+
+        if (_file.is_opened())
+            reset_timer();
+    }
+}
+
+void Plugin::close_device()
+{
+    if (_file)
+    {
+        if (_stop_at_exit)
+        {
+            ::write(_file.descriptor(), "V", 1);
+
+            int flags = WDIOS_DISABLECARD;
+            ioctl(_file.descriptor(), WDIOC_SETOPTIONS, &flags);
+        }
+        else
+            qCDebug(Log) << "Is not disabled!";
+        _file.close();
+    }
 }
 
 } // namespace Watchdog
