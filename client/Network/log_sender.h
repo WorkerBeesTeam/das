@@ -37,6 +37,9 @@ private:
     std::atomic<std::size_t> request_data_size_;
     const std::size_t request_max_data_size_;
     Protocol_Base* protocol_;
+
+    std::mutex _mutex;
+    std::map<Log_Type_Wrapper, bool> _started;
 };
 
 } // namespace Client

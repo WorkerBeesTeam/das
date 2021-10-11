@@ -61,6 +61,13 @@ void prepare_pack<Log_Value_Item>(QVector<Log_Value_Item>& log_data)
 template<typename T>
 void Log_Sender::send_log_data(const Log_Type_Wrapper& log_type)
 {
+    {
+        std::lock_guard lock(_mutex);
+        if (_started[log_type])
+            return;
+        _started[log_type] = true;
+    }
+
     Worker* w = protocol_->worker();
     std::size_t size = request_data_size_.load();
     w->db_pending()->add([log_type, size, w](Helpz::DB::Base* db) {
@@ -82,21 +89,38 @@ void Log_Sender::send_log_data(const Log_Type_Wrapper& log_type)
 template<typename T>
 void Log_Sender::send_log_data(const Log_Type_Wrapper &log_type, std::shared_ptr<QVector<T>> log_data)
 {
-    protocol_->send(Cmd::LOG_DATA_REQUEST).answer([this, log_data](QIODevice& /*dev*/)
+    Worker* w = protocol_->worker();
+    protocol_->send(Cmd::LOG_DATA_REQUEST).answer([=](QIODevice& /*dev*/)
     {
         if (request_data_size_ < request_max_data_size_)
             ++request_data_size_;
         remove_data(*log_data);
+
+        auto net = w->net_protocol();
+        if (net)
+        {
+            {
+                std::lock_guard lock(net->log_sender()._mutex);
+                net->log_sender()._started[log_type] = false;
+            }
+            net->log_sender().send_log_data<T>(log_type);
+        }
     })
-    .timeout([this, log_type, log_data]()
+    .timeout([=]()
     {
         // TODO: timeout вызывается из другого потока. Проверить чтобы Log_Sender удалялся позже чем Client_Protocol
 //            qWarning(Sync_Log) << log_type.to_string() << "log send timeout. request_data_size_:" << request_data_size_;
-        request_data_size_ = request_data_size_ / 2;
-        if (request_data_size_ < 5)
-            request_data_size_ = 5;
 
-        send_log_data<T>(log_type, log_data);
+        auto net = w->net_protocol();
+        if (net)
+        {
+            Log_Sender& self = net->log_sender();
+            self.request_data_size_ = self.request_data_size_ / 2;
+            if (self.request_data_size_ < 5)
+                self.request_data_size_ = 5;
+
+            self.send_log_data<T>(log_type, std::move(log_data));
+        }
     }, std::chrono::seconds{23}, std::chrono::seconds{10}) << log_type << *log_data;
 }
 

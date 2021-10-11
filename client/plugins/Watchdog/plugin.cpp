@@ -64,13 +64,13 @@ void Plugin::configure(QSettings *settings)
 
 bool Plugin::check(Device* dev)
 {
-    if (!dev || dev->items().empty())
-        return false;
-
     {
         std::lock_guard lock(_mutex);
         _last_check = std::chrono::system_clock::now();
     }
+
+    if (!dev || dev->items().empty())
+        return false;
 
     if (LogDetail().isDebugEnabled())
     {
@@ -281,6 +281,9 @@ void Plugin::run(const std::string& dev_file_name)
     while (true)
     {
         lock.lock();
+        if (_stop_flag)
+            break;
+
         _cond.wait_for(lock, _real_interval);
         if (_stop_flag)
             break;

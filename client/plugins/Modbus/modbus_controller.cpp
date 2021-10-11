@@ -176,18 +176,32 @@ void Controller::next()
         return;
     }
 
+    lock.unlock();
+
     if (!check_connection())
         return;
 
+    lock.lock();
+
     if (!_queue._write.empty())
     {
-        Pack<Write_Cache_Item>& pack = _queue._write.front();
-        write_pack(pack._server_address, pack._register_type, pack._start_address, pack._items, &pack._reply);
-        if (!pack._reply)
+        Pack<Write_Cache_Item> pack = _queue._write.front();
+        lock.unlock();
+
+        QModbusReply* reply = nullptr;
+        write_pack(pack._server_address, pack._register_type, pack._start_address, pack._items, &reply);
+        lock.lock();
+        if (!_queue._write.empty())
         {
-            _queue._write.pop_front();
-            lock.unlock();
-            next();
+            Pack<Write_Cache_Item>& pack = _queue._write.front();
+            if (reply)
+                pack._reply = reply;
+            else
+            {
+                _queue._write.pop_front();
+                lock.unlock();
+                next();
+            }
         }
     }
     else if (!_queue._read.empty())
@@ -202,12 +216,27 @@ void Controller::next()
         }
         else
         {
-            Pack<Device_Item*>& pack = pack_read_manager._packs.at(pack_read_manager._position);
-            read_pack(pack._server_address, pack._register_type, pack._start_address, pack._items, &pack._reply);
-            if (!pack._reply)
+            Pack<Device_Item*> pack = pack_read_manager._packs.at(pack_read_manager._position);
+            lock.unlock();
+
+            QModbusReply* reply = nullptr;
+            read_pack(pack._server_address, pack._register_type, pack._start_address, pack._items, &reply);
+            lock.lock();
+
+            if (!_queue._read.empty())
             {
-                lock.unlock();
-                next();
+                Pack_Read_Manager& pack_read_manager = _queue._read.front();
+                if (pack_read_manager._position < static_cast<int>(pack_read_manager._packs.size()))
+                {
+                    Pack<Device_Item*>& pack = pack_read_manager._packs.at(pack_read_manager._position);
+                    if (reply)
+                        pack._reply = reply;
+                    else
+                    {
+                        lock.unlock();
+                        next();
+                    }
+                }
             }
         }
     }
