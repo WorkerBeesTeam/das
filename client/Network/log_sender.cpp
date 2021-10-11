@@ -12,6 +12,8 @@ namespace Das {
 namespace Ver {
 namespace Client {
 
+Q_LOGGING_CATEGORY(LogSenderDetail, "journals.detail", QtInfoMsg)
+
 using namespace Helpz::DB;
 
 Log_Sender::Log_Sender(Protocol_Base *protocol, std::size_t request_max_data_size) :
@@ -89,29 +91,42 @@ void Log_Sender::send_log_data(const Log_Type_Wrapper& log_type)
 template<typename T>
 void Log_Sender::send_log_data(const Log_Type_Wrapper &log_type, std::shared_ptr<QVector<T>> log_data)
 {
+    qCDebug(LogSenderDetail) << "Send" << log_type.to_string() << "size" << log_data->size();
     Worker* w = protocol_->worker();
     protocol_->send(Cmd::LOG_DATA_REQUEST).answer([=](QIODevice& /*dev*/)
     {
-        if (request_data_size_ < request_max_data_size_)
-            ++request_data_size_;
-        remove_data(*log_data);
-
+        qCDebug(LogSenderDetail) << "Sended" << log_type.to_string() << "size" << log_data->size();
         auto net = w->net_protocol();
         if (net)
         {
-            {
-                std::lock_guard lock(net->log_sender()._mutex);
-                net->log_sender()._started[log_type] = false;
-            }
-            net->log_sender().send_log_data<T>(log_type);
+            Log_Sender& self = net->log_sender();
+            if (self.request_data_size_ < self.request_max_data_size_)
+                ++self.request_data_size_;
         }
+
+        w->db_pending()->add([log_type, log_data, w](Helpz::DB::Base* db) {
+            Log_Sender::remove_data(db, *log_data);
+
+            auto net = w->net_protocol();
+            if (net)
+            {
+                Log_Sender& self = net->log_sender();
+                {
+                    std::lock_guard lock(self._mutex);
+                    self._started[log_type] = false;
+                }
+                self.send_log_data<T>(log_type);
+            }
+        });
     })
     .timeout([=]()
     {
-        // TODO: timeout вызывается из другого потока. Проверить чтобы Log_Sender удалялся позже чем Client_Protocol
-//            qWarning(Sync_Log) << log_type.to_string() << "log send timeout. request_data_size_:" << request_data_size_;
-
         auto net = w->net_protocol();
+
+        // TODO: timeout вызывается из другого потока. Проверить чтобы Log_Sender удалялся позже чем Client_Protocol
+        qDebug(LogSenderDetail) << log_type.to_string() << "timeout. request_data_size_:"
+                                << (net ? net->log_sender().request_data_size_.load() : 0);
+
         if (net)
         {
             Log_Sender& self = net->log_sender();
@@ -140,18 +155,17 @@ template<> std::vector<uint32_t> get_compared_fields<Log_Status_Item>() {
 }
 
 template<typename T>
-void Log_Sender::remove_data(const QVector<T> &data)
+void Log_Sender::remove_data(Base* db, const QVector<T>& data)
 {
-    Base& db = Base::get_thread_local_instance();
     const QStringList field_names = T::table_column_names();
-    QString sql = db.del_query(db_table_name<T>(), DB::Helper::get_default_suffix() + " AND "
+    QString sql = db->del_query(db_table_name<T>(), DB::Helper::get_default_suffix() + " AND "
             + field_names.at(T::COL_timestamp_msecs) + "=?");
 
     const std::vector<uint32_t> fields = get_compared_fields<T>();
     for (uint32_t field: fields)
         sql += " AND " + field_names.at(field) + "=?";
 
-    QSqlQuery q{db.database()};
+    QSqlQuery q{db->database()};
     q.prepare(sql);
 
     for (const T& item: data)

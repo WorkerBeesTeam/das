@@ -32,7 +32,7 @@ private:
     void send_log_data(const Log_Type_Wrapper& log_type, std::shared_ptr<QVector<T>> log_data);
 
     template<typename T>
-    void remove_data(const QVector<T>& data);
+    static void remove_data(Helpz::DB::Base* db, const QVector<T>& data);
 
     std::atomic<std::size_t> request_data_size_;
     const std::size_t request_max_data_size_;
