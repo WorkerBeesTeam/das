@@ -165,7 +165,7 @@ Config::Config(const QString &address, int modbus_timeout, int modbus_number_of_
     {
         bool ok;
         int32_t val = v.toInt(&ok);
-        if (ok && val > 0 && (val + unit) <= 125)
+        if (ok && val > 0 && (val + unit) <= 255)
             return val;
     }
     return 1;
