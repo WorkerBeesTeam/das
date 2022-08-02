@@ -64,7 +64,7 @@ private:
     Param* parent_;
     std::vector<std::shared_ptr<Param>> childrens_;
 
-    static DIG_Param_Type empty_type;
+    static std::shared_ptr<DIG_Param_Type> empty_type;
 };
 
 } // namespace Das

@@ -1,6 +1,8 @@
 #ifndef DAS_DB_BASE_TYPE_H
 #define DAS_DB_BASE_TYPE_H
 
+#include <memory>
+
 #include <QVector>
 #include <QString>
 #include <QDataStream>
@@ -90,7 +92,7 @@ public:
         for (auto& type: types_)
             if (type.id() == type_id)
                 return &type;
-        return &empty_;
+        return get_empty();
     }
 
     T* get_type(const QString& name)
@@ -98,7 +100,7 @@ public:
         for (auto& type: types_)
             if (type.name() == name)
                 return &type;
-        return &empty_;
+        return get_empty();
     }
 
     const T& type(uint type_id) const
@@ -106,7 +108,7 @@ public:
         for (auto& type: types_)
             if (type.id() == type_id)
                 return type;
-        return empty_;
+        return *get_empty();
     }
 
     void set(const Type_List& list) { types_ = list; }
@@ -134,7 +136,13 @@ protected:
         return ds >> type.types_;
     }
 private:
-    T empty_;
+    T* get_empty() const
+    {
+        if (!_empty)
+            _empty = std::make_shared<T>();
+        return _empty.get();
+    }
+    mutable std::shared_ptr<T> _empty;
 };
 
 struct DAS_LIBRARY_SHARED_EXPORT Titled_Type : public Named_Type {

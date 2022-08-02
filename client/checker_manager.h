@@ -45,6 +45,7 @@ public slots:
 
     void set_custom_check_interval(Device* dev, uint32_t interval);
 private slots:
+    void start_devices();
     void check_devices();
     void write_data(Device_Item* item, const QVariant& raw_data, uint32_t user_id = 0);
     void write_cache();
@@ -58,7 +59,7 @@ private:
 
     uint32_t get_device_check_interval(Device* dev) const;
 
-    bool b_break, first_check_;
+    bool b_break;
 
     QTimer check_timer_, write_timer_;
 

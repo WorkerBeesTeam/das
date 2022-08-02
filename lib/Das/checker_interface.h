@@ -35,8 +35,9 @@ public:
     virtual void configure(QSettings* settings) = 0;
 
     virtual bool is_need_own_thread() const { return false; }
+    virtual void start() {}
     virtual bool check(Device *dev) = 0;
-    virtual void stop() = 0;
+    virtual void stop() {}
 
     virtual void write(Device* dev, std::vector<Write_Cache_Item>& items) = 0;
 

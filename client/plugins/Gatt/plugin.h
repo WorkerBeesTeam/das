@@ -6,14 +6,24 @@
 #include <mutex>
 #include <condition_variable>
 #include <deque>
+#include <queue>
+#include <set>
 #include <unordered_map>
 
+#include <QTimer>
+#include <QDBusConnection>
+#include <QDBusObjectPath>
 #include <QLoggingCategory>
 
 #include "../plugin_global.h"
 #include <Das/checker_interface.h>
+#include <Das/param/paramgroup.h>
 
-#include "gatt_common.h"
+#include "gatt_characteristic_receiver.h"
+
+typedef QMap<QString, QVariantMap> InterfaceList;
+typedef QMap<QDBusObjectPath, InterfaceList> ManagedObjectList;
+Q_DECLARE_METATYPE(InterfaceList)
 
 namespace Das {
 
@@ -34,6 +44,7 @@ public:
     // CheckerInterface interface
 public:
     void configure(QSettings* settings) override;
+    void start() override;
     bool check(Device *dev) override;
     void stop() override;
     void write(Device* dev, std::vector<Write_Cache_Item>& items) override;
@@ -41,40 +52,83 @@ public slots:
     void print_list_devices();
     void find_devices(const QStringList& accepted_services, const QStringList& accepted_characteristics = {});
 
+private slots:
+    void props_changed(const QString& iface, const QVariantMap& changed, const QStringList& invalidated);
+    void interfaces_added(const QDBusObjectPath& object_path, const InterfaceList& interfaces);
+    void interfaces_removed(const QDBusObjectPath& object_path, const QStringList& interfaces);
+    void receive_timeout(Device_Item* item);
+
 private:
+
+    using clock = std::chrono::system_clock;
+
+    struct Gatt_Device_Info
+    {
+        bool is_connected() const
+        {
+            return _last_connect_time.time_since_epoch() == clock::duration::max();
+        }
+
+        bool is_can_connection() const
+        {
+            return !is_connected()
+                    && (_last_connect_time.time_since_epoch() == clock::duration::zero()    //    if no one connection attempt (init)
+                        || (clock::now() - _last_connect_time) >= std::chrono::seconds(15));// or if is last fail connection timeout
+        }
+
+        Param* _address_param = nullptr;
+        QString _address;
+        QString _service;
+        QString _dev_path;
+        std::set<QString> _excluded_devs;
+        std::unique_ptr<QDBusInterface> _dev_iface;
+        std::unique_ptr<QDBusInterface> _prop_iface;
+        std::vector<std::shared_ptr<Gatt::Characteristic_Receiver>> _items_chars;
+        clock::time_point _last_connect_time;
+    };
+
+    ManagedObjectList get_managed_objects();
+
+    bool start_discovery();
+    void restart();
+
+    void init_device(Device* dev);
+    void toggle_adapter_power(bool state);
+
+    QString get_address(const InterfaceList& interfaces, QStringList* service_uuids = nullptr);
+    QString get_address(const Gatt_Device_Info& info);
+    std::map<Device*, Gatt_Device_Info>::iterator get_next_disconnected();
+
+    void connect_next2();
+    void process_connected();
+    void abort_current_and_connect_next(Gatt_Device_Info* info = nullptr, const QString* address = nullptr);
+    bool start_receive(std::shared_ptr<Gatt::Characteristic_Receiver> receiver, const QString& path);
 
     struct Config
     {
+        QString _adapter;
         std::chrono::seconds _scan_timeout;
+        std::chrono::seconds _connect_timeout;
         std::chrono::seconds _read_timeout;
     };
-
-    struct Data_Item
-    {
-        Device* _dev;
-        QByteArray _dev_address;
-
-        std::map<Device_Item*, uuid_t> _items;
-        std::vector<uuid_t> _characteristics;
-
-        bool operator==(Device* dev) const { return _dev == dev; }
-    };
-
-    bool add(Data_Item &data, Device_Item* item);
-    void run();
-    void read_data_item(const Data_Item& info);
 
     bool _break;
     bool _last_is_ok = true;
     Config _conf;
 
-    std::thread _thread;
-    std::mutex _mutex, _adapter_mutex;
-    std::condition_variable _cond;
+    QDBusConnection _conn;
+    std::unique_ptr<QDBusInterface> _obj_mng;
+    std::unique_ptr<QDBusInterface> _adapter;
+    std::unique_ptr<QDBusInterface> _prop_iface;
 
-    std::deque<Data_Item> _data;
+    std::set<QString> _excluded_devs;
+    std::map<Device*, Gatt_Device_Info> _devs;
 
-    std::shared_ptr<Gatt_Notification_Listner> _notify_listner_ptr;
+    QTimer _start_timer;
+
+    QTimer _connect_timer;
+    Device* _connecting_dev;
+    clock::time_point _connect_start_time;
 };
 
 } // namespace Das

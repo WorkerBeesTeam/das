@@ -5,23 +5,29 @@
 
 namespace Das {
 
-/*static*/ DIG_Param_Type Param::empty_type;
+/*static*/ std::shared_ptr<DIG_Param_Type> Param::empty_type;//
 
 Param::Param(Device_item_Group *owner) :
-    Param{ QVariant(), 0, &Param::empty_type, owner }
+    Param{ QVariant(), 0, nullptr, owner }
 {
 }
 
-Param::Param(uint id, DIG_Param_Type *param, const QString &raw_value, Device_item_Group *owner) :
+Param::Param(uint id, DIG_Param_Type* param, const QString& raw_value, Device_item_Group* owner) :
     Param{ value_from_string(param ? param->value_type() : DIG_Param_Type::VT_UNKNOWN, raw_value), id, param, owner }
 {
 }
 
-Param::Param(const QVariant &value, uint id, DIG_Param_Type *param, Device_item_Group *owner) :
+Param::Param(const QVariant &value, uint id, DIG_Param_Type* param, Device_item_Group *owner) :
     QObject(), id_(id), type_(param), group_(owner), value_(value), parent_(nullptr)
 {
-    if (value_.type() == QVariant::String && param->value_type() != DIG_Param_Type::VT_STRING)
-        value_ = value_from_string(param->value_type(), value.toString());
+    if (!param)
+    {
+        if (!empty_type)
+            empty_type = std::make_shared<DIG_Param_Type>();
+        type_ = Param::empty_type.get();
+    }
+    if (value_.type() == QVariant::String && type_->value_type() != DIG_Param_Type::VT_STRING)
+        value_ = value_from_string(type_->value_type(), value.toString());
 }
 
 Device_item_Group *Param::group() const { return group_; }

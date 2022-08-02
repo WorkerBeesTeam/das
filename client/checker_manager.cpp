@@ -22,7 +22,7 @@ Q_LOGGING_CATEGORY(LogDetail, "checker.detail", QtWarningMsg)
 
 Manager::Manager(Worker *worker, QObject *parent) :
     QObject(parent),
-    b_break(false), first_check_(true),
+    b_break(false),
     worker_(worker),
     scheme_(worker->prj())
 {
@@ -54,8 +54,8 @@ Manager::Manager(Worker *worker, QObject *parent) :
     {
         last_check_time_map_.insert(dev->id(), { true, 0 });
     }
+    start_devices();
     check_devices(); // Первый опрос контроллеров
-    first_check_ = false;
 
     QMetaObject::invokeMethod(scheme_, "after_all_initialization", Qt::QueuedConnection);
 }
@@ -75,7 +75,13 @@ void Manager::break_checking()
 
     for (const Plugin_Type& plugin: plugin_type_mng_->types())
         if (plugin.loader && plugin.checker)
-            plugin.checker->stop();
+        {
+            try {
+                plugin.checker->stop();
+            } catch (const std::exception& e) {
+                qCCritical(Log) << "Fail stop plugin" << plugin.name() << e.what();
+            } catch (...) {}
+        }
 }
 
 void Manager::stop()
@@ -100,7 +106,13 @@ std::future<QByteArray> Manager::start_stream(uint32_t user_id, Device_Item *ite
     {
         Plugin_Type* plugin = item->device()->checker_type();
         if (plugin && plugin->checker)
-            return plugin->checker->start_stream(user_id, item, url);
+        {
+            try {
+                return plugin->checker->start_stream(user_id, item, url);
+            } catch (const std::exception& e) {
+                qCCritical(Log) << "Fail start stream" << plugin->name() << item->toString() << e.what();
+            } catch (...) {}
+        }
     }
     return {};
 }
@@ -119,6 +131,36 @@ void Manager::set_custom_check_interval(Device *dev, uint32_t interval)
         _custom_check_interval.erase(it);
 
     check_devices(); // Переинициализация таймера на следующий опрос.
+}
+
+void Manager::start_devices()
+{
+    for (DB::Plugin_Type& pl : *plugin_type_mng_->get_types())
+        if (pl.loader && pl.loader->isLoaded() && pl.checker)
+        {
+            try {
+                pl.checker->start();
+            } catch (const std::exception& e) {
+                qCCritical(Log) << "Can't start plugin" << pl.name() << e.what();
+                pl.loader->unload();
+                pl.loader = nullptr;
+                pl.checker = nullptr;
+            }
+        }
+
+    // Init new virtual items with zero value
+    for (Device* dev: scheme_->devices())
+    {
+        if (dev->plugin_id()) // is not virtual
+            continue;
+
+        for (Device_Item* dev_item: dev->items())
+            if (!dev_item->is_connected())
+            {
+                QMetaObject::invokeMethod(dev_item, "set_raw_value", Qt::QueuedConnection, Q_ARG(QVariant, 0));
+                QMetaObject::invokeMethod(dev_item, "set_connection_state", Qt::QueuedConnection, Q_ARG(bool, true));
+            }
+    }
 }
 
 uint32_t Manager::get_device_check_interval(Device *dev) const
@@ -150,9 +192,17 @@ void Manager::check_devices()
 
             if (dev->items().size())
             {
-                if (dev->checker_type()->loader && dev->checker_type()->checker)
+                Plugin_Type* const plugin = dev->checker_type();
+                if (plugin->loader && plugin->checker)
                 {
-                    if (dev->checker_type()->checker->check(dev))
+                    bool check_status = false;
+                    try {
+                        check_status = plugin->checker->check(dev);
+                    } catch (const std::exception& e) {
+                        qCCritical(Log) << "Exception in check" << plugin->name() << dev->toString() << e.what();
+                    } catch (...) {}
+
+                    if (check_status)
                     {
                         if (!check_info.status_)
                             check_info.status_ = true;
@@ -160,38 +210,20 @@ void Manager::check_devices()
                     else if (check_info.status_)
                     {
                         check_info.status_ = false;
-                        qCDebug(Log) << "Fail check" << dev->checker_type()->name() << dev->toString();
+                        qCDebug(Log) << "Fail check" << plugin->name() << dev->toString();
                     }
                 }
-                else
+                else if (dev->plugin_id()) // is not virtual
                 {
-                    if (dev->plugin_id() == 0) // is_virtual
-                    {
-                        if (first_check_)
-                        {
-                            for (Device_Item* dev_item: dev->items())
-                            {
-                                if (!dev_item->is_connected())
-                                {
-                                    // It's only first check
-                                    QMetaObject::invokeMethod(dev_item, "set_raw_value", Qt::QueuedConnection, Q_ARG(QVariant, 0));
-                                    QMetaObject::invokeMethod(dev_item, "set_connection_state", Qt::QueuedConnection, Q_ARG(bool, true));
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        std::vector<Device_Item*> items;
-                        for (Device_Item* dev_item: dev->items())
-                            if (dev_item->is_connected())
-                                items.push_back(dev_item);
+                    std::vector<Device_Item*> items;
+                    for (Device_Item* dev_item: dev->items())
+                        if (dev_item->is_connected())
+                            items.push_back(dev_item);
 
-                        if (!items.empty())
-                        {
-                            QMetaObject::invokeMethod(dev, "set_device_items_disconnect",
-                                                      Q_ARG(std::vector<Device_Item*>, items));
-                        }
+                    if (!items.empty())
+                    {
+                        QMetaObject::invokeMethod(dev, "set_device_items_disconnect",
+                                                  Q_ARG(std::vector<Device_Item*>, items));
                     }
                 }
             }
@@ -265,7 +297,12 @@ void Manager::write_items(Device* dev, std::vector<Write_Cache_Item>& items)
 
     if (plugin && plugin->id() && plugin->checker)
     {        
-        plugin->checker->write(dev, items);
+        try {
+            plugin->checker->write(dev, items);
+        } catch (const std::exception& e) {
+            qCCritical(Log) << "Fail write" << plugin->name() << dev->toString() << e.what();
+        } catch (...) {}
+
         last_check_time_map_[items.begin()->dev_item_->device_id()].time_ = 0;
     }
     else
@@ -303,9 +340,9 @@ void Manager::load_plugins()
     {
         std::shared_ptr<QPluginLoader> loader;
 
-        try
-        {
-            Plugin_Type* pl_type = load_plugin(pluginsDir.absoluteFilePath(file_name), loader);
+        Plugin_Type* pl_type = nullptr;
+        try {
+            pl_type = load_plugin(pluginsDir.absoluteFilePath(file_name), loader);
 
             init_checker(pl_type->checker, scheme_);
 
@@ -314,14 +351,18 @@ void Manager::load_plugins()
             pl_type->checker->configure(settings.get());
 
             loaded_map.emplace(pl_type->name(), file_name);
-        }
-        catch (const std::exception& e)
-        {
+        } catch (const std::exception& e) {
             if (loader->isLoaded())
                 loader->unload();
-            if (*e.what() != 0)
-                qCCritical(Log) << "Fail to load plugin" << file_name << e.what();
-        }
+
+            if (pl_type)
+            {
+                pl_type->checker = nullptr;
+                pl_type->loader = nullptr;
+            }
+
+            qCCritical(Log) << "Fail to load plugin" << file_name << e.what();
+        } catch (...) {}
     }
 
     if (!loaded_map.empty() && Log().isDebugEnabled())
