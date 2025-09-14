@@ -17,6 +17,7 @@ class ParamGroupPrototype : public QObject, public QScriptable
     Q_PROPERTY(QString name READ name)
     Q_PROPERTY(QString title READ title)
     Q_PROPERTY(uint32_t type READ type)
+    Q_PROPERTY(int value_type READ value_type)
     Q_PROPERTY(int length READ length)
     Q_PROPERTY(QScriptValue value READ value WRITE set_value)
 public:
@@ -24,6 +25,7 @@ public:
 
     QString title() const;
 
+    int value_type() const;
     uint32_t type() const;
     QString name() const;
     int length() const;

@@ -21,6 +21,11 @@ QString ParamGroupPrototype::title() const
     return thisParam()->type()->title();
 }
 
+int ParamGroupPrototype::value_type() const
+{
+    return thisParam()->type()->value_type();
+}
+
 uint32_t ParamGroupPrototype::type() const
 {
     return thisParam()->type()->id();

@@ -1,7 +1,7 @@
 {
     "type": "gatt",
 	"param": {
-		"device": ["address"],
+        "device": ["address_param_id", "service"],
 		"device_item": ["characteristic"]
     }
 }
