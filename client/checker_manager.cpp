@@ -173,7 +173,7 @@ uint32_t Manager::get_device_check_interval(Device *dev) const
 
 void Manager::check_devices()
 {
-    b_break = false;   
+    b_break = false;
 
     qint64 next_shot, min_shot = QDateTime::currentMSecsSinceEpoch() + 60000, now_ms;
     for (Device* dev: scheme_->devices())
