@@ -53,6 +53,8 @@ SOURCES += main.cpp \
     stream/stream_server_thread.cpp \
     stream/stream_server_controller.cpp \
     stream/stream_node.cpp \
+    ../maxbot/db/auth.cpp \
+    ../maxbot/db/user.cpp \
     ../telegrambot/db/tg_auth.cpp \
     ../telegrambot/db/tg_user.cpp
 

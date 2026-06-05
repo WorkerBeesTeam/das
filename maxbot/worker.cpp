@@ -91,13 +91,25 @@ void Worker::init_database(QSettings* s)
 
 void Worker::init_bot(QSettings* s)
 {
+//    SMTP_Config smtp_config = Helpz::SettingsHelper(
+//                s, "SMTP_Client",
+//                Helpz::Param{"Server", "mail.example.org"},
+//                Helpz::Param{"Port", uint16_t(25)},
+//                Helpz::Param{"ConnectionType", "TCP"},
+//                Helpz::Param{"UserEmail", QString()},
+//                Helpz::Param{"User", QString()},
+//                Helpz::Param{"Password", QString()},
+//                Helpz::Param{"AuthMethod", "LOGIN"},
+//                Helpz::Param{"ConnectionTimeout", uint32_t(5000)},
+//                Helpz::Param{"ResponseTimeout", uint32_t(5000)}
+//                ).obj<SMTP_Config>();
+
     auto config = Helpz::SettingsHelper(
         s, "Bot",
         Helpz::Param<uint16_t>{"WebHookPort", 8033},
-        Helpz::Param<std::string>{"ApiUrl", "https://api.telegram.org"},
         Helpz::Param<std::string>{"Token", std::string()},
         Helpz::Param<std::string>{"WebHook", "https://deviceaccess.ru/tg_bot"},
-        Helpz::Param<std::string>{"WebHookCert", std::string()},
+        Helpz::Param<std::string>{"WebHookSecret", std::string()},
         Helpz::Param<std::string>{"AuthBaseUrl", "https://deviceaccess.ru/tg_auth/"},
         Helpz::Param<std::string>{"TemplatesPath", std::string()},
         Helpz::Param<std::string>{"HelpFilePath", std::string()}

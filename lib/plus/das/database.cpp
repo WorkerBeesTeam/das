@@ -3,7 +3,7 @@
 #include <botan/base64.h>
 #include <botan/parsing.h>
 
-#include <QtSerialBus/QModbusDataUnit>
+// #include <QtSerialBus/QModbusDataUnit>
 #include <QDebug>
 #include <QElapsedTimer>
 

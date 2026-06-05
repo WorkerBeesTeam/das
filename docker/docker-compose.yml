@@ -1,0 +1,49 @@
+services:
+  maxbot:
+    image: lirik90/das-full:v1
+    entrypoint: ["/opt/das/DasMaxBot", "-e"]
+    volumes:
+      - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket
+      - /opt/das/web/server/front/doc/tg/tg_readme.odt:/opt/das/tg_readme.odt
+      - /opt/das/telegram_templates:/opt/das/telegram_templates
+      - /opt/das/DasMaxBot.conf:/opt/das/DasMaxBot.conf
+    environment:
+      - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
+      - CURL_DEBUG=0
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8055:8055"
+
+  tgbot:
+    image: lirik90/das-full:v1
+    entrypoint: ["/opt/das/DasTelegramBot", "-e"]
+    volumes:
+      - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket
+      - /opt/das/web/server/front/doc/tg/tg_readme.odt:/opt/das/tg_readme.odt
+      - /opt/das/telegram_templates:/opt/das/telegram_templates
+      - /opt/das/DasTelegramBot.conf:/opt/das/DasTelegramBot.conf
+    environment:
+      - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8033:8033"
+
+  webapi:
+    image: lirik90/das-full:v1
+    entrypoint: ["/opt/das/DasWebApi", "-e"]
+    volumes:
+      - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket
+      - /opt/das/DasWebApi.conf:/opt/das/DasWebApi.conf
+      - /opt/das/blob:/opt/das/blob
+      - /etc/letsencrypt:/etc/letsencrypt
+    environment:
+      - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
+    privileged: true
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8123:8123"
+      - "0.0.0.0:25591:25591"
+      - "0.0.0.0:6731:6731/udp"
+

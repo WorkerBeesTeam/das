@@ -1,3 +1,4 @@
+#include <tgbot/net/BoostHttpOnlySslClient.h>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -45,7 +46,7 @@ namespace fs = std::filesystem;
 using namespace Helpz::DB;
 
 Controller::Controller(DBus::Interface *dbus_iface, Config config) :
-    QThread(), Bot_Base(dbus_iface),
+    Bot_Base(dbus_iface),
     stop_flag_(false), bot_(nullptr), server_(nullptr),
     _conf(std::move(config))
 {
@@ -64,18 +65,31 @@ Controller::~Controller()
     stop();
 }
 
+void Controller::start()
+{
+	if (!_th.joinable())
+		_th = std::thread(&Controller::run, this);
+}
+
+void Controller::quit()
+{
+	stop();
+}
+
 void Controller::stop()
 {
-    stop_flag_ = true;
-    if (server_)
-        server_->stop();
+	stop_flag_ = true;
+	if (server_)
+		server_->stop();
+	if (_th.joinable())
+		_th.join();
 }
 
 void Controller::send_message(int64_t chat_id, const string& text) const
 {
     try
     {
-        bot_->getApi().sendMessage(chat_id, text, false, 0, make_shared<TgBot::GenericReply>(), "Markdown");
+        bot_->getApi().sendMessage(chat_id, text, nullptr, nullptr, make_shared<TgBot::GenericReply>(), "Markdown");
     }
     catch(const TgBot::TgException& e)
     {
@@ -86,7 +100,8 @@ void Controller::send_message(int64_t chat_id, const string& text) const
 
 void Controller::init()
 {
-    bot_ = new TgBot::Bot(_conf._token);
+	static TgBot::BoostHttpOnlySslClient httpClient;
+    bot_ = new TgBot::Bot(_conf._token, httpClient, _conf._api_url);
 
     bot_user_ = bot_->getApi().getMe();
     if (bot_user_)
@@ -102,7 +117,7 @@ void Controller::init()
         else
         {
             // TODO: logout keyboard button
-            bot_->getApi().sendMessage(message->chat->id, "Вы уже авторизованы", false, 0, make_shared<TgBot::GenericReply>(), "Markdown");
+            send_message(message->chat->id, "Вы уже авторизованы");
         }
     });
     bot_->getEvents().onCommand("find", [this](TgBot::Message::Ptr message)
@@ -301,9 +316,8 @@ void Controller::anyMessage(TgBot::Message::Ptr message)
                     {
                         Elements elements(*this, user_id, it->second.scheme_, cmd, it->second.data_, message->text);
                         elements.generate_answer();
-
                         if (!elements.text_.empty())
-                            bot_->getApi().sendMessage(message->chat->id, elements.text_, false, 0, elements.keyboard_, "Markdown");
+                            bot_->getApi().sendMessage(message->chat->id, elements.text_, nullptr, nullptr, elements.keyboard_, "Markdown");
                     }
                     else if (cmd.front() == "find")
                     {
@@ -399,7 +413,8 @@ string Controller::process_directory(uint32_t user_id, TgBot::Message::Ptr messa
                 else if (elements.text_.empty())
                     bot_->getApi().editMessageReplyMarkup(message->chat->id, message->messageId, "", elements.keyboard_);
                 else
-                    bot_->getApi().editMessageText(elements.text_, message->chat->id, message->messageId, "", "Markdown", false, elements.keyboard_);
+                    bot_->getApi().editMessageText(elements.text_, message->chat->id, message->messageId, "", "Markdown", nullptr, elements.keyboard_);
+
             }
 
             else if (action == "menu_sub_1")
@@ -537,7 +552,7 @@ void Controller::report(TgBot::Message::Ptr message) const
         TgBot::InputFile::Ptr file = TgBot::InputFile::fromFile(getReportFilepathForUser(message->from), REPORT_MIME);
         bot_->getApi().sendDocument(message->chat->id, file);
     } catch (const std::exception& e) {
-        bot_->getApi().sendMessage(message->chat->id, std::string("Ошибка при чтении файла: ") + e.what());
+        send_message(message->chat->id, std::string("Ошибка при чтении файла: ") + e.what());
     }
 }
 
@@ -568,7 +583,7 @@ void Controller::inform_onoff(uint32_t user_id, TgBot::Chat::Ptr chat, TgBot::Me
     if (msg_to_update)
         bot_->getApi().editMessageReplyMarkup(chat->id, msg_to_update->messageId, "", keyboard);
     else
-        bot_->getApi().sendMessage(chat->id, text, false, 0, keyboard);
+        bot_->getApi().sendMessage(chat->id, text, nullptr, nullptr, keyboard);
 }
 
 string mimetype_from_extension(const string& ext)
@@ -628,7 +643,7 @@ void Controller::help(TgBot::Message::Ptr message)
         }
     }
 
-    bot_->getApi().sendMessage(message->chat->id, text);
+    send_message(message->chat->id, text);
 }
 
 void Controller::help_send_file(int64_t chat_id) const
@@ -746,7 +761,7 @@ void Controller::restart(uint32_t user_id, const Scheme_Item& scheme, TgBot::Mes
     QMetaObject::invokeMethod(dbus_iface_, "send_message_to_scheme", Qt::QueuedConnection,
         Q_ARG(uint32_t, scheme.id()), Q_ARG(uint8_t, Das::WS_RESTART), Q_ARG(uint32_t, user_id), Q_ARG(QByteArray, QByteArray()));
 
-    bot_->getApi().sendMessage(message->chat->id, "🔄 Команда на перезагрузку отправлена!");
+    send_message(message->chat->id, "🔄 Команда на перезагрузку отправлена!");
 }
 
 void Controller::sub_1_list(const Scheme_Item& scheme, TgBot::Message::Ptr message)
@@ -799,7 +814,7 @@ void Controller::sub_1(const Scheme_Item& scheme, TgBot::Message::Ptr message, u
 {
     const string text = "(Ещё не реализованно) Sub 1: " + to_string(sub_1_id)
             + " на голове " + to_string(sub_id) + " в " + to_string(scheme.id());
-    bot_->getApi().sendMessage(message->chat->id, text);
+    send_message(message->chat->id, text);
 }
 
 void Controller::menu_sub_2(const Scheme_Item& scheme, TgBot::Message::Ptr message, const string& sub_id)
@@ -824,7 +839,7 @@ void Controller::menu_sub_2(const Scheme_Item& scheme, TgBot::Message::Ptr messa
 void Controller::sub_2(const Scheme_Item& scheme, TgBot::Message::Ptr message, const std::string &sub_2_type)
 {
     const string text = "(Ещё не реализованно) Действие Sub 2 тип: " + sub_2_type + " в " + to_string(scheme.id());
-    bot_->getApi().sendMessage(message->chat->id, text);
+    send_message(message->chat->id, text);
 }
 
 // Helpers
@@ -997,11 +1012,11 @@ void Controller::send_schemes_list(uint32_t user_id, TgBot::Chat::Ptr chat, uint
     if (msg_to_update)
     {
 //        bot_->getApi().editMessageReplyMarkup(chat->id, msg_to_update->messageId, "", keyboard);
-        bot_->getApi().editMessageText(text, chat->id, msg_to_update->messageId, "", "Markdown", false, keyboard);
+        bot_->getApi().editMessageText(text, chat->id, msg_to_update->messageId, "", "Markdown", nullptr, keyboard);
     }
     else
     {
-        bot_->getApi().sendMessage(chat->id, text, false, 0, keyboard, "Markdown", false);
+        bot_->getApi().sendMessage(chat->id, text, nullptr, nullptr, keyboard, "Markdown", false);
     }
 }
 
@@ -1025,7 +1040,7 @@ void Controller::sendSchemeMenu(TgBot::Message::Ptr message, const Scheme_Item& 
     keyboard->inlineKeyboard.push_back(makeInlineButtonRow("list", "Назад (<<)"));
 
 //    bot_->getApi().editMessageReplyMarkup(message->chat->id, message->messageId, "", keyboard);
-    bot_->getApi().editMessageText(scheme.title_.toStdString(), message->chat->id, message->messageId, "", "", false, keyboard);
+    bot_->getApi().editMessageText(scheme.title_.toStdString(), message->chat->id, message->messageId, "", "", nullptr, keyboard);
 }
 
 void Controller::send_authorization_message(const TgBot::Message& msg) const
@@ -1072,9 +1087,7 @@ void Controller::send_authorization_message(const TgBot::Message& msg) const
         std::string text = "Чтобы продолжить, пожалуйста перейдите по ссылке ниже и авторизуйтесь.\n\n";
         text += _conf._auth_base_url;
         text += auth.token().toStdString();
-//        send_message(chat_id, text);
-
-        bot_->getApi().sendMessage(chat_id, text);
+        send_message(chat_id, text);
     }
     else
         send_message(chat_id, "Ошибка во время инициализации привязки пользователя");

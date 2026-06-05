@@ -3,9 +3,10 @@
 
 #include <string>
 #include <vector>
+#include <thread>
 
-#include <QThread>
-
+#define HAVE_CURL
+#include <maxbot/net/CurlHttpClient.h>
 #include <tgbot/net/TgWebhookTcpServer.h>
 //#include <tgbot/tgbot.h>
 
@@ -28,6 +29,7 @@ namespace Bot {
 struct Config
 {
     uint16_t _port = 8443;
+    std::string _api_url = "https://api.telegram.org";
     std::string _token;
     std::string _webhook_url, _webhook_cert;
     std::string _auth_base_url = "https://deviceaccess.ru/tg_auth/";
@@ -35,19 +37,21 @@ struct Config
     std::string _help_file_path;
 };
 
-class Controller : public QThread, public Bot_Base
+class Controller : public QObject, public Bot_Base
 {
     Q_OBJECT
 public:
     Controller(DBus::Interface* dbus_iface, Config config);
     ~Controller();
 
+	void start();
+	void quit();
     void stop();
     void send_message(int64_t chat_id, const std::string& text) const;
 
 protected:
     void init();
-    void run() override;
+    void run();
     void anyMessage(TgBot::Message::Ptr message);
 
     std::string process_directory(uint32_t user_id, TgBot::Message::Ptr message, const std::string& msg_data, int32_t tg_user_id);
@@ -113,6 +117,8 @@ private:
     std::map<int64_t, Waited_Item> waited_map_;
 
     std::set<User_Menu::Item> user_menu_set_;
+
+	std::thread _th;
 };
 
 } // namespace Bot

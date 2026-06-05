@@ -9,10 +9,10 @@ linux-rasp-pi2-g++ {
 android {
     CONFIG += c++14
 } else {
-    CONFIG += c++1z
+    CONFIG += c++20
 }
 
-#QMAKE_CXXFLAGS += -std:c++latest
+QMAKE_CXXFLAGS += -std=c++20
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which as been marked deprecated (the exact warnings
@@ -26,7 +26,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 linux-g++* {
-    INCLUDEPATH += /usr/local/include
+    INCLUDEPATH += /usr/local/include /usr/include/botan-2
     LIBS += -L/usr/local/lib
 }
 

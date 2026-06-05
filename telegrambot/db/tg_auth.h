@@ -14,6 +14,7 @@ class DAS_LIBRARY_SHARED_EXPORT Tg_Auth
 public:
     Tg_Auth(int32_t tg_user_id = 0, qint64 expired = 0, const QString& token = {});
 
+    int32_t external_user_id() const;
     int32_t tg_user_id() const;
     void set_tg_user_id(int32_t id);
 

@@ -42,8 +42,9 @@
     - WebSocket сервер (Для мгновенного отображения изменений и управления)
     - RestfulApi сервер 
     - Stream сервер
+- **DasMaxBot** - Max бот для уведомлений о событиях, и простого управления
 - **DasTelegramBot** - Телеграм бот для уведомлений о событиях, и простого управления
-  - Язык: С++. Библиотеки: STL, Boost, Qt (Network, DBus, SQL), TgBot
+  - Язык: С++. Библиотеки: STL, Boost, Qt (Network, DBus, SQL), TgBot, MaxBot
   - Используемые внутренние библиотеки: Das, DasPlus, DasDBus, Helpz (Service, DB)
 - **DasModern** - GUI Клиент \ Мобильное приложение
   - Язык: С++, Qt/QML. Библиотеки: STL, Qt (QML, QuickControls2, WebSockets)

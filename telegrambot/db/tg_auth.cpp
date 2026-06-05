@@ -8,6 +8,7 @@ Tg_Auth::Tg_Auth(int32_t tg_user_id, qint64 expired, const QString &token) :
 {
 }
 
+int32_t Tg_Auth::external_user_id() const { return tg_user_id_; }
 int32_t Tg_Auth::tg_user_id() const { return tg_user_id_; }
 void Tg_Auth::set_tg_user_id(int32_t id) { tg_user_id_ = id; }
 

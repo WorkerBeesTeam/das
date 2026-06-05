@@ -7,6 +7,9 @@
 #include <Das/db/auth_group.h>
 #include <Das/log/log_base_item.h>
 
+#include "../maxbot/db/auth.h"
+#include "../maxbot/db/user.h"
+
 #include "../telegrambot/db/tg_auth.h"
 #include "../telegrambot/db/tg_user.h"
 
@@ -54,6 +57,35 @@ void Restful::join()
         thread_.join();
 }
 
+template<typename AuthT, typename UserT>
+qint64 botAuth(const std::string& token)
+{
+	const qint64 now = DB::Log_Base_Item::current_timestamp();
+	const QString where = "WHERE expired > " + QString::number(now) + " AND token = ?";
+
+	Base& db = Base::get_thread_local_instance();
+	const auto auth_vect = db_build_list<AuthT>(db, where, {QString::fromStdString(token)});
+	if (auth_vect.size() != 1)
+		throw served::request_error(served::status_4XX::BAD_REQUEST, "Bad request: Unknown token");
+	qint64 externalUserId = auth_vect.front().external_user_id();
+	qsizetype externalUserIdColumnId = DB::MaxBot_User::COL_user_id;
+	if constexpr (std::is_same_v<UserT, DB::Tg_User>)
+		externalUserIdColumnId = DB::Tg_User::COL_user_id;
+
+	Table table = db_table<UserT>();
+	table.field_names() = QStringList{table.field_names().at(externalUserIdColumnId)};
+	const QVariantList values{{Auth_Middleware::get_thread_local_user().id_}};
+	bool ok = db.update(table, values, "id=" + QString::number(externalUserId)).numRowsAffected();
+	if (!ok)
+		throw served::request_error(served::status_4XX::BAD_REQUEST, "Bad request: Unknown user");
+
+	QString externalUserIdColumnName = "external_user_id";
+	if constexpr (std::is_same_v<UserT, DB::Tg_User>)
+		externalUserIdColumnName = "tg_user_id";
+	db.del(db_table_name<AuthT>(), externalUserIdColumnName + "=" + QString::number(externalUserId));
+	return externalUserId;
+}
+
 void Restful::run(DBus::Interface* dbus_iface, const Config &config)
 {
     try
@@ -77,29 +109,17 @@ void Restful::run(DBus::Interface* dbus_iface, const Config &config)
         mux.handle("bot/auth").post([](served::response &res, const served::request &req)
         {
             const picojson::object obj = Helper::parse_object(req.body());
-            const std::string& token = obj.at("token").get<std::string>();
+            std::string token = obj.at("token").get<std::string>();
+			bool isMax = token.starts_with("max");
+			if (isMax)
+				token = token.substr(3);
+			qint64 externalUserId;
+			if (isMax)
+				externalUserId = botAuth<DB::MaxBot_Auth, DB::MaxBot_User>(token);
+			else
+				externalUserId = botAuth<DB::Tg_Auth, DB::Tg_User>(token);
 
-            const qint64 now = DB::Log_Base_Item::current_timestamp();
-            const QString where = "WHERE expired > " + QString::number(now) + " AND token = ?";
-
-            Base& db = Base::get_thread_local_instance();
-            const QVector<DB::Tg_Auth> auth_vect = db_build_list<DB::Tg_Auth>(db, where, {QString::fromStdString(token)});
-            if (auth_vect.size() != 1)
-                throw served::request_error(served::status_4XX::BAD_REQUEST, "Bad request: Unknown token");
-
-            const DB::Tg_Auth& auth = auth_vect.front();
-
-            Table table = db_table<DB::Tg_User>();
-            table.field_names() = QStringList{table.field_names().at(DB::Tg_User::COL_user_id)};
-            const QVariantList values{{Auth_Middleware::get_thread_local_user().id_}};
-            bool ok = db.update(table, values, "id=" + QString::number(auth.tg_user_id())).numRowsAffected();
-            if (!ok)
-                throw served::request_error(served::status_4XX::BAD_REQUEST, "Bad request: Unknown user");
-
-            db.del(db_table_name<DB::Tg_Auth>(), "tg_user_id=" + QString::number(auth.tg_user_id()));
-
-            QMetaObject::invokeMethod(Server::WebApi::Dbus_Object::instance(), "tg_user_authorized", Qt::QueuedConnection, Q_ARG(qint64, auth.tg_user_id()));
-
+            QMetaObject::invokeMethod(Server::WebApi::Dbus_Object::instance(), "tg_user_authorized", Qt::QueuedConnection, Q_ARG(qint64, externalUserId));
             res.set_status(204);
         });
 

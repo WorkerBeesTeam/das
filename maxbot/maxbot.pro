@@ -3,7 +3,7 @@ QT -= gui widgets
 
 # QT += xlsx
 
-TARGET = DasTelegramBot
+TARGET = DasMaxBot
 CONFIG += console
 CONFIG -= app_bundle
 
@@ -25,20 +25,20 @@ LIBS += -L$$DESTDIR -lDas -lDasPlus -lDasDbus -lHelpzBase -lHelpzService -lHelpz
 
 # LIBS += -L$${OUT_PWD}/SMTPEmail -lSMTPEmail
 LIBS += \
-    -lTgBot \
+    -L/usr/local/lib/ \
+    -L/usr/local/opt/openssl/lib \
+    -lMaxBot \
     -lboost_system \
     -lssl \
     -lcrypto \
     -lpthread \
-    -lcurl \
-    -L/usr/local/lib/ \
-    -L/usr/local/opt/openssl/lib
+    -lcurl
 
 SOURCES += main.cpp \
-    db/tg_auth.cpp \
-    db/tg_chat.cpp \
-    db/tg_subscriber.cpp \
-    db/tg_user.cpp \
+    db/auth.cpp \
+    db/chat.cpp \
+    db/subscriber.cpp \
+    db/user.cpp \
     dbus_webapi_interface.cpp \
     worker.cpp \
     informer.cpp \
@@ -61,10 +61,10 @@ SOURCES += main.cpp \
     bot/user_menu/device_item_value_normalizer.cpp
 
 HEADERS += \
-    db/tg_auth.h \
-    db/tg_chat.h \
-    db/tg_subscriber.h \
-    db/tg_user.h \
+    db/auth.h \
+    db/chat.h \
+    db/subscriber.h \
+    db/user.h \
     dbus_webapi_interface.h \
     rest_ctrl.h \
     worker.h \

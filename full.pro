@@ -35,9 +35,10 @@ CONFIG(release, debug|release) {
 }
 
 CONFIG(DasServer, DasServer|Raspberry) {
-    SUBDIRS += server telegrambot
+    SUBDIRS += server telegrambot maxbot
     server.depends = dbus
     telegrambot.depends = dbus
+    maxbot.depends = dbus
 }
 
 !ServerOnly {
